@@ -1,13 +1,21 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { CONTENT, type Content, type Lang } from "./content";
+import { type Content, type Lang } from "./content";
 
-interface LangCtx { lang: Lang; setLang: (l: Lang) => void; c: Content }
-const Ctx = createContext<LangCtx>({ lang: "ru", setLang: () => {}, c: CONTENT.ru });
+interface LangCtx { lang: Lang; setLang: (l: Lang) => void; c: Content; mediaBase: string }
+const Ctx = createContext<LangCtx | null>(null);
 
 const LANGS: Lang[] = ["ru", "tk", "en"];
 
-export function LangProvider({ children }: { children: React.ReactNode }) {
+export function LangProvider({
+  content,
+  mediaBase,
+  children,
+}: {
+  content: Record<Lang, Content>;
+  mediaBase: string;
+  children: React.ReactNode;
+}) {
   const [lang, setLangState] = useState<Lang>("ru");
 
   useEffect(() => {
@@ -23,8 +31,16 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = l;
   };
 
-  return <Ctx.Provider value={{ lang, setLang, c: CONTENT[lang] }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ lang, setLang, c: content[lang], mediaBase }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
-export const useLang = () => useContext(Ctx);
+export const useLang = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("useLang must be used within LangProvider");
+  return ctx;
+};
 export { LANGS };

@@ -1,10 +1,19 @@
 "use client";
 import { LangProvider } from "@/lib/lang";
 import { LightboxProvider } from "./Lightbox";
+import type { Content, Lang } from "@/lib/content";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  content,
+  mediaBase,
+  children,
+}: {
+  content: Record<Lang, Content>;
+  mediaBase: string;
+  children: React.ReactNode;
+}) {
   return (
-    <LangProvider>
+    <LangProvider content={content} mediaBase={mediaBase}>
       <LightboxProvider>{children}</LightboxProvider>
     </LangProvider>
   );

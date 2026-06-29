@@ -1,20 +1,20 @@
 "use client";
-import { MEDIA, captionFor, type Section } from "@/lib/content";
+import type { Content, MediaItem, Section } from "@/lib/content";
 import { useLang } from "@/lib/lang";
 import { useLightbox } from "./Lightbox";
 import Icon from "./Icon";
 
-type Item = { kind: "video" | "img"; name: string; still?: boolean };
+function imgCaption(item: Extract<MediaItem, { kind: "img" }>, c: Content): string {
+  if (item.caption === "chapar") return "Chapar Express";
+  if (item.caption === "vms") return "Kanagatly VMS";
+  return c.capPhoto;
+}
 
 export default function Gallery({ section }: { section: Section }) {
-  const { c } = useLang();
+  const { c, mediaBase } = useLang();
   const open = useLightbox();
-  const m = MEDIA[section.id];
-  const still = m.still ?? [];
-  const items: Item[] = [
-    ...m.videos.map((v) => ({ kind: "video" as const, name: v, still: still.includes(v) })),
-    ...m.photos.map((p) => ({ kind: "img" as const, name: p })),
-  ];
+  const items: MediaItem[] = section.media ?? [];
+  const url = (p: string) => `${mediaBase}/${p}`;
 
   if (items.length === 0) {
     return (
@@ -32,12 +32,12 @@ export default function Gallery({ section }: { section: Section }) {
   const quad = !isProg && items.length <= 4;
   const cls = isProg ? "gal gal-prog" : quad ? "gal gal-quad" : "gal";
 
-  const renderCard = (it: Item) => {
+  const renderCard = (it: MediaItem, i: number) => {
     if (it.kind === "video") {
-      const src = `/assets/video/${it.name}.mp4`;
-      const poster = `/assets/img/${it.name}-poster.jpg`;
+      const src = url(it.src);
+      const poster = it.poster ? url(it.poster) : undefined;
       return (
-        <figure key={it.name} className="card" onClick={() => open({ kind: "video", src })}>
+        <figure key={i} className="card" onClick={() => open({ kind: "video", src })}>
           {it.still ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={poster} alt="" loading="lazy" />
@@ -49,11 +49,12 @@ export default function Gallery({ section }: { section: Section }) {
         </figure>
       );
     }
+    const src = url(it.src);
     return (
-      <figure key={it.name} className="card" onClick={() => open({ kind: "img", src: `/assets/img/${it.name}.jpg` })}>
+      <figure key={i} className="card" onClick={() => open({ kind: "img", src })}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/assets/img/${it.name}.jpg`} alt="" loading="lazy" />
-        <figcaption><span className="dot" />{captionFor(it.name, c)}</figcaption>
+        <img src={src} alt="" loading="lazy" />
+        <figcaption><span className="dot" />{imgCaption(it, c)}</figcaption>
       </figure>
     );
   };

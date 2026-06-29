@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KM Site — Kanagatly Mahabat
 
-## Getting Started
+Security & automation company site (RU / TK / EN). Now **dynamic**: content lives
+in a database and is edited through an admin panel.
 
-First, run the development server:
+- **Frontend** — Next.js 16 (this folder). Public page server-renders content
+  fetched from the backend on every request; admin UI lives at `/admin`.
+- **Backend** — Python FastAPI + SQLite (`backend/`). Stores content, services,
+  media and leads; serves media files. See [`backend/README.md`](backend/README.md).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Quick start (Windows)
+
+```powershell
+# 1. Set the admin password (writes backend\.env)
+powershell -ExecutionPolicy Bypass -File scripts\create-admin.ps1
+
+# 2. Launch backend + frontend (installs deps & seeds DB on first run)
+powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`start.ps1` opens two windows (backend :8000, frontend :3000). Close them to stop.
+Then open http://localhost:3000 (site) / http://localhost:3000/admin (panel).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The manual steps below are equivalent if you prefer running each part yourself.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Run locally (two processes)
 
-## Learn More
+### 1. Backend (FastAPI)
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cd backend
+py -m venv .venv
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
+# set ADMIN_PASSWORD and SECRET_KEY in backend/.env
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Seed initial content (one time):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dump:seed                              # from project root → writes backend/app/seed_data.json
+cd backend && ./.venv/Scripts/python.exe -m app.seed
+```
 
-## Deploy on Vercel
+Start it:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd backend && ./.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 2. Frontend (Next.js)
+
+```bash
+npm install        # first time
+npm run dev
+```
+
+- Site: http://localhost:3000
+- Admin: http://localhost:3000/admin  (password = `ADMIN_PASSWORD` from `backend/.env`)
+
+`.env.local` points the frontend at the backend (`API_URL` / `NEXT_PUBLIC_API_URL`,
+default `http://localhost:8000`). Keep `FRONTEND_ORIGIN` in `backend/.env` matching the
+frontend origin (default `http://localhost:3000`) for CORS + login cookies.
+
+## Admin panel
+
+`/admin` lets you edit, with no code changes:
+- **Тексты** — all site texts per language (ru/tk/en)
+- **Услуги** — add/edit/reorder/hide services, icons, features
+- **Медиа** — upload photos/videos per service, posters, ordering
+- **Заявки** — leads submitted via the contact form
+
+## Notes
+- Content is fetched uncached (per-request SSR) so admin edits show on the site
+  immediately. If the backend is down, the site falls back to bundled static content.
+- Fonts load via Google Fonts `<link>` (not `next/font`) to avoid a build-time
+  dependency on `fonts.gstatic.com`.
+- The single source for the initial seed is `lib/content.ts`.

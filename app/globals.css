@@ -214,6 +214,20 @@ figure.card:hover::after{opacity:.55}
 .cta-pdf:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgba(0,166,80,.42);filter:brightness(1.06)}
 .cta-pdf .cta-ic{width:18px;height:18px;transition:transform .3s}
 .cta-pdf:hover .cta-ic{transform:translateY(2px)}
+.lead-form{margin-top:30px;display:grid;gap:12px}
+.lf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lf-in{width:100%;background:var(--surf);border:1px solid var(--line2);border-radius:14px;padding:13px 16px;
+  font-family:var(--body);font-size:15px;color:var(--tx);transition:border-color .25s,box-shadow .25s;resize:vertical}
+.lf-in::placeholder{color:var(--tx3)}
+.lf-in:focus{outline:none;border-color:var(--green-br);box-shadow:0 0 0 3px rgba(34,224,125,.15)}
+.lf-ta{min-height:84px}
+.lf-btn{margin-top:4px;border:none;cursor:pointer;justify-content:center}
+.lf-btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:0 14px 34px rgba(0,166,80,.32)}
+.lf-err{font-family:var(--mono);font-size:12px;color:#ff8a8a}
+.lead-done{margin-top:30px;display:flex;align-items:center;gap:12px;padding:18px 20px;border-radius:16px;
+  background:rgba(0,166,80,.1);border:1px solid var(--line2);color:var(--tx);font-size:15px}
+.lead-done .ld-ic{width:22px;height:22px;color:var(--green-br);flex:none}
+@media(max-width:560px){.lf-row{grid-template-columns:1fr}}
 .cc-r{position:relative;display:grid;place-items:center;padding:40px;background:radial-gradient(circle at 50% 40%,rgba(0,166,80,.22),transparent 65%);border-left:1px solid var(--line)}
 .cc-r img{width:170px;height:170px;border-radius:50%;box-shadow:0 0 70px rgba(0,166,80,.45)}
 .cc-r .nm{position:absolute;bottom:34px;font-family:var(--disp);font-weight:800;letter-spacing:.3em;font-size:22px}
@@ -273,3 +287,31 @@ footer b{color:var(--green-br)}
 .cc-r img{animation:floaty 6.5s ease-in-out infinite}
 @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @media(prefers-reduced-motion:reduce){.cc-r img{animation:none}*{scroll-behavior:auto}}
+
+/* ───────────────── small phones ───────────────── */
+@media(max-width:480px){
+  section{padding:56px 0}
+  .hero{padding:96px 0 44px;min-height:auto}
+  .hero h1{font-size:clamp(78px,24vw,150px)}
+  .hero .badge{font-size:10.5px;letter-spacing:.1em;padding:7px 12px;margin-bottom:22px}
+  .hero .full{letter-spacing:.18em;font-size:12px}
+  .hero .sub{font-size:15px;margin-top:16px}
+  .hero .scroll{margin-top:30px}
+  .mq-track span{font-size:15px}
+  .stats{gap:12px}
+  .snum{font-size:clamp(21px,7vw,28px)}
+  .svc-no{font-size:52px}
+  .svc h3{font-size:21px}
+  .gal,.gal-quad{grid-template-columns:1fr 1fr;gap:10px}
+  .card video,.card img{height:120px}
+  .gal-empty{min-height:260px}
+  .ev-ic{width:66px;height:66px}
+  .cc-l{padding:24px 20px}
+  .cc-l h2{font-size:26px}
+  .row{flex-direction:column;gap:3px;padding:12px 0}
+  .row b{min-width:0}
+  .cta-pdf,.lf-btn{width:100%;justify-content:center}
+  .lb .x{top:14px;right:16px;width:40px;height:40px}
+}
+/* avoid sideways scrolling on any phone */
+html,body{max-width:100%}

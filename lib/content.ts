@@ -1,8 +1,13 @@
 export type Lang = "ru" | "tk" | "en";
 
+export type MediaItem =
+  | { kind: "video"; src: string; poster: string | null; still: boolean }
+  | { kind: "img"; src: string; caption: "photo" | "vms" | "chapar" };
+
 export interface Section {
   id: string; no: string; icon: string;
   code: string; short: string; title: string; body: string; feats: string[];
+  media?: MediaItem[];
 }
 export interface Content {
   brandFull: string; tagline: string; heroKicker: string; heroSub: string; heroScroll: string;

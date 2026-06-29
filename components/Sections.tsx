@@ -4,6 +4,7 @@ import type { Section } from "@/lib/content";
 import Reveal from "./Reveal";
 import Icon from "./Icon";
 import Gallery from "./Gallery";
+import LeadForm from "./LeadForm";
 
 export function About() {
   const { c } = useLang();
@@ -146,6 +147,7 @@ export function Contact() {
               <Icon name="download" className="cta-ic" />
               <span>{c.catalogCta}</span>
             </a>
+            <LeadForm />
           </div>
           <div className="cc-r">
             {/* eslint-disable-next-line @next/next/no-img-element */}
