@@ -4,6 +4,7 @@ import { useLang, LANGS } from "@/lib/lang";
 import Icon from "./Icon";
 
 const SECTIONS = ["about", "services", "process", "contact"] as const;
+const SHOP_LABEL: Record<string, string> = { ru: "Магазин", tk: "Dükan", en: "Shop" };
 
 export default function Nav() {
   const { c, lang, setLang } = useLang();
@@ -55,6 +56,9 @@ export default function Nav() {
               {c.nav[id]}
             </a>
           ))}
+          <a href="/shop" className="nav-shop" onClick={() => setOpen(false)}>
+            {SHOP_LABEL[lang] ?? "Магазин"}
+          </a>
           <span className="lang">
             <Icon name="globe" className="gl" />
             {LANGS.map((l) => (

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/admin-api";
 
@@ -40,6 +41,7 @@ export default function LoginPage() {
           {busy ? "Вход…" : "Войти"}
         </button>
       </form>
+      <Link href="/" style={{ display: "inline-block", marginTop: 18, color: "var(--tx3)", fontSize: 13, textDecoration: "none" }}>← На сайт</Link>
     </div>
   );
 }

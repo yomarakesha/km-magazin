@@ -12,8 +12,10 @@ from .routers import (
     admin_leads,
     admin_media,
     admin_services,
+    admin_shop,
     auth,
     public,
+    shop_public,
 )
 
 
@@ -42,6 +44,8 @@ app.include_router(admin_content.router)
 app.include_router(admin_services.router)
 app.include_router(admin_media.router)
 app.include_router(admin_leads.router)
+app.include_router(admin_shop.router)
+app.include_router(shop_public.router)
 
 
 @app.get("/health")

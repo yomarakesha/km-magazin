@@ -1,0 +1,163 @@
+"""Seed demo shop data: categories, filter attributes and products.
+
+Idempotent — wipes existing shop catalog (categories/products/attributes), keeps
+orders. No image files are seeded, so product cards show the "KM" placeholder
+until photos are uploaded in /admin/shop/products/{id}/images.
+
+Run from backend/:  python -m app.seed_shop
+"""
+from .db import SessionLocal, init_db
+from .models import (
+    CategoryAttribute,
+    CategoryAttributeTranslation,
+    Product,
+    ProductAttribute,
+    ProductImage,
+    ProductTranslation,
+    ShopCategory,
+    ShopCategoryTranslation,
+)
+
+LANGS = ("ru", "tk", "en")
+
+# Each category: slug, names per lang, attribute defs, products.
+# Attribute def: key, type, unit, labels{lang}.
+# Product: slug, price, in_stock, titles{lang}, short{lang}, attrs{key: value}.
+DATA = [
+    {
+        "slug": "computers",
+        "names": {"ru": "Компьютеры", "tk": "Kompýuterler", "en": "Computers"},
+        "attributes": [
+            {"key": "cpu", "type": "select", "unit": "", "labels": {"ru": "Процессор", "tk": "Prosessor", "en": "CPU"}},
+            {"key": "ram", "type": "number", "unit": "GB", "labels": {"ru": "Память", "tk": "Ýat", "en": "RAM"}},
+            {"key": "gpu", "type": "select", "unit": "", "labels": {"ru": "Видеокарта", "tk": "Wideokarta", "en": "GPU"}},
+            {"key": "storage", "type": "number", "unit": "GB", "labels": {"ru": "Накопитель", "tk": "Disk", "en": "Storage"}},
+        ],
+        "products": [
+            {"slug": "pc-gamer-pro", "price": 27000, "in_stock": True,
+             "titles": {"ru": "Игровой ПК Gamer Pro", "tk": "Oýun kompýuteri Gamer Pro", "en": "Gamer Pro Desktop"},
+             "short": {"ru": "Core i7, RTX 4070, 32 ГБ", "tk": "Core i7, RTX 4070, 32 GB", "en": "Core i7, RTX 4070, 32 GB"},
+             "attrs": {"cpu": "Core i7", "ram": "32", "gpu": "RTX 4070", "storage": "1024"}},
+            {"slug": "pc-gamer-base", "price": 18500, "in_stock": True,
+             "titles": {"ru": "Игровой ПК Gamer Base", "tk": "Oýun kompýuteri Gamer Base", "en": "Gamer Base Desktop"},
+             "short": {"ru": "Core i5, RTX 4060, 16 ГБ", "tk": "Core i5, RTX 4060, 16 GB", "en": "Core i5, RTX 4060, 16 GB"},
+             "attrs": {"cpu": "Core i5", "ram": "16", "gpu": "RTX 4060", "storage": "512"}},
+            {"slug": "pc-office", "price": 7500, "in_stock": True,
+             "titles": {"ru": "Офисный ПК Office", "tk": "Ofis kompýuteri", "en": "Office Desktop"},
+             "short": {"ru": "Core i3, 8 ГБ, SSD 256", "tk": "Core i3, 8 GB, SSD 256", "en": "Core i3, 8 GB, SSD 256"},
+             "attrs": {"cpu": "Core i3", "ram": "8", "gpu": "Intel UHD", "storage": "256"}},
+            {"slug": "pc-ryzen-work", "price": 9800, "in_stock": False,
+             "titles": {"ru": "Рабочий ПК Ryzen", "tk": "Iş kompýuteri Ryzen", "en": "Ryzen Workstation"},
+             "short": {"ru": "Ryzen 5, 16 ГБ, SSD 512", "tk": "Ryzen 5, 16 GB, SSD 512", "en": "Ryzen 5, 16 GB, SSD 512"},
+             "attrs": {"cpu": "Ryzen 5", "ram": "16", "gpu": "Radeon Vega", "storage": "512"}},
+        ],
+    },
+    {
+        "slug": "cameras",
+        "names": {"ru": "Камеры", "tk": "Kameralar", "en": "Cameras"},
+        "attributes": [
+            {"key": "resolution", "type": "select", "unit": "MP", "labels": {"ru": "Разрешение", "tk": "Çözgüt", "en": "Resolution"}},
+            {"key": "type", "type": "select", "unit": "", "labels": {"ru": "Тип", "tk": "Görnüşi", "en": "Type"}},
+        ],
+        "products": [
+            {"slug": "cam-dome-2mp", "price": 850, "in_stock": True,
+             "titles": {"ru": "Камера купольная 2 МП", "tk": "Gümmez kamera 2 MP", "en": "Dome Camera 2 MP"},
+             "short": {"ru": "Внутренняя, ИК-подсветка", "tk": "Içerki, IR yşyk", "en": "Indoor, IR night vision"},
+             "attrs": {"resolution": "2", "type": "Купольная"}},
+            {"slug": "cam-bullet-4mp", "price": 1200, "in_stock": True,
+             "titles": {"ru": "Камера цилиндрическая 4 МП", "tk": "Silindr kamera 4 MP", "en": "Bullet Camera 4 MP"},
+             "short": {"ru": "Уличная, IP67", "tk": "Daşarky, IP67", "en": "Outdoor, IP67"},
+             "attrs": {"resolution": "4", "type": "Цилиндрическая"}},
+            {"slug": "cam-ptz-8mp", "price": 4300, "in_stock": False,
+             "titles": {"ru": "Камера PTZ 8 МП", "tk": "PTZ kamera 8 MP", "en": "PTZ Camera 8 MP"},
+             "short": {"ru": "Поворотная, 20x зум", "tk": "Aýlanýan, 20x zum", "en": "Pan-tilt, 20x zoom"},
+             "attrs": {"resolution": "8", "type": "PTZ"}},
+        ],
+    },
+    {
+        "slug": "network",
+        "names": {"ru": "Сетевое оборудование", "tk": "Tor enjamlary", "en": "Networking"},
+        "attributes": [
+            {"key": "ports", "type": "number", "unit": "", "labels": {"ru": "Порты", "tk": "Portlar", "en": "Ports"}},
+            {"key": "speed", "type": "select", "unit": "", "labels": {"ru": "Скорость", "tk": "Tizlik", "en": "Speed"}},
+        ],
+        "products": [
+            {"slug": "switch-8", "price": 650, "in_stock": True,
+             "titles": {"ru": "Коммутатор 8 портов", "tk": "Kommutator 8 port", "en": "8-Port Switch"},
+             "short": {"ru": "Gigabit, неуправляемый", "tk": "Gigabit", "en": "Gigabit, unmanaged"},
+             "attrs": {"ports": "8", "speed": "1 Гбит"}},
+            {"slug": "switch-24", "price": 2100, "in_stock": True,
+             "titles": {"ru": "Коммутатор 24 порта", "tk": "Kommutator 24 port", "en": "24-Port Switch"},
+             "short": {"ru": "Gigabit, управляемый", "tk": "Gigabit, dolandyrylýan", "en": "Gigabit, managed"},
+             "attrs": {"ports": "24", "speed": "1 Гбит"}},
+            {"slug": "router-wifi6", "price": 1450, "in_stock": True,
+             "titles": {"ru": "Роутер Wi-Fi 6", "tk": "Wi-Fi 6 router", "en": "Wi-Fi 6 Router"},
+             "short": {"ru": "Двухдиапазонный, AX3000", "tk": "Iki diapazon, AX3000", "en": "Dual-band, AX3000"},
+             "attrs": {"ports": "4", "speed": "1 Гбит"}},
+        ],
+    },
+]
+
+
+def _wipe(db) -> None:
+    for model in (
+        ProductAttribute, ProductImage, ProductTranslation, Product,
+        CategoryAttributeTranslation, CategoryAttribute,
+        ShopCategoryTranslation, ShopCategory,
+    ):
+        db.query(model).delete()
+    db.commit()
+
+
+def seed_shop() -> None:
+    init_db()
+    db = SessionLocal()
+    try:
+        _wipe(db)
+        n_prod = 0
+        for c_order, c in enumerate(DATA):
+            cat = ShopCategory(slug=c["slug"], sort_order=c_order, enabled=True)
+            for lang in LANGS:
+                cat.translations.append(ShopCategoryTranslation(lang=lang, name=c["names"][lang]))
+
+            attr_by_key: dict[str, CategoryAttribute] = {}
+            for a_order, a in enumerate(c["attributes"]):
+                attr = CategoryAttribute(
+                    key=a["key"], type=a["type"], unit=a["unit"] or None,
+                    filterable=True, sort_order=a_order,
+                )
+                for lang in LANGS:
+                    attr.translations.append(CategoryAttributeTranslation(lang=lang, label=a["labels"][lang]))
+                cat.attributes.append(attr)
+                attr_by_key[a["key"]] = attr
+
+            for p_order, p in enumerate(c["products"]):
+                prod = Product(
+                    slug=p["slug"], price=p["price"], currency="TMT",
+                    in_stock=p["in_stock"], sort_order=p_order, enabled=True,
+                )
+                for lang in LANGS:
+                    prod.translations.append(ProductTranslation(
+                        lang=lang, title=p["titles"][lang], short=p["short"][lang], body="", specs=[],
+                    ))
+                for key, value in p["attrs"].items():
+                    attr = attr_by_key[key]
+                    num = None
+                    if attr.type == "number":
+                        try:
+                            num = float(value)
+                        except ValueError:
+                            num = None
+                    prod.attributes.append(ProductAttribute(attribute=attr, value=value, num_value=num))
+                cat.products.append(prod)
+                n_prod += 1
+
+            db.add(cat)
+        db.commit()
+        print(f"Seeded {len(DATA)} categories, {n_prod} products.")
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    seed_shop()

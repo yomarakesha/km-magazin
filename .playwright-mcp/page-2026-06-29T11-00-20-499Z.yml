@@ -1,0 +1,165 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "KM Магазин" [ref=e4] [cursor=pointer]:
+        - /url: /shop
+      - navigation [ref=e5]:
+        - link "Каталог" [ref=e6] [cursor=pointer]:
+          - /url: /shop
+        - link "Компьютеры" [ref=e7] [cursor=pointer]:
+          - /url: /shop/category/computers
+        - link "Камеры" [ref=e8] [cursor=pointer]:
+          - /url: /shop/category/cameras
+        - link "Сетевое оборудование" [ref=e9] [cursor=pointer]:
+          - /url: /shop/category/network
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - button "РУ" [ref=e12] [cursor=pointer]
+          - button "TK" [ref=e13] [cursor=pointer]
+          - button "EN" [ref=e14] [cursor=pointer]
+        - link "🛒 Корзина" [ref=e15] [cursor=pointer]:
+          - /url: /shop/cart
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - heading "Каталог" [level=1] [ref=e18]
+      - generic [ref=e19]:
+        - link "Компьютеры 4" [ref=e20] [cursor=pointer]:
+          - /url: /shop/category/computers
+          - generic [ref=e21]: Компьютеры
+          - generic [ref=e22]: "4"
+        - link "Камеры 3" [ref=e23] [cursor=pointer]:
+          - /url: /shop/category/cameras
+          - generic [ref=e24]: Камеры
+          - generic [ref=e25]: "3"
+        - link "Сетевое оборудование 3" [ref=e26] [cursor=pointer]:
+          - /url: /shop/category/network
+          - generic [ref=e27]: Сетевое оборудование
+          - generic [ref=e28]: "3"
+      - heading "Все товары" [level=2] [ref=e29]
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - link "KM В наличии" [ref=e32] [cursor=pointer]:
+            - /url: /shop/product/pc-gamer-pro
+            - generic [ref=e33]: KM
+            - generic [ref=e34]: В наличии
+          - generic [ref=e35]:
+            - link "Игровой ПК Gamer Pro" [ref=e36] [cursor=pointer]:
+              - /url: /shop/product/pc-gamer-pro
+            - paragraph [ref=e37]: Core i7, RTX 4070, 32 ГБ
+            - generic [ref=e38]:
+              - generic [ref=e39]: 27 000 TMT
+              - button "В корзину" [ref=e40] [cursor=pointer]
+        - generic [ref=e41]:
+          - link "KM В наличии" [ref=e42] [cursor=pointer]:
+            - /url: /shop/product/cam-dome-2mp
+            - generic [ref=e43]: KM
+            - generic [ref=e44]: В наличии
+          - generic [ref=e45]:
+            - link "Камера купольная 2 МП" [ref=e46] [cursor=pointer]:
+              - /url: /shop/product/cam-dome-2mp
+            - paragraph [ref=e47]: Внутренняя, ИК-подсветка
+            - generic [ref=e48]:
+              - generic [ref=e49]: 850 TMT
+              - button "В корзину" [ref=e50] [cursor=pointer]
+        - generic [ref=e51]:
+          - link "KM В наличии" [ref=e52] [cursor=pointer]:
+            - /url: /shop/product/switch-8
+            - generic [ref=e53]: KM
+            - generic [ref=e54]: В наличии
+          - generic [ref=e55]:
+            - link "Коммутатор 8 портов" [ref=e56] [cursor=pointer]:
+              - /url: /shop/product/switch-8
+            - paragraph [ref=e57]: Gigabit, неуправляемый
+            - generic [ref=e58]:
+              - generic [ref=e59]: 650 TMT
+              - button "В корзину" [ref=e60] [cursor=pointer]
+        - generic [ref=e61]:
+          - link "KM В наличии" [ref=e62] [cursor=pointer]:
+            - /url: /shop/product/pc-gamer-base
+            - generic [ref=e63]: KM
+            - generic [ref=e64]: В наличии
+          - generic [ref=e65]:
+            - link "Игровой ПК Gamer Base" [ref=e66] [cursor=pointer]:
+              - /url: /shop/product/pc-gamer-base
+            - paragraph [ref=e67]: Core i5, RTX 4060, 16 ГБ
+            - generic [ref=e68]:
+              - generic [ref=e69]: 18 500 TMT
+              - button "В корзину" [ref=e70] [cursor=pointer]
+        - generic [ref=e71]:
+          - link "KM В наличии" [ref=e72] [cursor=pointer]:
+            - /url: /shop/product/cam-bullet-4mp
+            - generic [ref=e73]: KM
+            - generic [ref=e74]: В наличии
+          - generic [ref=e75]:
+            - link "Камера цилиндрическая 4 МП" [ref=e76] [cursor=pointer]:
+              - /url: /shop/product/cam-bullet-4mp
+            - paragraph [ref=e77]: Уличная, IP67
+            - generic [ref=e78]:
+              - generic [ref=e79]: 1 200 TMT
+              - button "В корзину" [ref=e80] [cursor=pointer]
+        - generic [ref=e81]:
+          - link "KM В наличии" [ref=e82] [cursor=pointer]:
+            - /url: /shop/product/switch-24
+            - generic [ref=e83]: KM
+            - generic [ref=e84]: В наличии
+          - generic [ref=e85]:
+            - link "Коммутатор 24 порта" [ref=e86] [cursor=pointer]:
+              - /url: /shop/product/switch-24
+            - paragraph [ref=e87]: Gigabit, управляемый
+            - generic [ref=e88]:
+              - generic [ref=e89]: 2 100 TMT
+              - button "В корзину" [ref=e90] [cursor=pointer]
+        - generic [ref=e91]:
+          - link "KM В наличии" [ref=e92] [cursor=pointer]:
+            - /url: /shop/product/pc-office
+            - generic [ref=e93]: KM
+            - generic [ref=e94]: В наличии
+          - generic [ref=e95]:
+            - link "Офисный ПК Office" [ref=e96] [cursor=pointer]:
+              - /url: /shop/product/pc-office
+            - paragraph [ref=e97]: Core i3, 8 ГБ, SSD 256
+            - generic [ref=e98]:
+              - generic [ref=e99]: 7 500 TMT
+              - button "В корзину" [ref=e100] [cursor=pointer]
+        - generic [ref=e101]:
+          - link "KM Под заказ" [ref=e102] [cursor=pointer]:
+            - /url: /shop/product/cam-ptz-8mp
+            - generic [ref=e103]: KM
+            - generic [ref=e104]: Под заказ
+          - generic [ref=e105]:
+            - link "Камера PTZ 8 МП" [ref=e106] [cursor=pointer]:
+              - /url: /shop/product/cam-ptz-8mp
+            - paragraph [ref=e107]: Поворотная, 20x зум
+            - generic [ref=e108]:
+              - generic [ref=e109]: 4 300 TMT
+              - button "В корзину" [ref=e110] [cursor=pointer]
+        - generic [ref=e111]:
+          - link "KM В наличии" [ref=e112] [cursor=pointer]:
+            - /url: /shop/product/router-wifi6
+            - generic [ref=e113]: KM
+            - generic [ref=e114]: В наличии
+          - generic [ref=e115]:
+            - link "Роутер Wi-Fi 6" [ref=e116] [cursor=pointer]:
+              - /url: /shop/product/router-wifi6
+            - paragraph [ref=e117]: Двухдиапазонный, AX3000
+            - generic [ref=e118]:
+              - generic [ref=e119]: 1 450 TMT
+              - button "В корзину" [ref=e120] [cursor=pointer]
+        - generic [ref=e121]:
+          - link "KM Под заказ" [ref=e122] [cursor=pointer]:
+            - /url: /shop/product/pc-ryzen-work
+            - generic [ref=e123]: KM
+            - generic [ref=e124]: Под заказ
+          - generic [ref=e125]:
+            - link "Рабочий ПК Ryzen" [ref=e126] [cursor=pointer]:
+              - /url: /shop/product/pc-ryzen-work
+            - paragraph [ref=e127]: Ryzen 5, 16 ГБ, SSD 512
+            - generic [ref=e128]:
+              - generic [ref=e129]: 9 800 TMT
+              - button "В корзину" [ref=e130] [cursor=pointer]
+  - contentinfo [ref=e131]:
+    - link "← На сайт" [ref=e133] [cursor=pointer]:
+      - /url: /
+  - button "Open Next.js Dev Tools" [ref=e139] [cursor=pointer]:
+    - img [ref=e140]
+  - alert [ref=e143]

@@ -40,6 +40,9 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;opacity:.5;background-i
 .nav .links a::after{content:"";position:absolute;left:0;bottom:-2px;height:1.5px;width:0;background:var(--green-br);transition:.3s}
 .nav .links a:hover,.nav .links a.act{color:var(--tx)}
 .nav .links a:hover::after,.nav .links a.act::after{width:100%}
+.nav .links a.nav-shop{color:var(--bg);background:var(--green-br);padding:7px 15px;border-radius:30px;font-weight:700;text-transform:uppercase}
+.nav .links a.nav-shop:hover{background:var(--green);color:#fff}
+.nav .links a.nav-shop::after{display:none}
 .lang{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line2);
   border-radius:30px;padding:3px 5px 3px 9px;font-family:var(--mono);font-size:12px}
 .lang .gl{width:14px;height:14px;color:var(--tx2);margin-right:3px}
