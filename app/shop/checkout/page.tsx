@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useShop } from "@/components/shop/shop-context";
 import { createOrder } from "@/lib/shop-api";
+import { waLink } from "@/lib/shop-config";
+import Icon from "@/components/shop/ui/Icon";
 
 export default function CheckoutPage() {
   const { t, pick, items, total, clear } = useShop();
@@ -18,7 +20,7 @@ export default function CheckoutPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
-    if (!name.trim() || !phone.trim()) { setErr("name/phone"); return; }
+    if (!name.trim() || !phone.trim()) { setErr(`${t("name")} / ${t("phone")}`); return; }
     setBusy(true);
     try {
       const res = await createOrder({
@@ -36,6 +38,7 @@ export default function CheckoutPage() {
     return (
       <div className="shop-wrap shop-narrow">
         <div className="shop-ok">
+          <div className="shop-ok-icon"><Icon name="check" size={32} strokeWidth={2.2} /></div>
           <h1 className="shop-h1">{t("orderOk")}</h1>
           <p>{t("orderOkText")}</p>
           <p className="shop-order-no">{t("orderNumber")}: <b>#{done}</b></p>
@@ -47,7 +50,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="shop-wrap">
+      <div className="shop-wrap" style={{ paddingTop: 28 }}>
         <h1 className="shop-h1">{t("checkout")}</h1>
         <p className="shop-empty">{t("emptyCart")}</p>
         <Link href="/shop" className="shop-btn ghost">{t("continueShopping")}</Link>
@@ -55,39 +58,57 @@ export default function CheckoutPage() {
     );
   }
 
+  const waText = [
+    `${t("checkout")}:`,
+    ...items.map((it) => `• ${pick(it.titles)} × ${it.qty} — ${(it.price * it.qty).toLocaleString("ru-RU")} ${it.currency}`),
+    `${t("total")}: ${total.toLocaleString("ru-RU")} TMT`,
+  ].join("\n");
+
   return (
-    <div className="shop-wrap shop-narrow">
+    <div className="shop-wrap" style={{ paddingTop: 28 }}>
       <h1 className="shop-h1">{t("checkout")}</h1>
 
-      <div className="shop-order-summary">
-        {items.map((it) => (
-          <div key={it.id} className="shop-order-row">
-            <span>{pick(it.titles)} × {it.qty}</span>
-            <span>{(it.price * it.qty).toLocaleString("ru-RU")} TMT</span>
-          </div>
-        ))}
-        <div className="shop-order-row total"><span>{t("total")}</span><b>{total.toLocaleString("ru-RU")} TMT</b></div>
-      </div>
+      <div className="shop-checkout-grid">
+        <form className="shop-form" onSubmit={submit}>
+          <label>{t("name")}
+            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
+          </label>
+          <label>{t("phone")}
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" required />
+          </label>
+          <label>{t("address")}
+            <input value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" />
+          </label>
+          <fieldset className="shop-pay">
+            <legend>{t("payment")}</legend>
+            <label className="shop-radio">
+              <input type="radio" name="pay" checked={payment === "cash"} onChange={() => setPayment("cash")} />
+              {t("cash")}
+            </label>
+            <label className="shop-radio">
+              <input type="radio" name="pay" checked={payment === "terminal"} onChange={() => setPayment("terminal")} />
+              {t("terminal")}
+            </label>
+          </fieldset>
+          <label>{t("comment")}
+            <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+          </label>
+          {err && <p className="shop-err">{err}</p>}
+          <button className="shop-btn block" type="submit" disabled={busy}>{busy ? t("sending") : t("placeOrder")}</button>
+          <a className="shop-btn wa block" href={waLink(waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</a>
+        </form>
 
-      <form className="shop-form" onSubmit={submit}>
-        <label>{t("name")}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
-        <label>{t("phone")}<input value={phone} onChange={(e) => setPhone(e.target.value)} required /></label>
-        <label>{t("address")}<input value={address} onChange={(e) => setAddress(e.target.value)} /></label>
-        <fieldset className="shop-pay">
-          <legend>{t("payment")}</legend>
-          <label className="shop-radio">
-            <input type="radio" name="pay" checked={payment === "cash"} onChange={() => setPayment("cash")} />
-            {t("cash")}
-          </label>
-          <label className="shop-radio">
-            <input type="radio" name="pay" checked={payment === "terminal"} onChange={() => setPayment("terminal")} />
-            {t("terminal")}
-          </label>
-        </fieldset>
-        <label>{t("comment")}<textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} /></label>
-        {err && <p className="shop-err">{err}</p>}
-        <button className="shop-btn" type="submit" disabled={busy}>{busy ? t("sending") : t("placeOrder")}</button>
-      </form>
+        <aside className="shop-order-summary">
+          <h3>{t("cart")}</h3>
+          {items.map((it) => (
+            <div key={it.id} className="shop-order-row">
+              <span>{pick(it.titles)} × {it.qty}</span>
+              <span>{(it.price * it.qty).toLocaleString("ru-RU")} TMT</span>
+            </div>
+          ))}
+          <div className="shop-order-row total"><span>{t("total")}</span><b>{total.toLocaleString("ru-RU")} TMT</b></div>
+        </aside>
+      </div>
     </div>
   );
 }

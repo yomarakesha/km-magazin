@@ -94,6 +94,7 @@ export interface AdminAttribute {
 }
 export interface AdminCategory {
   id: number; slug: string; enabled: boolean; sort_order: number;
+  parent_id: number | null;
   product_count: number; translations: AdminCategoryTr[]; attributes: AdminAttribute[];
 }
 export interface ProductSpec { label: string; value: string }

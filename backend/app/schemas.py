@@ -83,12 +83,16 @@ class CategoryTranslationIn(BaseModel):
 class CategoryIn(BaseModel):
     slug: str = Field(min_length=1, max_length=64)
     enabled: bool = True
+    parent_id: int | None = None
     translations: list[CategoryTranslationIn] = Field(default_factory=list)
 
 
 class CategoryUpdateIn(BaseModel):
     slug: str | None = None
     enabled: bool | None = None
+    # NOTE: present-with-null means "clear parent". The admin form always sends
+    # this field on save, so a missing key (unset) is treated as "no change".
+    parent_id: int | None = None
     translations: list[CategoryTranslationIn] | None = None
 
 

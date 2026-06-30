@@ -67,6 +67,8 @@ def catalog(db: Session = Depends(get_db)) -> dict:
     ).all()
     categories = [
         {
+            "id": c.id,
+            "parent_id": c.parent_id,
             "slug": c.slug,
             "name": _imap(c.translations, "name"),
             "product_count": sum(1 for p in c.products if p.enabled),

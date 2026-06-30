@@ -1,0 +1,92 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "KM Магазин" [ref=e4] [cursor=pointer]:
+        - /url: /shop
+        - text: KM
+        - generic [ref=e5]: Магазин
+      - generic [ref=e6]:
+        - img [ref=e7]
+        - textbox "Поиск" [ref=e10]:
+          - /placeholder: Поиск товаров…
+        - button "Поиск" [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - button "РУ" [ref=e16] [cursor=pointer]
+          - button "TK" [ref=e17] [cursor=pointer]
+          - button "EN" [ref=e18] [cursor=pointer]
+        - button "Корзина" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+          - generic [ref=e24]: Корзина
+  - main [ref=e25]:
+    - generic [ref=e26]:
+      - complementary [ref=e27]:
+        - generic [ref=e28]: Категории
+        - navigation [ref=e29]:
+          - link "Все товары" [ref=e30] [cursor=pointer]:
+            - /url: /shop
+            - img [ref=e32]
+            - generic [ref=e37]: Все товары
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - link "Компьютеры" [ref=e40] [cursor=pointer]:
+                - /url: /shop/category/computers
+                - img [ref=e42]
+                - generic [ref=e45]: Компьютеры
+              - button "Компьютеры" [expanded] [ref=e46] [cursor=pointer]:
+                - img [ref=e47]
+            - link "Ноутбуки 3" [ref=e50] [cursor=pointer]:
+              - /url: /shop/category/noutbuki
+              - generic [ref=e51]: Ноутбуки
+              - generic [ref=e52]: "3"
+          - link "Камеры 3" [ref=e55] [cursor=pointer]:
+            - /url: /shop/category/cameras
+            - img [ref=e57]
+            - generic [ref=e60]: Камеры
+            - generic [ref=e61]: "3"
+          - link "Сетевое оборудование 3" [ref=e64] [cursor=pointer]:
+            - /url: /shop/category/network
+            - img [ref=e66]
+            - generic [ref=e69]: Сетевое оборудование
+            - generic [ref=e70]: "3"
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - heading [level=1]
+          - combobox [ref=e74] [cursor=pointer]:
+            - option "По умолчанию" [selected]
+            - option "Сначала дешёвые"
+            - option "Сначала дорогие"
+            - option "Сначала новые"
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - img [ref=e77]
+            - text: Фильтры
+          - button "Только в наличии" [ref=e79] [cursor=pointer]
+          - group [ref=e80]:
+            - generic "Цена" [ref=e81] [cursor=pointer]:
+              - text: Цена
+              - img [ref=e82]
+  - contentinfo [ref=e125]:
+    - generic [ref=e126]:
+      - generic [ref=e127]:
+        - generic [ref=e128]: Доставка
+        - paragraph [ref=e129]: Доставка по городу. Оплата наличными или терминалом при получении.
+      - generic [ref=e130]:
+        - generic [ref=e131]: Гарантия и сервис
+        - paragraph [ref=e132]: Ашхабад, ул. ...
+      - generic [ref=e133]:
+        - generic [ref=e134]: Нужна помощь с выбором?
+        - link "+993 12 00-00-00" [ref=e135] [cursor=pointer]:
+          - /url: tel:+9931200-00-00
+          - img [ref=e136]
+          - text: +993 12 00-00-00
+        - link "WhatsApp" [ref=e138] [cursor=pointer]:
+          - /url: https://wa.me/99312000000?text=%D0%9D%D1%83%D0%B6%D0%BD%D0%B0%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%20%D1%81%20%D0%B2%D1%8B%D0%B1%D0%BE%D1%80%D0%BE%D0%BC%3F
+          - img [ref=e139]
+          - text: WhatsApp
+    - link "На сайт" [ref=e143] [cursor=pointer]:
+      - /url: /
+      - img [ref=e144]
+      - text: На сайт
+  - alert [ref=e146]

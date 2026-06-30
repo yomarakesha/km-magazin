@@ -1,10 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { CategoryView, Facet, I18n } from "@/lib/shop-types";
+import type { CategoryView } from "@/lib/shop-types";
 import { fetchCategory } from "@/lib/shop-api";
 import { useShop } from "./shop-context";
 import ProductCard from "./ProductCard";
+import ShopSidebar from "./ShopSidebar";
+import FilterBar from "./FilterBar";
+import Icon from "./ui/Icon";
+import { SkeletonGrid } from "./ui/Skeleton";
 
 const SORTS = ["sortDefault", "sortPriceAsc", "sortPriceDesc", "sortNew"] as const;
 const SORT_VAL: Record<string, string> = { sortDefault: "", sortPriceAsc: "price_asc", sortPriceDesc: "price_desc", sortNew: "new" };
@@ -51,6 +55,7 @@ export default function CategoryClient({ slug }: { slug: string }) {
   }
   function reset() { router.replace(`/shop/category/${slug}`, { scroll: false }); }
 
+  const get = (key: string) => sp.get(key) ?? "";
   const isSelected = (key: string, value: string) =>
     (sp.get(key) ?? "").split(",").filter(Boolean).includes(value);
 
@@ -71,7 +76,6 @@ export default function CategoryClient({ slug }: { slug: string }) {
       chips.push({ label: `${lab} ${edge} ${raw}`, onRemove: () => setParam(key, "") });
       continue;
     }
-    // select attribute: one chip per value
     const f = facetByKey.get(key);
     const lab = f ? pick(f.label) : key;
     for (const v of raw.split(",").filter(Boolean)) {
@@ -83,37 +87,10 @@ export default function CategoryClient({ slug }: { slug: string }) {
   const count = data?.products.length ?? 0;
 
   return (
-    <div className="shop-wrap shop-cat-layout">
-      <aside className="shop-filters">
-        <div className="shop-filters-head">
-          <h3>{t("filters")}</h3>
-          {chips.length > 0 && <button className="shop-link" onClick={reset}>{t("reset")}</button>}
-        </div>
+    <div className="shop-wrap shop-list-layout">
+      <ShopSidebar />
 
-        <div className="shop-facet">
-          <div className="shop-facet-title">{t("price")}</div>
-          <div className="shop-range">
-            <input type="number" placeholder={t("from")} defaultValue={sp.get("price_min") ?? ""}
-              onBlur={(e) => setParam("price_min", e.target.value)} />
-            <input type="number" placeholder={t("to")} defaultValue={sp.get("price_max") ?? ""}
-              onBlur={(e) => setParam("price_max", e.target.value)} />
-          </div>
-        </div>
-
-        <label className="shop-check">
-          <input type="checkbox" checked={!!sp.get("in_stock")} onChange={() => toggleBool("in_stock")} />
-          {t("onlyInStock")}
-        </label>
-
-        {data?.facets.map((f) => (
-          <FacetBlock key={f.key} f={f} pick={pick} t={t}
-            isSelected={isSelected} toggleSelect={toggleSelect}
-            minVal={sp.get(`${f.key}_min`) ?? ""} maxVal={sp.get(`${f.key}_max`) ?? ""}
-            setParam={setParam} />
-        ))}
-      </aside>
-
-      <section className="shop-cat-main">
+      <div className="shop-list-main">
         <div className="shop-cat-top">
           <h1 className="shop-h1">{data ? pick(data.name) : ""}</h1>
           <div className="shop-cat-controls">
@@ -124,68 +101,27 @@ export default function CategoryClient({ slug }: { slug: string }) {
           </div>
         </div>
 
+        <FilterBar facets={data?.facets ?? []} t={t} pick={pick} get={get}
+          isSelected={isSelected} toggleSelect={toggleSelect} setParam={setParam} toggleBool={toggleBool} />
+
         {chips.length > 0 && (
           <div className="shop-chips">
             {chips.map((c, i) => (
-              <button key={i} className="shop-chip" onClick={c.onRemove}>{c.label} <span>✕</span></button>
+              <button key={i} className="shop-chip" onClick={c.onRemove}>{c.label} <Icon name="close" size={12} /></button>
             ))}
             <button className="shop-chip clear" onClick={reset}>{t("reset")}</button>
           </div>
         )}
 
         {loading ? (
-          <p className="shop-empty">…</p>
+          <SkeletonGrid />
         ) : !data || data.products.length === 0 ? (
           <p className="shop-empty">{t("nothingFound")}</p>
         ) : (
           <div className="shop-grid">
-            {data.products.map((p) => <ProductCard key={p.id} p={p} />)}
+            {data.products.map((p, i) => <ProductCard key={p.id} p={p} i={i} category={slug} />)}
           </div>
         )}
-      </section>
-    </div>
-  );
-}
-
-function FacetBlock({
-  f, pick, t, isSelected, toggleSelect, minVal, maxVal, setParam,
-}: {
-  f: Facet;
-  pick: (m: I18n) => string;
-  t: (k: string) => string;
-  isSelected: (key: string, value: string) => boolean;
-  toggleSelect: (key: string, value: string) => void;
-  minVal: string;
-  maxVal: string;
-  setParam: (key: string, value: string) => void;
-}) {
-  const label = pick(f.label) || f.key;
-  if (f.type === "number") {
-    return (
-      <div className="shop-facet">
-        <div className="shop-facet-title">{label}{f.unit ? `, ${f.unit}` : ""}</div>
-        <div className="shop-range">
-          <input type="number" placeholder={f.min != null ? String(f.min) : t("from")} defaultValue={minVal}
-            onBlur={(e) => setParam(`${f.key}_min`, e.target.value)} />
-          <input type="number" placeholder={f.max != null ? String(f.max) : t("to")} defaultValue={maxVal}
-            onBlur={(e) => setParam(`${f.key}_max`, e.target.value)} />
-        </div>
-      </div>
-    );
-  }
-  const options = (f.options ?? []).filter((o) => o.count > 0 || isSelected(f.key, o.value));
-  if (options.length === 0) return null;
-  return (
-    <div className="shop-facet">
-      <div className="shop-facet-title">{label}{f.unit ? `, ${f.unit}` : ""}</div>
-      <div className="shop-facet-opts">
-        {options.map((o) => (
-          <label key={o.value} className="shop-check">
-            <input type="checkbox" checked={isSelected(f.key, o.value)} onChange={() => toggleSelect(f.key, o.value)} />
-            <span>{o.value}</span>
-            <span className="shop-facet-count">{o.count}</span>
-          </label>
-        ))}
       </div>
     </div>
   );

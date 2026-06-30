@@ -15,6 +15,8 @@ export interface ShopCard {
 }
 
 export interface CatalogCategory {
+  id: number;
+  parent_id: number | null;
   slug: string;
   name: I18n;
   product_count: number;

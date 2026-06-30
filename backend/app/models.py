@@ -104,7 +104,16 @@ class ShopCategory(Base):
     slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
+    parent: Mapped["ShopCategory | None"] = relationship(
+        "ShopCategory", remote_side="ShopCategory.id", back_populates="children"
+    )
+    children: Mapped[list["ShopCategory"]] = relationship(
+        "ShopCategory", back_populates="parent", order_by="ShopCategory.sort_order"
+    )
     translations: Mapped[list["ShopCategoryTranslation"]] = relationship(
         back_populates="category", cascade="all, delete-orphan", lazy="selectin"
     )

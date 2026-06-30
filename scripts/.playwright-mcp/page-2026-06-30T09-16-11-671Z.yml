@@ -1,0 +1,293 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - link "KM Магазин" [ref=f1e4] [cursor=pointer]:
+        - /url: /shop
+        - text: KM
+        - generic [ref=f1e5]: Магазин
+      - generic [ref=f1e6]:
+        - img [ref=f1e7]
+        - textbox "Поиск" [ref=f1e10]:
+          - /placeholder: Поиск товаров…
+        - button "Поиск" [ref=f1e11] [cursor=pointer]:
+          - img [ref=f1e12]
+      - generic [ref=f1e14]:
+        - generic [ref=f1e15]:
+          - button "РУ" [ref=f1e16] [cursor=pointer]
+          - button "TK" [ref=f1e17] [cursor=pointer]
+          - button "EN" [ref=f1e18] [cursor=pointer]
+        - button "Корзина" [ref=f1e19] [cursor=pointer]:
+          - img [ref=f1e20]
+          - generic [ref=f1e24]: Корзина
+  - main [ref=f1e25]:
+    - generic [ref=f1e27]:
+      - generic [ref=f1e28]: KM · Магазин
+      - heading "Каталог" [level=1] [ref=f1e30]
+      - paragraph [ref=f1e31]: Доставка по городу. Оплата наличными или терминалом при получении.
+    - generic [ref=f1e33]:
+      - generic [ref=f1e34]:
+        - img [ref=f1e35]
+        - text: Быстрая доставка
+      - generic [ref=f1e40]:
+        - img [ref=f1e41]
+        - text: Официальная гарантия
+      - generic [ref=f1e43]:
+        - img [ref=f1e44]
+        - text: Заказать в WhatsApp
+      - generic [ref=f1e47]:
+        - img [ref=f1e48]
+        - text: Нужна помощь с выбором?
+    - generic [ref=f1e50]:
+      - complementary [ref=f1e51]:
+        - generic [ref=f1e52]: Категории
+        - navigation [ref=f1e53]:
+          - link "Все товары" [ref=f1e54] [cursor=pointer]:
+            - /url: /shop
+            - img [ref=f1e56]
+            - generic [ref=f1e61]: Все товары
+          - generic [ref=f1e63]:
+            - link "Компьютеры" [ref=f1e64] [cursor=pointer]:
+              - /url: /shop/category/computers
+              - img [ref=f1e66]
+              - generic [ref=f1e69]: Компьютеры
+            - button "Компьютеры" [ref=f1e70] [cursor=pointer]:
+              - img [ref=f1e71]
+          - link "Камеры 3" [ref=f1e75] [cursor=pointer]:
+            - /url: /shop/category/cameras
+            - img [ref=f1e77]
+            - generic [ref=f1e80]: Камеры
+            - generic [ref=f1e81]: "3"
+          - link "Сетевое оборудование 3" [ref=f1e84] [cursor=pointer]:
+            - /url: /shop/category/network
+            - img [ref=f1e86]
+            - generic [ref=f1e89]: Сетевое оборудование
+            - generic [ref=f1e90]: "3"
+      - generic [ref=f1e91]:
+        - heading "Все товары" [level=2] [ref=f1e92]
+        - generic [ref=f1e93]:
+          - generic [ref=f1e94]:
+            - generic [ref=f1e95]:
+              - link "Игровой ПК Gamer Pro" [ref=f1e96] [cursor=pointer]:
+                - /url: /shop/product/pc-gamer-pro
+                - generic [ref=f1e97]:
+                  - img [ref=f1e99]
+                  - generic [ref=f1e102]: KM
+              - generic [ref=f1e103]: В наличии
+              - button "Характеристики" [ref=f1e104] [cursor=pointer]:
+                - img [ref=f1e105]
+            - generic [ref=f1e108]:
+              - link "Игровой ПК Gamer Pro" [ref=f1e109] [cursor=pointer]:
+                - /url: /shop/product/pc-gamer-pro
+              - paragraph [ref=f1e110]: Core i7, RTX 4070, 32 ГБ
+              - generic [ref=f1e111]:
+                - generic [ref=f1e112]: 27 000 TMT
+                - button "В корзину" [ref=f1e113] [cursor=pointer]
+          - generic [ref=f1e114]:
+            - generic [ref=f1e115]:
+              - link "Камера купольная 2 МП" [ref=f1e116] [cursor=pointer]:
+                - /url: /shop/product/cam-dome-2mp
+                - generic [ref=f1e117]:
+                  - img [ref=f1e119]
+                  - generic [ref=f1e122]: KM
+              - generic [ref=f1e123]: В наличии
+              - button "Характеристики" [ref=f1e124] [cursor=pointer]:
+                - img [ref=f1e125]
+            - generic [ref=f1e128]:
+              - link "Камера купольная 2 МП" [ref=f1e129] [cursor=pointer]:
+                - /url: /shop/product/cam-dome-2mp
+              - paragraph [ref=f1e130]: Внутренняя, ИК-подсветка
+              - generic [ref=f1e131]:
+                - generic [ref=f1e132]: 850 TMT
+                - button "В корзину" [ref=f1e133] [cursor=pointer]
+          - generic [ref=f1e134]:
+            - generic [ref=f1e135]:
+              - link "Коммутатор 8 портов" [ref=f1e136] [cursor=pointer]:
+                - /url: /shop/product/switch-8
+                - generic [ref=f1e137]:
+                  - img [ref=f1e139]
+                  - generic [ref=f1e142]: KM
+              - generic [ref=f1e143]: В наличии
+              - button "Характеристики" [ref=f1e144] [cursor=pointer]:
+                - img [ref=f1e145]
+            - generic [ref=f1e148]:
+              - link "Коммутатор 8 портов" [ref=f1e149] [cursor=pointer]:
+                - /url: /shop/product/switch-8
+              - paragraph [ref=f1e150]: Gigabit, неуправляемый
+              - generic [ref=f1e151]:
+                - generic [ref=f1e152]: 650 TMT
+                - button "В корзину" [ref=f1e153] [cursor=pointer]
+          - generic [ref=f1e154]:
+            - generic [ref=f1e155]:
+              - link "Ноутбук Pro 15" [ref=f1e156] [cursor=pointer]:
+                - /url: /shop/product/laptop-pro-15
+                - generic [ref=f1e157]:
+                  - img [ref=f1e159]
+                  - generic [ref=f1e162]: KM
+              - generic [ref=f1e163]: В наличии
+              - button "Характеристики" [ref=f1e164] [cursor=pointer]:
+                - img [ref=f1e165]
+            - generic [ref=f1e168]:
+              - link "Ноутбук Pro 15" [ref=f1e169] [cursor=pointer]:
+                - /url: /shop/product/laptop-pro-15
+              - paragraph [ref=f1e170]: Core i7, 16 ГБ, SSD 1 ТБ
+              - generic [ref=f1e171]:
+                - generic [ref=f1e172]: 21 000 TMT
+                - button "В корзину" [ref=f1e173] [cursor=pointer]
+          - generic [ref=f1e174]:
+            - generic [ref=f1e175]:
+              - link "Игровой ПК Gamer Base" [ref=f1e176] [cursor=pointer]:
+                - /url: /shop/product/pc-gamer-base
+                - generic [ref=f1e177]:
+                  - img [ref=f1e179]
+                  - generic [ref=f1e182]: KM
+              - generic [ref=f1e183]: В наличии
+              - button "Характеристики" [ref=f1e184] [cursor=pointer]:
+                - img [ref=f1e185]
+            - generic [ref=f1e188]:
+              - link "Игровой ПК Gamer Base" [ref=f1e189] [cursor=pointer]:
+                - /url: /shop/product/pc-gamer-base
+              - paragraph [ref=f1e190]: Core i5, RTX 4060, 16 ГБ
+              - generic [ref=f1e191]:
+                - generic [ref=f1e192]: 18 500 TMT
+                - button "В корзину" [ref=f1e193] [cursor=pointer]
+          - generic [ref=f1e194]:
+            - generic [ref=f1e195]:
+              - link "Камера цилиндрическая 4 МП" [ref=f1e196] [cursor=pointer]:
+                - /url: /shop/product/cam-bullet-4mp
+                - generic [ref=f1e197]:
+                  - img [ref=f1e199]
+                  - generic [ref=f1e202]: KM
+              - generic [ref=f1e203]: В наличии
+              - button "Характеристики" [ref=f1e204] [cursor=pointer]:
+                - img [ref=f1e205]
+            - generic [ref=f1e208]:
+              - link "Камера цилиндрическая 4 МП" [ref=f1e209] [cursor=pointer]:
+                - /url: /shop/product/cam-bullet-4mp
+              - paragraph [ref=f1e210]: Уличная, IP67
+              - generic [ref=f1e211]:
+                - generic [ref=f1e212]: 1 200 TMT
+                - button "В корзину" [ref=f1e213] [cursor=pointer]
+          - generic [ref=f1e214]:
+            - generic [ref=f1e215]:
+              - link "Коммутатор 24 порта" [ref=f1e216] [cursor=pointer]:
+                - /url: /shop/product/switch-24
+                - generic [ref=f1e217]:
+                  - img [ref=f1e219]
+                  - generic [ref=f1e222]: KM
+              - generic [ref=f1e223]: В наличии
+              - button "Характеристики" [ref=f1e224] [cursor=pointer]:
+                - img [ref=f1e225]
+            - generic [ref=f1e228]:
+              - link "Коммутатор 24 порта" [ref=f1e229] [cursor=pointer]:
+                - /url: /shop/product/switch-24
+              - paragraph [ref=f1e230]: Gigabit, управляемый
+              - generic [ref=f1e231]:
+                - generic [ref=f1e232]: 2 100 TMT
+                - button "В корзину" [ref=f1e233] [cursor=pointer]
+          - generic [ref=f1e234]:
+            - generic [ref=f1e235]:
+              - link "Ноутбук Air 14" [ref=f1e236] [cursor=pointer]:
+                - /url: /shop/product/laptop-air-14
+                - generic [ref=f1e237]:
+                  - img [ref=f1e239]
+                  - generic [ref=f1e242]: KM
+              - generic [ref=f1e243]: В наличии
+              - button "Характеристики" [ref=f1e244] [cursor=pointer]:
+                - img [ref=f1e245]
+            - generic [ref=f1e248]:
+              - link "Ноутбук Air 14" [ref=f1e249] [cursor=pointer]:
+                - /url: /shop/product/laptop-air-14
+              - paragraph [ref=f1e250]: Core i5, 8 ГБ, SSD 512
+              - generic [ref=f1e251]:
+                - generic [ref=f1e252]: 14 500 TMT
+                - button "В корзину" [ref=f1e253] [cursor=pointer]
+          - generic [ref=f1e254]:
+            - generic [ref=f1e255]:
+              - link "Офисный ПК Office" [ref=f1e256] [cursor=pointer]:
+                - /url: /shop/product/pc-office
+                - generic [ref=f1e257]:
+                  - img [ref=f1e259]
+                  - generic [ref=f1e262]: KM
+              - generic [ref=f1e263]: В наличии
+              - button "Характеристики" [ref=f1e264] [cursor=pointer]:
+                - img [ref=f1e265]
+            - generic [ref=f1e268]:
+              - link "Офисный ПК Office" [ref=f1e269] [cursor=pointer]:
+                - /url: /shop/product/pc-office
+              - paragraph [ref=f1e270]: Core i3, 8 ГБ, SSD 256
+              - generic [ref=f1e271]:
+                - generic [ref=f1e272]: 7 500 TMT
+                - button "В корзину" [ref=f1e273] [cursor=pointer]
+          - generic [ref=f1e274]:
+            - generic [ref=f1e275]:
+              - link "Камера PTZ 8 МП" [ref=f1e276] [cursor=pointer]:
+                - /url: /shop/product/cam-ptz-8mp
+                - generic [ref=f1e277]:
+                  - img [ref=f1e279]
+                  - generic [ref=f1e282]: KM
+              - generic [ref=f1e283]: Под заказ
+              - button "Характеристики" [ref=f1e284] [cursor=pointer]:
+                - img [ref=f1e285]
+            - generic [ref=f1e288]:
+              - link "Камера PTZ 8 МП" [ref=f1e289] [cursor=pointer]:
+                - /url: /shop/product/cam-ptz-8mp
+              - paragraph [ref=f1e290]: Поворотная, 20x зум
+              - generic [ref=f1e291]:
+                - generic [ref=f1e292]: 4 300 TMT
+                - button "В корзину" [ref=f1e293] [cursor=pointer]
+          - generic [ref=f1e294]:
+            - generic [ref=f1e295]:
+              - link "Роутер Wi-Fi 6" [ref=f1e296] [cursor=pointer]:
+                - /url: /shop/product/router-wifi6
+                - generic [ref=f1e297]:
+                  - img [ref=f1e299]
+                  - generic [ref=f1e302]: KM
+              - generic [ref=f1e303]: В наличии
+              - button "Характеристики" [ref=f1e304] [cursor=pointer]:
+                - img [ref=f1e305]
+            - generic [ref=f1e308]:
+              - link "Роутер Wi-Fi 6" [ref=f1e309] [cursor=pointer]:
+                - /url: /shop/product/router-wifi6
+              - paragraph [ref=f1e310]: Двухдиапазонный, AX3000
+              - generic [ref=f1e311]:
+                - generic [ref=f1e312]: 1 450 TMT
+                - button "В корзину" [ref=f1e313] [cursor=pointer]
+          - generic [ref=f1e314]:
+            - generic [ref=f1e315]:
+              - link "Ноутбук Ryzen 16" [ref=f1e316] [cursor=pointer]:
+                - /url: /shop/product/laptop-ryzen-16
+                - generic [ref=f1e317]:
+                  - img [ref=f1e319]
+                  - generic [ref=f1e322]: KM
+              - generic [ref=f1e323]: Под заказ
+              - button "Характеристики" [ref=f1e324] [cursor=pointer]:
+                - img [ref=f1e325]
+            - generic [ref=f1e328]:
+              - link "Ноутбук Ryzen 16" [ref=f1e329] [cursor=pointer]:
+                - /url: /shop/product/laptop-ryzen-16
+              - paragraph [ref=f1e330]: Ryzen 7, 16 ГБ, SSD 512
+              - generic [ref=f1e331]:
+                - generic [ref=f1e332]: 12 800 TMT
+                - button "В корзину" [ref=f1e333] [cursor=pointer]
+  - contentinfo [ref=f1e334]:
+    - generic [ref=f1e335]:
+      - generic [ref=f1e336]:
+        - generic [ref=f1e337]: Доставка
+        - paragraph [ref=f1e338]: Доставка по городу. Оплата наличными или терминалом при получении.
+      - generic [ref=f1e339]:
+        - generic [ref=f1e340]: Гарантия и сервис
+        - paragraph [ref=f1e341]: Ашхабад, ул. ...
+      - generic [ref=f1e342]:
+        - generic [ref=f1e343]: Нужна помощь с выбором?
+        - link "+993 12 00-00-00" [ref=f1e344] [cursor=pointer]:
+          - /url: tel:+9931200-00-00
+          - img [ref=f1e345]
+          - text: +993 12 00-00-00
+        - link "WhatsApp" [ref=f1e347] [cursor=pointer]:
+          - /url: https://wa.me/99312000000?text=%D0%9D%D1%83%D0%B6%D0%BD%D0%B0%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%20%D1%81%20%D0%B2%D1%8B%D0%B1%D0%BE%D1%80%D0%BE%D0%BC%3F
+          - img [ref=f1e348]
+          - text: WhatsApp
+    - link "На сайт" [ref=f1e352] [cursor=pointer]:
+      - /url: /
+      - img [ref=f1e353]
+      - text: На сайт

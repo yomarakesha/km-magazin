@@ -13,11 +13,13 @@ export default function CategoryEdit() {
   const router = useRouter();
   const { show, node } = useToast();
   const [cat, setCat] = useState<AdminCategory | null>(null);
+  const [allCats, setAllCats] = useState<AdminCategory[]>([]);
   const [lang, setLang] = useState<(typeof LANGS)[number]>("ru");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.getCategory(Number(id)).then(setCat).catch((e) => show(String(e), "err"));
+    api.getCategories().then(setAllCats).catch(() => {});
   }, [id, show]);
 
   if (!cat) return <div className="adm-loading">Загрузка…</div>;
@@ -41,7 +43,7 @@ export default function CategoryEdit() {
     setBusy(true);
     try {
       await api.updateCategory(cat.id, {
-        slug: cat.slug, enabled: cat.enabled,
+        slug: cat.slug, enabled: cat.enabled, parent_id: cat.parent_id,
         translations: LANGS.map((l) => tr(l)),
       });
       show("Сохранено");
@@ -63,6 +65,21 @@ export default function CategoryEdit() {
         <div className="adm-field">
           <label>slug</label>
           <input className="adm-in" value={cat.slug} onChange={(e) => setCat({ ...cat, slug: e.target.value })} />
+        </div>
+        <div className="adm-field">
+          <label>Родительская категория</label>
+          <select
+            className="adm-in"
+            value={cat.parent_id ?? ""}
+            onChange={(e) => setCat({ ...cat, parent_id: e.target.value ? Number(e.target.value) : null })}
+          >
+            <option value="">— нет (верхний уровень) —</option>
+            {allCats.filter((o) => o.id !== cat.id).map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.translations.find((t) => t.lang === "ru")?.name || o.slug}
+              </option>
+            ))}
+          </select>
         </div>
         <label style={{ display: "flex", gap: 10, alignItems: "center", fontFamily: "var(--mono)", fontSize: 13 }}>
           <input type="checkbox" checked={cat.enabled} onChange={(e) => setCat({ ...cat, enabled: e.target.checked })} />

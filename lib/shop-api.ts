@@ -1,5 +1,5 @@
 "use client";
-import type { CategoryView, ShopCard } from "./shop-types";
+import type { CategoryView, ProductDetail, ShopCard } from "./shop-types";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -37,6 +37,13 @@ export async function fetchCategory(slug: string, query: string): Promise<Catego
   });
   if (!res.ok) throw new Error(`category fetch failed: ${res.status}`);
   return (await res.json()) as CategoryView;
+}
+
+/** Client: fetch a single product by slug (for the quick-view modal). */
+export async function fetchProduct(slug: string): Promise<ProductDetail> {
+  const res = await fetch(`${API}/api/shop/products/${encodeURIComponent(slug)}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`product fetch failed: ${res.status}`);
+  return (await res.json()) as ProductDetail;
 }
 
 /** Client: submit an order. The backend recomputes the total from DB prices. */

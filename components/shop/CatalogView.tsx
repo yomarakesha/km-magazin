@@ -1,34 +1,44 @@
 "use client";
-import Link from "next/link";
 import type { Catalog } from "@/lib/shop-types";
 import { useShop } from "./shop-context";
 import ProductCard from "./ProductCard";
+import ShopSidebar from "./ShopSidebar";
+import Icon from "./ui/Icon";
 
 export default function CatalogView({ catalog }: { catalog: Catalog }) {
-  const { t, pick } = useShop();
+  const { t } = useShop();
   return (
-    <div className="shop-wrap">
-      <h1 className="shop-h1">{t("catalog")}</h1>
-
-      {catalog.categories.length > 0 && (
-        <div className="shop-cat-grid">
-          {catalog.categories.map((c) => (
-            <Link key={c.slug} href={`/shop/category/${c.slug}`} className="shop-cat-tile">
-              <span className="shop-cat-name">{pick(c.name)}</span>
-              <span className="shop-cat-count">{c.product_count}</span>
-            </Link>
-          ))}
+    <>
+      <section className="shop-hero">
+        <div className="shop-wrap">
+          <span className="shop-hero-tag"><span className="dot" /> KM · {t("shop")}</span>
+          <h1>{t("catalog")}</h1>
+          <p>{t("deliveryNote")}</p>
         </div>
-      )}
+      </section>
 
-      <h2 className="shop-h2">{t("allProducts")}</h2>
-      {catalog.products.length === 0 ? (
-        <p className="shop-empty">{t("nothingFound")}</p>
-      ) : (
-        <div className="shop-grid">
-          {catalog.products.map((p) => <ProductCard key={p.id} p={p} />)}
+      <div className="shop-wrap">
+        <div className="shop-trust-strip">
+          <span><Icon name="truck" size={17} /> {t("fastDelivery")}</span>
+          <span><Icon name="shield" size={17} /> {t("warranty")}</span>
+          <span><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</span>
+          <span><Icon name="phone" size={15} /> {t("needHelp")}</span>
         </div>
-      )}
-    </div>
+      </div>
+
+      <div className="shop-wrap shop-list-layout">
+        <ShopSidebar />
+        <div className="shop-list-main">
+          <h2 className="shop-h2" style={{ marginTop: 0 }}>{t("allProducts")}</h2>
+          {catalog.products.length === 0 ? (
+            <p className="shop-empty">{t("nothingFound")}</p>
+          ) : (
+            <div className="shop-grid">
+              {catalog.products.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

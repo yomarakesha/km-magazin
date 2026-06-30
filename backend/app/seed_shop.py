@@ -96,6 +96,31 @@ DATA = [
              "attrs": {"ports": "4", "speed": "1 Гбит"}},
         ],
     },
+    {
+        "slug": "noutbuki",
+        "parent": "computers",
+        "names": {"ru": "Ноутбуки", "tk": "Noutbuklar", "en": "Laptops"},
+        "attributes": [
+            {"key": "cpu", "type": "select", "unit": "", "labels": {"ru": "Процессор", "tk": "Prosessor", "en": "CPU"}},
+            {"key": "ram", "type": "number", "unit": "GB", "labels": {"ru": "Память", "tk": "Ýat", "en": "RAM"}},
+            {"key": "storage", "type": "number", "unit": "GB", "labels": {"ru": "Накопитель", "tk": "Disk", "en": "Storage"}},
+            {"key": "screen", "type": "number", "unit": "\"", "labels": {"ru": "Экран", "tk": "Ekran", "en": "Screen"}},
+        ],
+        "products": [
+            {"slug": "laptop-pro-15", "price": 21000, "in_stock": True,
+             "titles": {"ru": "Ноутбук Pro 15", "tk": "Noutbuk Pro 15", "en": "Laptop Pro 15"},
+             "short": {"ru": "Core i7, 16 ГБ, SSD 1 ТБ", "tk": "Core i7, 16 GB, SSD 1 TB", "en": "Core i7, 16 GB, 1 TB SSD"},
+             "attrs": {"cpu": "Core i7", "ram": "16", "storage": "1024", "screen": "15.6"}},
+            {"slug": "laptop-air-14", "price": 14500, "in_stock": True,
+             "titles": {"ru": "Ноутбук Air 14", "tk": "Noutbuk Air 14", "en": "Laptop Air 14"},
+             "short": {"ru": "Core i5, 8 ГБ, SSD 512", "tk": "Core i5, 8 GB, SSD 512", "en": "Core i5, 8 GB, 512 SSD"},
+             "attrs": {"cpu": "Core i5", "ram": "8", "storage": "512", "screen": "14"}},
+            {"slug": "laptop-ryzen-16", "price": 12800, "in_stock": False,
+             "titles": {"ru": "Ноутбук Ryzen 16", "tk": "Noutbuk Ryzen 16", "en": "Laptop Ryzen 16"},
+             "short": {"ru": "Ryzen 7, 16 ГБ, SSD 512", "tk": "Ryzen 7, 16 GB, SSD 512", "en": "Ryzen 7, 16 GB, 512 SSD"},
+             "attrs": {"cpu": "Ryzen 7", "ram": "16", "storage": "512", "screen": "16"}},
+        ],
+    },
 ]
 
 
@@ -115,8 +140,10 @@ def seed_shop() -> None:
     try:
         _wipe(db)
         n_prod = 0
+        by_slug: dict[str, ShopCategory] = {}
         for c_order, c in enumerate(DATA):
             cat = ShopCategory(slug=c["slug"], sort_order=c_order, enabled=True)
+            by_slug[c["slug"]] = cat
             for lang in LANGS:
                 cat.translations.append(ShopCategoryTranslation(lang=lang, name=c["names"][lang]))
 
@@ -153,6 +180,13 @@ def seed_shop() -> None:
                 n_prod += 1
 
             db.add(cat)
+
+        # wire parent → child relationships now that all categories exist
+        for c in DATA:
+            parent_slug = c.get("parent")
+            if parent_slug:
+                by_slug[c["slug"]].parent = by_slug[parent_slug]
+
         db.commit()
         print(f"Seeded {len(DATA)} categories, {n_prod} products.")
     finally:

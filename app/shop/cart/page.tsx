@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useShop } from "@/components/shop/shop-context";
+import Icon from "@/components/shop/ui/Icon";
+import ProductImage from "@/components/shop/ProductImage";
 
 export default function CartPage() {
   const { t, pick, mediaBase, items, setQty, remove, total } = useShop();
@@ -22,23 +24,20 @@ export default function CartPage() {
         {items.map((it) => (
           <div className="shop-cart-item" key={it.id}>
             <Link href={`/shop/product/${it.slug}`} className="shop-cart-img">
-              {it.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${mediaBase}/${it.image}`} alt="" />
-              ) : <div className="shop-card-noimg sm">KM</div>}
+              <ProductImage src={it.image ? `${mediaBase}/${it.image}` : null} alt={pick(it.titles)} seed={it.slug} variant="thumb" />
             </Link>
             <div className="shop-cart-info">
               <Link href={`/shop/product/${it.slug}`} className="shop-cart-title">{pick(it.titles)}</Link>
               <div className="shop-price">{it.price.toLocaleString("ru-RU")} {it.currency}</div>
             </div>
             <div className="shop-qty">
-              <button onClick={() => setQty(it.id, it.qty - 1)}>−</button>
+              <button onClick={() => setQty(it.id, it.qty - 1)} aria-label={t("remove")}><Icon name="minus" size={15} /></button>
               <input type="number" value={it.qty} min={1}
                 onChange={(e) => setQty(it.id, Number(e.target.value) || 1)} />
-              <button onClick={() => setQty(it.id, it.qty + 1)}>+</button>
+              <button onClick={() => setQty(it.id, it.qty + 1)} aria-label={t("addToCart")}><Icon name="plus" size={15} /></button>
             </div>
             <div className="shop-cart-sum">{(it.price * it.qty).toLocaleString("ru-RU")} {it.currency}</div>
-            <button className="shop-cart-rm" onClick={() => remove(it.id)} title={t("remove")}>✕</button>
+            <button className="shop-cart-rm" onClick={() => remove(it.id)} title={t("remove")} aria-label={t("remove")}><Icon name="trash" size={16} /></button>
           </div>
         ))}
       </div>

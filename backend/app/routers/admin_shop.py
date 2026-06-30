@@ -60,6 +60,7 @@ def _cat(c: ShopCategory) -> dict:
         "slug": c.slug,
         "enabled": c.enabled,
         "sort_order": c.sort_order,
+        "parent_id": c.parent_id,
         "product_count": len(c.products),
         "translations": [{"lang": t.lang, "name": t.name} for t in c.translations],
         "attributes": [_attr(a) for a in c.attributes],
@@ -147,6 +148,7 @@ def create_category(payload: CategoryIn, db: Session = Depends(get_db)) -> dict:
     c = ShopCategory(
         slug=payload.slug,
         enabled=payload.enabled,
+        parent_id=payload.parent_id,
         sort_order=(max_order + 1) if max_order is not None else 0,
     )
     for t in payload.translations:
@@ -165,6 +167,10 @@ def update_category(cat_id: int, payload: CategoryUpdateIn, db: Session = Depend
         c.slug = payload.slug
     if payload.enabled is not None:
         c.enabled = payload.enabled
+    if "parent_id" in payload.model_fields_set:
+        if payload.parent_id == cat_id:
+            raise HTTPException(400, "A category cannot be its own parent")
+        c.parent_id = payload.parent_id
     if payload.translations is not None:
         existing = {t.lang: t for t in c.translations}
         for t in payload.translations:
