@@ -30,3 +30,7 @@ FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 
 # Public base URL of this backend (for building media URLs in API responses)
 PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
+
+# Telegram order notifications (disabled unless both are set)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")

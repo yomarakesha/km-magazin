@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { CategoryView } from "@/lib/shop-types";
+import type { CategoryView, ShopCard } from "@/lib/shop-types";
 import { fetchCategory } from "@/lib/shop-api";
 import { useShop } from "./shop-context";
 import ProductCard from "./ProductCard";
 import ShopSidebar from "./ShopSidebar";
+import ServicesSection from "./ServicesSection";
 import FilterBar from "./FilterBar";
 import Icon from "./ui/Icon";
 import { SkeletonGrid } from "./ui/Skeleton";
@@ -18,19 +19,37 @@ export default function CategoryClient({ slug }: { slug: string }) {
   const sp = useSearchParams();
   const { t, pick } = useShop();
   const [data, setData] = useState<CategoryView | null>(null);
+  const [extra, setExtra] = useState<ShopCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [more, setMore] = useState(false);
 
   const query = sp.toString();
 
   useEffect(() => {
     let live = true;
     setLoading(true);
+    setExtra([]); // filters/sort changed — restart from the first page
     fetchCategory(slug, query)
       .then((d) => { if (live) setData(d); })
       .catch(() => { if (live) setData(null); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [slug, query]);
+
+  const products = data ? [...data.products, ...extra] : [];
+  const hasMore = data != null && products.length < data.total;
+
+  async function loadMore() {
+    if (!data) return;
+    setMore(true);
+    try {
+      const next = new URLSearchParams(query);
+      next.set("offset", String(products.length));
+      const d = await fetchCategory(slug, next.toString());
+      setExtra((cur) => [...cur, ...d.products]);
+    } catch {}
+    finally { setMore(false); }
+  }
 
   function apply(next: URLSearchParams) {
     const qs = next.toString();
@@ -84,10 +103,10 @@ export default function CategoryClient({ slug }: { slug: string }) {
   }
 
   const currentSort = sp.get("sort") ?? "";
-  const count = data?.products.length ?? 0;
+  const count = data?.total ?? 0;
 
   return (
-    <div className="shop-wrap shop-list-layout">
+    <div className="shop-wrap wide shop-list-layout">
       <ShopSidebar />
 
       <div className="shop-list-main">
@@ -115,13 +134,24 @@ export default function CategoryClient({ slug }: { slug: string }) {
 
         {loading ? (
           <SkeletonGrid />
-        ) : !data || data.products.length === 0 ? (
+        ) : !data || products.length === 0 ? (
           <p className="shop-empty">{t("nothingFound")}</p>
         ) : (
-          <div className="shop-grid">
-            {data.products.map((p, i) => <ProductCard key={p.id} p={p} i={i} category={slug} />)}
-          </div>
+          <>
+            <div className="shop-grid">
+              {products.map((p, i) => <ProductCard key={p.id} p={p} i={i} category={slug} />)}
+            </div>
+            {hasMore && (
+              <div className="shop-more">
+                <button className="shop-btn ghost" onClick={loadMore} disabled={more}>
+                  {more ? "…" : `${t("showMore")} (${(data?.total ?? 0) - products.length})`}
+                </button>
+              </div>
+            )}
+          </>
         )}
+
+        {!loading && data && <ServicesSection services={data.services} />}
       </div>
     </div>
   );

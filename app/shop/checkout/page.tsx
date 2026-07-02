@@ -1,13 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { useShop } from "@/components/shop/shop-context";
+import { useShop, cartUid } from "@/components/shop/shop-context";
 import { createOrder } from "@/lib/shop-api";
-import { waLink } from "@/lib/shop-config";
 import Icon from "@/components/shop/ui/Icon";
 
 export default function CheckoutPage() {
-  const { t, pick, items, total, clear } = useShop();
+  const { t, pick, items, total, clear, settings, wa } = useShop();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -26,7 +25,7 @@ export default function CheckoutPage() {
       const res = await createOrder({
         customer_name: name.trim(), phone: phone.trim(), address: address.trim(),
         payment_method: payment, comment: comment.trim(),
-        items: items.map((it) => ({ product_id: it.id, qty: it.qty })),
+        items: items.map((it) => ({ kind: it.kind, id: it.id, qty: it.qty })),
       });
       clear();
       setDone(res.id);
@@ -95,13 +94,13 @@ export default function CheckoutPage() {
           </label>
           {err && <p className="shop-err">{err}</p>}
           <button className="shop-btn block" type="submit" disabled={busy}>{busy ? t("sending") : t("placeOrder")}</button>
-          <a className="shop-btn wa block" href={waLink(waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</a>
+          {settings.whatsapp && <a className="shop-btn wa block" href={wa(waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</a>}
         </form>
 
         <aside className="shop-order-summary">
           <h3>{t("cart")}</h3>
           {items.map((it) => (
-            <div key={it.id} className="shop-order-row">
+            <div key={cartUid(it)} className="shop-order-row">
               <span>{pick(it.titles)} × {it.qty}</span>
               <span>{(it.price * it.qty).toLocaleString("ru-RU")} TMT</span>
             </div>

@@ -1,12 +1,20 @@
 "use client";
-import type { CategoryView, ProductDetail, ShopCard } from "./shop-types";
+import type { Catalog, CategoryView, ProductDetail, ShopCard } from "./shop-types";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+/** Client: fetch a catalog page (used by the "show more" button). */
+export async function fetchCatalogPage(offset: number, limit = 12): Promise<Catalog> {
+  const res = await fetch(`${API}/api/shop/catalog?offset=${offset}&limit=${limit}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`catalog fetch failed: ${res.status}`);
+  return (await res.json()) as Catalog;
+}
 
 export interface SearchResult {
   mediaBase: string;
   query: string;
   products: ShopCard[];
+  total: number;
 }
 
 /** Client: search products by text + optional sort. */
@@ -17,7 +25,8 @@ export async function fetchSearch(query: string): Promise<SearchResult> {
 }
 
 export interface OrderItemPayload {
-  product_id: number;
+  kind: "product" | "service";
+  id: number;
   qty: number;
 }
 export interface OrderPayload {
@@ -44,6 +53,16 @@ export async function fetchProduct(slug: string): Promise<ProductDetail> {
   const res = await fetch(`${API}/api/shop/products/${encodeURIComponent(slug)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`product fetch failed: ${res.status}`);
   return (await res.json()) as ProductDetail;
+}
+
+/** Client: submit a product review (goes to moderation). */
+export async function postReview(slug: string, body: { name: string; rating: number; text: string }): Promise<void> {
+  const res = await fetch(`${API}/api/shop/products/${encodeURIComponent(slug)}/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`review failed: ${res.status}`);
 }
 
 /** Client: submit an order. The backend recomputes the total from DB prices. */

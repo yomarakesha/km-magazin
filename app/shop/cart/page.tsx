@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useShop } from "@/components/shop/shop-context";
+import { useShop, cartUid } from "@/components/shop/shop-context";
 import Icon from "@/components/shop/ui/Icon";
 import ProductImage from "@/components/shop/ProductImage";
 
@@ -21,25 +21,34 @@ export default function CartPage() {
     <div className="shop-wrap">
       <h1 className="shop-h1">{t("cart")}</h1>
       <div className="shop-cart-list">
-        {items.map((it) => (
-          <div className="shop-cart-item" key={it.id}>
-            <Link href={`/shop/product/${it.slug}`} className="shop-cart-img">
-              <ProductImage src={it.image ? `${mediaBase}/${it.image}` : null} alt={pick(it.titles)} seed={it.slug} variant="thumb" />
-            </Link>
+        {items.map((it) => {
+          const uid = cartUid(it);
+          const isSvc = it.kind === "service";
+          const img = <ProductImage src={it.image ? `${mediaBase}/${it.image}` : null} alt={pick(it.titles)} seed={it.slug} variant="thumb" />;
+          return (
+          <div className="shop-cart-item" key={uid}>
+            {isSvc ? <span className="shop-cart-img">{img}</span> : (
+              <Link href={`/shop/product/${it.slug}`} className="shop-cart-img">{img}</Link>
+            )}
             <div className="shop-cart-info">
-              <Link href={`/shop/product/${it.slug}`} className="shop-cart-title">{pick(it.titles)}</Link>
+              {isSvc ? (
+                <span className="shop-cart-title">{pick(it.titles)} <span className="shop-dline-tag">{t("service")}</span></span>
+              ) : (
+                <Link href={`/shop/product/${it.slug}`} className="shop-cart-title">{pick(it.titles)}</Link>
+              )}
               <div className="shop-price">{it.price.toLocaleString("ru-RU")} {it.currency}</div>
             </div>
             <div className="shop-qty">
-              <button onClick={() => setQty(it.id, it.qty - 1)} aria-label={t("remove")}><Icon name="minus" size={15} /></button>
+              <button onClick={() => setQty(uid, it.qty - 1)} aria-label={t("remove")}><Icon name="minus" size={15} /></button>
               <input type="number" value={it.qty} min={1}
-                onChange={(e) => setQty(it.id, Number(e.target.value) || 1)} />
-              <button onClick={() => setQty(it.id, it.qty + 1)} aria-label={t("addToCart")}><Icon name="plus" size={15} /></button>
+                onChange={(e) => setQty(uid, Number(e.target.value) || 1)} />
+              <button onClick={() => setQty(uid, it.qty + 1)} aria-label={t("addToCart")}><Icon name="plus" size={15} /></button>
             </div>
             <div className="shop-cart-sum">{(it.price * it.qty).toLocaleString("ru-RU")} {it.currency}</div>
-            <button className="shop-cart-rm" onClick={() => remove(it.id)} title={t("remove")} aria-label={t("remove")}><Icon name="trash" size={16} /></button>
+            <button className="shop-cart-rm" onClick={() => remove(uid)} title={t("remove")} aria-label={t("remove")}><Icon name="trash" size={16} /></button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="shop-cart-foot">

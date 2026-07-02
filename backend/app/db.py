@@ -35,6 +35,21 @@ def _migrate() -> None:
                     "ALTER TABLE shop_categories ADD COLUMN parent_id INTEGER "
                     "REFERENCES shop_categories(id)"
                 ))
+    if "shop_order_items" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_order_items")}
+        if "service_id" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE shop_order_items ADD COLUMN service_id INTEGER "
+                    "REFERENCES shop_services(id)"
+                ))
+    if "shop_products" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_products")}
+        with engine.begin() as conn:
+            if "old_price" not in cols:
+                conn.execute(text("ALTER TABLE shop_products ADD COLUMN old_price INTEGER"))
+            if "stock_qty" not in cols:
+                conn.execute(text("ALTER TABLE shop_products ADD COLUMN stock_qty INTEGER"))
 
 
 def init_db() -> None:

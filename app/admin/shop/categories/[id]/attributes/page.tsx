@@ -2,10 +2,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type AdminAttribute, type AdminAttributeTr } from "@/lib/admin-api";
+import { slugify } from "@/lib/slug";
 import { useToast } from "../../../../_components/useToast";
 
 const LANGS = ["ru", "tk", "en"] as const;
 const LANG_LABEL: Record<string, string> = { ru: "RU", tk: "TK", en: "EN" };
+
+type NewAttr = { key: string; type: "select" | "number"; unit: string; filterable: boolean; labels: Record<string, string> };
+const emptyNew: NewAttr = { key: "", type: "select", unit: "", filterable: true, labels: { ru: "", tk: "", en: "" } };
 
 export default function AttributesPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +17,7 @@ export default function AttributesPage() {
   const router = useRouter();
   const { show, node } = useToast();
   const [list, setList] = useState<AdminAttribute[]>([]);
+  const [nw, setNw] = useState<NewAttr>(emptyNew);
 
   const load = () => api.getAttributes(catId).then(setList).catch((e) => show(String(e), "err"));
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -34,14 +39,18 @@ export default function AttributesPage() {
     a.translations.find((t) => t.lang === lang) ?? { lang, label: "" };
 
   async function add() {
-    const key = prompt("Ключ характеристики (латиницей, напр. ram или gpu):");
-    if (!key) return;
-    const type = confirm("Числовой фильтр (диапазон)? OK = число, Отмена = выбор из значений") ? "number" : "select";
-    await api.createAttribute(catId, {
-      key, type, unit: "", filterable: true,
-      translations: LANGS.map((lang) => ({ lang, label: key })),
-    }).catch((e) => show(String(e), "err"));
-    load();
+    if (!nw.labels.ru.trim()) return show("Укажите название (RU)", "err");
+    const key = (nw.key.trim() || slugify(nw.labels.ru)).replace(/-/g, "_");
+    if (!key) return show("Не удалось сформировать ключ — задайте вручную", "err");
+    try {
+      await api.createAttribute(catId, {
+        key, type: nw.type, unit: nw.unit.trim(), filterable: nw.filterable,
+        translations: LANGS.map((lang) => ({ lang, label: nw.labels[lang] || nw.labels.ru })),
+      });
+      setNw(emptyNew);
+      show("Добавлено");
+      load();
+    } catch (e) { show(String(e), "err"); }
   }
 
   async function save(a: AdminAttribute) {
@@ -113,8 +122,37 @@ export default function AttributesPage() {
         </div>
       ))}
 
-      <div className="adm-actions">
-        <button className="adm-btn" onClick={add}>+ Добавить характеристику</button>
+      <div className="adm-block" style={{ borderStyle: "dashed" }}>
+        <h3>Новая характеристика</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <div className="adm-field"><label>Название RU</label>
+            <input className="adm-in" value={nw.labels.ru} onChange={(e) => setNw({ ...nw, labels: { ...nw.labels, ru: e.target.value } })} placeholder="напр. Оперативная память" /></div>
+          <div className="adm-field"><label>Тип</label>
+            <select className="adm-in" value={nw.type} onChange={(e) => setNw({ ...nw, type: e.target.value as "select" | "number" })}>
+              <option value="select">Выбор значений</option>
+              <option value="number">Число (диапазон)</option>
+            </select></div>
+          <div className="adm-field"><label>Ед. изм. (GB, GHz…)</label>
+            <input className="adm-in" value={nw.unit} onChange={(e) => setNw({ ...nw, unit: e.target.value })} /></div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="adm-field"><label>Название TK</label>
+            <input className="adm-in" value={nw.labels.tk} onChange={(e) => setNw({ ...nw, labels: { ...nw.labels, tk: e.target.value } })} /></div>
+          <div className="adm-field"><label>Название EN</label>
+            <input className="adm-in" value={nw.labels.en} onChange={(e) => setNw({ ...nw, labels: { ...nw.labels, en: e.target.value } })} /></div>
+        </div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center", fontFamily: "var(--mono)", fontSize: 13 }}>
+          <input type="checkbox" checked={nw.filterable} onChange={(e) => setNw({ ...nw, filterable: e.target.checked })} />
+          Показывать в фильтре
+        </label>
+        <details style={{ marginTop: 6 }}>
+          <summary style={{ cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12, color: "var(--tx3)" }}>Дополнительно</summary>
+          <div className="adm-field" style={{ marginTop: 10 }}><label>Ключ (авто из названия)</label>
+            <input className="adm-in" value={nw.key} placeholder={slugify(nw.labels.ru).replace(/-/g, "_") || "напр. ram"} onChange={(e) => setNw({ ...nw, key: e.target.value })} /></div>
+        </details>
+        <div className="adm-actions" style={{ marginTop: 10 }}>
+          <button className="adm-btn" onClick={add}>+ Добавить характеристику</button>
+        </div>
       </div>
       {node}
     </>

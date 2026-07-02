@@ -14,9 +14,14 @@ from ..models import (
     Product,
     ProductAttribute,
     ProductImage,
+    ProductReview,
     ProductTranslation,
+    ShopBrand,
     ShopCategory,
     ShopCategoryTranslation,
+    ShopService,
+    ShopServiceTranslation,
+    ShopSettings,
 )
 from ..schemas import (
     CategoryAttributeIn,
@@ -27,6 +32,12 @@ from ..schemas import (
     ProductIn,
     ProductUpdateIn,
     ReorderIn,
+    ReviewStatusIn,
+    ShopBrandIn,
+    ShopBrandUpdateIn,
+    ShopServiceIn,
+    ShopServiceUpdateIn,
+    ShopSettingsIn,
 )
 from .admin_media import _save  # file save/sanitize helper
 
@@ -54,6 +65,20 @@ def _attr(a: CategoryAttribute) -> dict:
     }
 
 
+def _service(s: ShopService) -> dict:
+    return {
+        "id": s.id,
+        "slug": s.slug,
+        "category_id": s.category_id,
+        "price": s.price,
+        "currency": s.currency,
+        "icon": s.icon,
+        "enabled": s.enabled,
+        "sort_order": s.sort_order,
+        "translations": [{"lang": t.lang, "title": t.title, "short": t.short} for t in s.translations],
+    }
+
+
 def _cat(c: ShopCategory) -> dict:
     return {
         "id": c.id,
@@ -73,8 +98,10 @@ def _product(p: Product) -> dict:
         "slug": p.slug,
         "category_id": p.category_id,
         "price": p.price,
+        "old_price": p.old_price,
         "currency": p.currency,
         "in_stock": p.in_stock,
+        "stock_qty": p.stock_qty,
         "sku": p.sku or "",
         "enabled": p.enabled,
         "sort_order": p.sort_order,
@@ -114,6 +141,8 @@ def _order(o: Order) -> dict:
         "items": [
             {
                 "product_id": it.product_id,
+                "service_id": it.service_id,
+                "kind": "service" if it.service_id is not None else "product",
                 "title": it.title_snapshot,
                 "price": it.price_snapshot,
                 "qty": it.qty,
@@ -288,6 +317,233 @@ def reorder_attributes(cat_id: int, payload: ReorderIn, db: Session = Depends(ge
 
 
 # --------------------------------------------------------------------------
+# Category services (priced add-ons: install, setup, repair…)
+# --------------------------------------------------------------------------
+@router.get("/categories/{cat_id}/services")
+def list_services(cat_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(
+        select(ShopService)
+        .where(ShopService.category_id == cat_id)
+        .order_by(ShopService.sort_order)
+    ).all()
+    return [_service(s) for s in rows]
+
+
+@router.post("/categories/{cat_id}/services", status_code=201)
+def create_service(cat_id: int, payload: ShopServiceIn, db: Session = Depends(get_db)) -> dict:
+    if not db.get(ShopCategory, cat_id):
+        raise HTTPException(404, "Category not found")
+    if db.scalar(select(ShopService).where(ShopService.slug == payload.slug)):
+        raise HTTPException(409, "Slug already exists")
+    max_order = db.scalar(
+        select(func.max(ShopService.sort_order)).where(ShopService.category_id == cat_id)
+    )
+    s = ShopService(
+        slug=payload.slug,
+        category_id=cat_id,
+        price=payload.price,
+        currency=payload.currency,
+        icon=payload.icon,
+        enabled=payload.enabled,
+        sort_order=(max_order + 1) if max_order is not None else 0,
+    )
+    for t in payload.translations:
+        s.translations.append(ShopServiceTranslation(lang=t.lang, title=t.title, short=t.short))
+    db.add(s)
+    db.commit()
+    return _service(s)
+
+
+@router.put("/services/{service_id}")
+def update_service(service_id: int, payload: ShopServiceUpdateIn, db: Session = Depends(get_db)) -> dict:
+    s = db.get(ShopService, service_id)
+    if not s:
+        raise HTTPException(404, "Service not found")
+    if payload.slug is not None:
+        if db.scalar(select(ShopService).where(ShopService.slug == payload.slug, ShopService.id != service_id)):
+            raise HTTPException(409, "Slug already exists")
+        s.slug = payload.slug
+    if payload.price is not None:
+        s.price = payload.price
+    if payload.currency is not None:
+        s.currency = payload.currency
+    if payload.icon is not None:
+        s.icon = payload.icon
+    if payload.enabled is not None:
+        s.enabled = payload.enabled
+    if payload.translations is not None:
+        existing = {t.lang: t for t in s.translations}
+        for t in payload.translations:
+            row = existing.get(t.lang)
+            if row is None:
+                s.translations.append(ShopServiceTranslation(lang=t.lang, title=t.title, short=t.short))
+            else:
+                row.title, row.short = t.title, t.short
+    db.commit()
+    return _service(s)
+
+
+@router.delete("/services/{service_id}")
+def delete_service(service_id: int, db: Session = Depends(get_db)) -> dict:
+    s = db.get(ShopService, service_id)
+    if not s:
+        raise HTTPException(404, "Service not found")
+    db.delete(s)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/categories/{cat_id}/services/reorder")
+def reorder_services(cat_id: int, payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
+    for order, sid in enumerate(payload.ids):
+        s = db.get(ShopService, sid)
+        if s and s.category_id == cat_id:
+            s.sort_order = order
+    db.commit()
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# Brands (storefront brands strip)
+# --------------------------------------------------------------------------
+def _brand(b: ShopBrand) -> dict:
+    return {"id": b.id, "name": b.name, "enabled": b.enabled, "sort_order": b.sort_order}
+
+
+@router.get("/brands")
+def list_brands(db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(select(ShopBrand).order_by(ShopBrand.sort_order)).all()
+    return [_brand(b) for b in rows]
+
+
+@router.post("/brands", status_code=201)
+def create_brand(payload: ShopBrandIn, db: Session = Depends(get_db)) -> dict:
+    max_order = db.scalar(select(func.max(ShopBrand.sort_order)))
+    b = ShopBrand(
+        name=payload.name, enabled=payload.enabled,
+        sort_order=(max_order + 1) if max_order is not None else 0,
+    )
+    db.add(b)
+    db.commit()
+    return _brand(b)
+
+
+@router.put("/brands/{brand_id}")
+def update_brand(brand_id: int, payload: ShopBrandUpdateIn, db: Session = Depends(get_db)) -> dict:
+    b = db.get(ShopBrand, brand_id)
+    if not b:
+        raise HTTPException(404, "Brand not found")
+    if payload.name is not None:
+        b.name = payload.name
+    if payload.enabled is not None:
+        b.enabled = payload.enabled
+    db.commit()
+    return _brand(b)
+
+
+@router.delete("/brands/{brand_id}")
+def delete_brand(brand_id: int, db: Session = Depends(get_db)) -> dict:
+    b = db.get(ShopBrand, brand_id)
+    if not b:
+        raise HTTPException(404, "Brand not found")
+    db.delete(b)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/brands/reorder")
+def reorder_brands(payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
+    for order, bid in enumerate(payload.ids):
+        b = db.get(ShopBrand, bid)
+        if b:
+            b.sort_order = order
+    db.commit()
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# Product reviews (moderation)
+# --------------------------------------------------------------------------
+def _review(r: ProductReview) -> dict:
+    title = next((t.title for t in r.product.translations if t.lang == "ru"), None) if r.product else None
+    return {
+        "id": r.id,
+        "product_id": r.product_id,
+        "product_title": title or (r.product.slug if r.product else "?"),
+        "product_slug": r.product.slug if r.product else "",
+        "name": r.name,
+        "rating": r.rating,
+        "text": r.text,
+        "status": r.status,
+        "created_at": r.created_at,
+    }
+
+
+@router.get("/reviews")
+def list_reviews(status: str | None = None, db: Session = Depends(get_db)) -> list[dict]:
+    stmt = select(ProductReview).order_by(ProductReview.created_at.desc())
+    if status:
+        stmt = stmt.where(ProductReview.status == status)
+    return [_review(r) for r in db.scalars(stmt).all()]
+
+
+@router.patch("/reviews/{review_id}")
+def set_review_status(review_id: int, payload: ReviewStatusIn, db: Session = Depends(get_db)) -> dict:
+    r = db.get(ProductReview, review_id)
+    if not r:
+        raise HTTPException(404, "Review not found")
+    r.status = payload.status
+    db.commit()
+    return _review(r)
+
+
+@router.delete("/reviews/{review_id}")
+def delete_review(review_id: int, db: Session = Depends(get_db)) -> dict:
+    r = db.get(ProductReview, review_id)
+    if not r:
+        raise HTTPException(404, "Review not found")
+    db.delete(r)
+    db.commit()
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# Settings (contacts singleton, id=1)
+# --------------------------------------------------------------------------
+def _get_or_create_settings(db: Session) -> ShopSettings:
+    s = db.get(ShopSettings, 1)
+    if s is None:
+        s = ShopSettings(id=1)
+        db.add(s)
+        db.commit()
+    return s
+
+
+def _settings(s: ShopSettings) -> dict:
+    return {
+        "phone": s.phone, "whatsapp": s.whatsapp,
+        "address_ru": s.address_ru, "address_tk": s.address_tk, "address_en": s.address_en,
+    }
+
+
+@router.get("/settings")
+def get_settings(db: Session = Depends(get_db)) -> dict:
+    return _settings(_get_or_create_settings(db))
+
+
+@router.put("/settings")
+def update_settings(payload: ShopSettingsIn, db: Session = Depends(get_db)) -> dict:
+    s = _get_or_create_settings(db)
+    s.phone = payload.phone
+    s.whatsapp = payload.whatsapp
+    s.address_ru = payload.address_ru
+    s.address_tk = payload.address_tk
+    s.address_en = payload.address_en
+    db.commit()
+    return _settings(s)
+
+
+# --------------------------------------------------------------------------
 # Products
 # --------------------------------------------------------------------------
 def _apply_attributes(p: Product, items: list, db: Session) -> None:
@@ -329,8 +585,10 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db)) -> dict:
         slug=payload.slug,
         category_id=payload.category_id,
         price=payload.price,
+        old_price=payload.old_price,
         currency=payload.currency,
         in_stock=payload.in_stock,
+        stock_qty=payload.stock_qty,
         sku=payload.sku or None,
         enabled=payload.enabled,
         sort_order=(max_order + 1) if max_order is not None else 0,
@@ -359,6 +617,12 @@ def update_product(product_id: int, payload: ProductUpdateIn, db: Session = Depe
         p.category_id = payload.category_id
     if payload.price is not None:
         p.price = payload.price
+    if "old_price" in payload.model_fields_set:
+        # present-with-null clears the discount; missing key = no change
+        p.old_price = payload.old_price
+    if "stock_qty" in payload.model_fields_set:
+        # present-with-null disables stock tracking
+        p.stock_qty = payload.stock_qty
     if payload.currency is not None:
         p.currency = payload.currency
     if payload.in_stock is not None:

@@ -66,7 +66,10 @@ export default function OrdersPage() {
                     <td colSpan={7} style={{ background: "var(--surf2)" }}>
                       <ul style={{ margin: 0, padding: "8px 16px", fontSize: 13 }}>
                         {o.items.map((it, k) => (
-                          <li key={k}>{it.title} — {it.qty} × {it.price} TMT = {it.qty * it.price} TMT</li>
+                          <li key={k}>
+                            {it.kind === "service" && <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--green-d)", border: "1px solid var(--green-d)", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>УСЛУГА</span>}
+                            {it.title} — {it.qty} × {it.price} TMT = {it.qty * it.price} TMT
+                          </li>
                         ))}
                       </ul>
                       {o.comment && <p style={{ padding: "0 16px 8px", fontSize: 13, color: "var(--tx2)" }}>Комментарий: {o.comment}</p>}

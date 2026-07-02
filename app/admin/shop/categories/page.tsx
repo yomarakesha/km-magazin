@@ -1,14 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { api, type AdminCategory } from "@/lib/admin-api";
 import { useToast } from "../../_components/useToast";
 
-const LANGS = ["ru", "tk", "en"] as const;
-
 export default function CategoriesPage() {
-  const router = useRouter();
   const { show, node } = useToast();
   const [list, setList] = useState<AdminCategory[]>([]);
 
@@ -31,18 +27,6 @@ export default function CategoriesPage() {
     load();
   }
 
-  async function create() {
-    const slug = prompt("Slug категории (латиницей, напр. computers):");
-    if (!slug) return;
-    try {
-      const cat = await api.createCategory({
-        slug, enabled: true,
-        translations: LANGS.map((lang) => ({ lang, name: slug })),
-      });
-      router.push(`/admin/shop/categories/${cat.id}`);
-    } catch (e) { show(String(e), "err"); }
-  }
-
   async function remove(c: AdminCategory) {
     if (!confirm(`Удалить категорию «${name(c)}»? Все её товары будут удалены.`)) return;
     await api.deleteCategory(c.id).catch((e) => show(String(e), "err"));
@@ -54,6 +38,10 @@ export default function CategoriesPage() {
     <>
       <h1 className="adm-h1">Категории</h1>
       <p className="adm-sub">Разделы магазина техники. Порядок отражается на сайте.</p>
+
+      <div className="adm-actions" style={{ marginBottom: 18 }}>
+        <Link className="adm-btn" href="/admin/shop/categories/new">+ Добавить категорию</Link>
+      </div>
 
       {list.map((c, i) => (
         <div className="adm-row" key={c.id} style={{ opacity: c.enabled ? 1 : 0.5 }}>
@@ -68,15 +56,13 @@ export default function CategoriesPage() {
           <div className="adm-actions" style={{ margin: 0 }}>
             <button className="adm-btn ghost sm" onClick={() => toggle(c)}>{c.enabled ? "Скрыть" : "Показать"}</button>
             <Link className="adm-btn ghost sm" href={`/admin/shop/categories/${c.id}/attributes`}>Фильтры</Link>
+            <Link className="adm-btn ghost sm" href={`/admin/shop/categories/${c.id}/services`}>Услуги</Link>
             <Link className="adm-btn sm" href={`/admin/shop/categories/${c.id}`}>Изменить</Link>
             <button className="adm-btn danger sm" onClick={() => remove(c)}>Удалить</button>
           </div>
         </div>
       ))}
 
-      <div className="adm-actions">
-        <button className="adm-btn" onClick={create}>+ Добавить категорию</button>
-      </div>
       {node}
     </>
   );

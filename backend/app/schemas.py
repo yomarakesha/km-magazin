@@ -137,8 +137,10 @@ class ProductIn(BaseModel):
     slug: str = Field(min_length=1, max_length=64)
     category_id: int
     price: int = 0
+    old_price: int | None = None
     currency: str = "TMT"
     in_stock: bool = True
+    stock_qty: int | None = None
     sku: str = ""
     enabled: bool = True
     translations: list[ProductTranslationIn] = Field(default_factory=list)
@@ -149,18 +151,85 @@ class ProductUpdateIn(BaseModel):
     slug: str | None = None
     category_id: int | None = None
     price: int | None = None
+    # present-with-null clears the old price; the admin form always sends it
+    old_price: int | None = None
     currency: str | None = None
     in_stock: bool | None = None
+    # present-with-null disables stock tracking
+    stock_qty: int | None = None
     sku: str | None = None
     enabled: bool | None = None
     translations: list[ProductTranslationIn] | None = None
     attributes: list[ProductAttributeIn] | None = None
 
 
+# ---- Shop: category services ----
+class ShopServiceTranslationIn(BaseModel):
+    lang: Lang
+    title: str = ""
+    short: str = ""
+
+
+class ShopServiceIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=64)
+    price: int = 0
+    currency: str = "TMT"
+    icon: str = "wrench"
+    enabled: bool = True
+    translations: list[ShopServiceTranslationIn] = Field(default_factory=list)
+
+
+class ShopServiceUpdateIn(BaseModel):
+    slug: str | None = None
+    price: int | None = None
+    currency: str | None = None
+    icon: str | None = None
+    enabled: bool | None = None
+    translations: list[ShopServiceTranslationIn] | None = None
+
+
+# ---- Shop: product reviews ----
+class ReviewIn(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    rating: int = Field(default=5, ge=1, le=5)
+    text: str = Field(default="", max_length=2000)
+
+
+class ReviewStatusIn(BaseModel):
+    status: Literal["pending", "approved", "rejected"]
+
+
+# ---- Shop: brands ----
+class ShopBrandIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    enabled: bool = True
+
+
+class ShopBrandUpdateIn(BaseModel):
+    name: str | None = None
+    enabled: bool | None = None
+
+
+# ---- Shop: settings (contacts singleton) ----
+class ShopSettingsIn(BaseModel):
+    phone: str = Field(default="", max_length=64)
+    whatsapp: str = Field(default="", max_length=32)
+    address_ru: str = Field(default="", max_length=256)
+    address_tk: str = Field(default="", max_length=256)
+    address_en: str = Field(default="", max_length=256)
+
+
 # ---- Shop: orders ----
 class OrderItemIn(BaseModel):
-    product_id: int
+    # kind distinguishes a product line from a category-service line; a missing
+    # kind is treated as "product" for backward compatibility.
+    kind: Literal["product", "service"] = "product"
+    id: int | None = None
+    product_id: int | None = None  # legacy alias for kind="product"
     qty: int = Field(default=1, ge=1, le=999)
+
+    def ref_id(self) -> int | None:
+        return self.id if self.id is not None else self.product_id
 
 
 class OrderIn(BaseModel):

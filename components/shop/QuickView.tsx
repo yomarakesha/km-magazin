@@ -3,14 +3,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ProductDetail } from "@/lib/shop-types";
 import { fetchProduct } from "@/lib/shop-api";
-import { waLink } from "@/lib/shop-config";
 import Modal from "./ui/Modal";
 import Icon from "./ui/Icon";
 import ProductImage from "./ProductImage";
 import { useShop } from "./shop-context";
 
 export default function QuickView() {
-  const { quickView, closeQuickView, t, pick, mediaBase, add } = useShop();
+  const { quickView, closeQuickView, t, pick, mediaBase, add, settings, wa } = useShop();
   const [data, setData] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState(false);
@@ -33,7 +32,7 @@ export default function QuickView() {
 
   function addToCart() {
     if (!data) return;
-    add({ id: data.id, slug: data.slug, titles: data.title, price: data.price, currency: data.currency, image: data.images[0] ?? null });
+    add({ id: data.id, slug: data.slug, titles: data.title, price: data.price, currency: data.currency, image: data.images[0] ?? null, category_id: data.category_id });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
@@ -58,9 +57,11 @@ export default function QuickView() {
               <button className={`shop-btn ${added ? "added" : ""}`} onClick={addToCart}>
                 {added ? <><Icon name="check" size={16} /> {t("inCart")}</> : t("addToCart")}
               </button>
-              <a className="shop-btn wa" href={waLink(`${title} — ${data.price} ${data.currency}`)} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
-              </a>
+              {settings.whatsapp && (
+                <a className="shop-btn wa" href={wa(`${title} — ${data.price} ${data.currency}`)} target="_blank" rel="noreferrer">
+                  <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
+                </a>
+              )}
             </div>
             <Link href={`/shop/product/${data.slug}`} className="shop-link" onClick={closeQuickView}>
               {t("specs")} <Icon name="arrow" size={14} />

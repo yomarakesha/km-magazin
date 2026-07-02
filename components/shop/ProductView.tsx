@@ -2,17 +2,20 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ProductDetail } from "@/lib/shop-types";
-import { SHOP, waLink } from "@/lib/shop-config";
 import { useShop } from "./shop-context";
 import Icon from "./ui/Icon";
 import ProductImage from "./ProductImage";
 import Modal from "./ui/Modal";
 import RelatedProducts from "./RelatedProducts";
+import ServicesSection from "./ServicesSection";
 import PdpBuyBar from "./PdpBuyBar";
+import Reviews from "./Reviews";
+import RecentlyViewed, { rememberViewed } from "./RecentlyViewed";
+import Stars from "./ui/Stars";
 import Reveal from "@/components/Reveal";
 
 export default function ProductView({ p }: { p: ProductDetail }) {
-  const { t, pick, lang, mediaBase, add } = useShop();
+  const { t, pick, lang, mediaBase, add, settings, wa, toggleFav, isFav } = useShop();
   const [active, setActive] = useState(0);
   const [added, setAdded] = useState(false);
   const [zoom, setZoom] = useState(false);
@@ -26,10 +29,17 @@ export default function ProductView({ p }: { p: ProductDetail }) {
   const specs = p.specs[lang] ?? p.specs.ru ?? [];
 
   function addToCart() {
-    add({ id: p.id, slug: p.slug, titles: p.title, price: p.price, currency: p.currency, image: p.images[0] ?? null });
+    add({ id: p.id, slug: p.slug, titles: p.title, price: p.price, currency: p.currency, image: p.images[0] ?? null, category_id: p.category_id });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
+
+  const favCard = { id: p.id, slug: p.slug, category_id: p.category_id, price: p.price, old_price: p.old_price, currency: p.currency, in_stock: p.in_stock, image: p.images[0] ?? null, title: p.title, short: p.short };
+
+  // record this product in the "recently viewed" shelf
+  useEffect(() => {
+    rememberViewed(favCard);
+  }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // sticky buy bar appears once the main buy actions scroll out of view
   useEffect(() => {
@@ -69,20 +79,43 @@ export default function ProductView({ p }: { p: ProductDetail }) {
             {p.in_stock ? t("inStock") : t("toOrder")}
           </span>
           <h1 className="shop-h1">{title}</h1>
+          {p.rating != null && (p.rating_count ?? 0) > 0 && (
+            <a href="#reviews" className="shop-pdp-stars"><Stars value={p.rating} count={p.rating_count} size={16} /></a>
+          )}
           {pick(p.short) && <p className="shop-pdp-short">{pick(p.short)}</p>}
-          <div className="shop-pdp-price">{p.price.toLocaleString("ru-RU")} {p.currency}</div>
+          <div className="shop-pdp-price">
+            {p.old_price != null && p.old_price > p.price && (
+              <>
+                <s className="shop-price-old lg">{p.old_price.toLocaleString("ru-RU")}</s>
+                <span className="shop-sale-badge inline">−{Math.round((1 - p.price / p.old_price) * 100)}%</span>
+              </>
+            )}
+            {p.price.toLocaleString("ru-RU")} {p.currency}
+          </div>
+          {p.in_stock && p.stock_qty != null && p.stock_qty > 0 && p.stock_qty <= 5 && (
+            <p className="shop-low-stock"><Icon name="box" size={15} /> {t("lowStock")}: {p.stock_qty}</p>
+          )}
           <div className="shop-pdp-actions" ref={actionsRef}>
             <button className={`shop-btn ${added ? "added" : ""}`} onClick={addToCart}>
               {added ? <><Icon name="check" size={16} /> {t("inCart")}</> : t("addToCart")}
             </button>
-            <a className="shop-btn wa" href={waLink(`${title} — ${p.price} ${p.currency}`)} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
-            </a>
+            <button
+              className={`shop-btn ghost shop-fav-toggle ${isFav(p.id) ? "on" : ""}`}
+              onClick={() => toggleFav(favCard)}
+              aria-pressed={isFav(p.id)}
+            >
+              <Icon name="heart" size={16} /> {isFav(p.id) ? t("inFavorites") : t("favorites")}
+            </button>
+            {settings.whatsapp && (
+              <a className="shop-btn wa" href={wa(`${title} — ${p.price} ${p.currency}`)} target="_blank" rel="noreferrer">
+                <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
+              </a>
+            )}
           </div>
           <div className="shop-pdp-trust">
             <span><Icon name="truck" size={16} /> {t("fastDelivery")}</span>
             <span><Icon name="shield" size={16} /> {t("warranty")}</span>
-            <span><Icon name="phone" size={15} /> {SHOP.phone}</span>
+            {settings.phone && <span><Icon name="phone" size={15} /> {settings.phone}</span>}
           </div>
 
           {p.attributes.length > 0 && (
@@ -121,7 +154,17 @@ export default function ProductView({ p }: { p: ProductDetail }) {
         </Reveal>
       )}
 
+      {p.services && p.services.length > 0 && (
+        <Reveal>
+          <ServicesSection services={p.services} heading={t("services")} />
+        </Reveal>
+      )}
+
+      <Reviews slug={p.slug} reviews={p.reviews ?? []} rating={p.rating ?? null} count={p.rating_count ?? 0} />
+
       <RelatedProducts category={p.category} excludeId={p.id} />
+
+      <RecentlyViewed excludeId={p.id} />
 
       <PdpBuyBar show={showBar} title={title} price={p.price} currency={p.currency}
         added={added} inStock={p.in_stock} onAdd={addToCart} t={t} />

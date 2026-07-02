@@ -24,7 +24,9 @@ function SearchInner() {
   const sp = useSearchParams();
   const { t } = useShop();
   const [products, setProducts] = useState<ShopCard[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [more, setMore] = useState(false);
 
   const query = sp.toString();
   const q = sp.get("q") ?? "";
@@ -33,11 +35,24 @@ function SearchInner() {
     let live = true;
     setLoading(true);
     fetchSearch(query)
-      .then((d) => { if (live) setProducts(d.products); })
-      .catch(() => { if (live) setProducts([]); })
+      .then((d) => { if (live) { setProducts(d.products); setTotal(d.total); } })
+      .catch(() => { if (live) { setProducts([]); setTotal(0); } })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [query]);
+
+  const hasMore = products.length < total;
+
+  async function loadMore() {
+    setMore(true);
+    try {
+      const next = new URLSearchParams(query);
+      next.set("offset", String(products.length));
+      const d = await fetchSearch(next.toString());
+      setProducts((cur) => [...cur, ...d.products]);
+    } catch {}
+    finally { setMore(false); }
+  }
 
   function setSort(value: string) {
     const next = new URLSearchParams(query);
@@ -52,7 +67,7 @@ function SearchInner() {
         <div className="shop-cat-top">
           <h1 className="shop-h1">{t("searchTitle")}: {q}</h1>
           <div className="shop-cat-controls">
-            {!loading && <span className="shop-count">{products.length} {t("found")}</span>}
+            {!loading && <span className="shop-count">{total} {t("found")}</span>}
             <select className="shop-sort" value={sp.get("sort") ?? ""} onChange={(e) => setSort(e.target.value)}>
               {SORTS.map((s) => <option key={s} value={SORT_VAL[s]}>{t(s)}</option>)}
             </select>
@@ -64,9 +79,18 @@ function SearchInner() {
         ) : products.length === 0 ? (
           <p className="shop-empty">{t("nothingFound")}</p>
         ) : (
-          <div className="shop-grid">
-            {products.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
-          </div>
+          <>
+            <div className="shop-grid">
+              {products.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
+            </div>
+            {hasMore && (
+              <div className="shop-more">
+                <button className="shop-btn ghost" onClick={loadMore} disabled={more}>
+                  {more ? "…" : `${t("showMore")} (${total - products.length})`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

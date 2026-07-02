@@ -1,0 +1,52 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - generic [ref=f5e3]:
+      - link "KM Магазин" [ref=f5e4] [cursor=pointer]:
+        - /url: /shop
+        - text: KM
+        - generic [ref=f5e5]: Магазин
+      - generic [ref=f5e6]:
+        - img [ref=f5e7]
+        - textbox "Поиск" [ref=f5e10]:
+          - /placeholder: Поиск товаров…
+        - button "Поиск" [ref=f5e11] [cursor=pointer]:
+          - img [ref=f5e12]
+      - generic [ref=f5e14]:
+        - generic [ref=f5e15]:
+          - button "РУ" [ref=f5e16] [cursor=pointer]
+          - button "TK" [ref=f5e17] [cursor=pointer]
+          - button "EN" [ref=f5e18] [cursor=pointer]
+        - button "Корзина" [ref=f5e19] [cursor=pointer]:
+          - img [ref=f5e20]
+          - generic [ref=f5e24]: Корзина
+  - main [ref=f5e25]:
+    - generic [ref=f5e26]:
+      - heading "Корзина" [level=1] [ref=f5e27]
+      - paragraph [ref=f5e28]: Корзина пуста
+      - link "Продолжить покупки" [ref=f5e29] [cursor=pointer]:
+        - /url: /shop
+  - contentinfo [ref=f5e30]:
+    - generic [ref=f5e31]:
+      - generic [ref=f5e32]:
+        - generic [ref=f5e33]: Доставка
+        - paragraph [ref=f5e34]: Доставка по городу. Оплата наличными или терминалом при получении.
+      - generic [ref=f5e35]:
+        - generic [ref=f5e36]: Гарантия и сервис
+        - paragraph [ref=f5e37]: Ашхабад, ул. ...
+      - generic [ref=f5e38]:
+        - generic [ref=f5e39]: Нужна помощь с выбором?
+        - link "+993 12 00-00-00" [ref=f5e40] [cursor=pointer]:
+          - /url: tel:+9931200-00-00
+          - img [ref=f5e41]
+          - text: +993 12 00-00-00
+        - link "WhatsApp" [ref=f5e43] [cursor=pointer]:
+          - /url: https://wa.me/99312000000?text=%D0%9D%D1%83%D0%B6%D0%BD%D0%B0%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%20%D1%81%20%D0%B2%D1%8B%D0%B1%D0%BE%D1%80%D0%BE%D0%BC%3F
+          - img [ref=f5e44]
+          - text: WhatsApp
+    - link "На сайт" [ref=f5e48] [cursor=pointer]:
+      - /url: /
+      - img [ref=f5e49]
+      - text: На сайт
+  - button "Open Next.js Dev Tools" [ref=f5e56] [cursor=pointer]:
+    - img [ref=f5e57]
+  - alert [ref=f5e60]

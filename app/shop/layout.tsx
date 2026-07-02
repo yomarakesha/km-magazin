@@ -12,7 +12,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   const catalog = await getCatalog();
   const mediaBase = catalog?.mediaBase ?? "";
   return (
-    <ShopChrome mediaBase={mediaBase} categories={catalog?.categories ?? []}>
+    <ShopChrome mediaBase={mediaBase} categories={catalog?.categories ?? []} settings={catalog?.settings} services={catalog?.services ?? []}>
       {children}
     </ShopChrome>
   );

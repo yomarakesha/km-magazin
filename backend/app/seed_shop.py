@@ -13,9 +13,14 @@ from .models import (
     Product,
     ProductAttribute,
     ProductImage,
+    ProductReview,
     ProductTranslation,
+    ShopBrand,
     ShopCategory,
     ShopCategoryTranslation,
+    ShopService,
+    ShopServiceTranslation,
+    ShopSettings,
 )
 
 LANGS = ("ru", "tk", "en")
@@ -34,11 +39,11 @@ DATA = [
             {"key": "storage", "type": "number", "unit": "GB", "labels": {"ru": "Накопитель", "tk": "Disk", "en": "Storage"}},
         ],
         "products": [
-            {"slug": "pc-gamer-pro", "price": 27000, "in_stock": True,
+            {"slug": "pc-gamer-pro", "price": 27000, "in_stock": True, "stock_qty": 3,
              "titles": {"ru": "Игровой ПК Gamer Pro", "tk": "Oýun kompýuteri Gamer Pro", "en": "Gamer Pro Desktop"},
              "short": {"ru": "Core i7, RTX 4070, 32 ГБ", "tk": "Core i7, RTX 4070, 32 GB", "en": "Core i7, RTX 4070, 32 GB"},
              "attrs": {"cpu": "Core i7", "ram": "32", "gpu": "RTX 4070", "storage": "1024"}},
-            {"slug": "pc-gamer-base", "price": 18500, "in_stock": True,
+            {"slug": "pc-gamer-base", "price": 18500, "old_price": 19900, "in_stock": True,
              "titles": {"ru": "Игровой ПК Gamer Base", "tk": "Oýun kompýuteri Gamer Base", "en": "Gamer Base Desktop"},
              "short": {"ru": "Core i5, RTX 4060, 16 ГБ", "tk": "Core i5, RTX 4060, 16 GB", "en": "Core i5, RTX 4060, 16 GB"},
              "attrs": {"cpu": "Core i5", "ram": "16", "gpu": "RTX 4060", "storage": "512"}},
@@ -60,7 +65,7 @@ DATA = [
             {"key": "type", "type": "select", "unit": "", "labels": {"ru": "Тип", "tk": "Görnüşi", "en": "Type"}},
         ],
         "products": [
-            {"slug": "cam-dome-2mp", "price": 850, "in_stock": True,
+            {"slug": "cam-dome-2mp", "price": 850, "old_price": 990, "in_stock": True, "stock_qty": 12,
              "titles": {"ru": "Камера купольная 2 МП", "tk": "Gümmez kamera 2 MP", "en": "Dome Camera 2 MP"},
              "short": {"ru": "Внутренняя, ИК-подсветка", "tk": "Içerki, IR yşyk", "en": "Indoor, IR night vision"},
              "attrs": {"resolution": "2", "type": "Купольная"}},
@@ -124,11 +129,74 @@ DATA = [
 ]
 
 
+# Category-attached services (priced add-ons). Keyed by category slug.
+# service: slug, price, icon, titles{lang}, short{lang}.
+SERVICES = {
+    "computers": [
+        {"slug": "pc-repair", "price": 300, "icon": "wrench",
+         "titles": {"ru": "Ремонт компьютера", "tk": "Kompýuter abatlamak", "en": "PC repair"},
+         "short": {"ru": "Диагностика и ремонт", "tk": "Diagnostika we abatlaýyş", "en": "Diagnostics & repair"}},
+        {"slug": "os-reinstall", "price": 150, "icon": "refresh",
+         "titles": {"ru": "Переустановка ОС", "tk": "OS gaýtadan gurmak", "en": "OS reinstall"},
+         "short": {"ru": "Windows + драйверы + программы", "tk": "Windows + draýwerler", "en": "Windows + drivers + apps"}},
+    ],
+    "cameras": [
+        {"slug": "cam-install", "price": 500, "icon": "wrench",
+         "titles": {"ru": "Монтаж камеры", "tk": "Kamera gurnamak", "en": "Camera installation"},
+         "short": {"ru": "Установка и подключение", "tk": "Gurnama we birikdirme", "en": "Mount & wiring"}},
+        {"slug": "cam-setup", "price": 200, "icon": "settings",
+         "titles": {"ru": "Настройка видеонаблюдения", "tk": "Wideo gözegçiligi sazlamak", "en": "CCTV setup"},
+         "short": {"ru": "ПО, запись, удалённый доступ", "tk": "Programma, ýazgy, uzak elýeterlik", "en": "Software, recording, remote access"}},
+    ],
+    "network": [
+        {"slug": "net-setup", "price": 250, "icon": "settings",
+         "titles": {"ru": "Настройка сети", "tk": "Tor sazlamak", "en": "Network setup"},
+         "short": {"ru": "Роутеры, Wi-Fi, VLAN", "tk": "Routerler, Wi-Fi, VLAN", "en": "Routers, Wi-Fi, VLAN"}},
+        {"slug": "cabling", "price": 400, "icon": "wrench",
+         "titles": {"ru": "Прокладка кабеля", "tk": "Kabel çekmek", "en": "Cabling"},
+         "short": {"ru": "СКС, монтаж, обжим", "tk": "Gurnama, birikdirme", "en": "Structured cabling & crimping"}},
+    ],
+    "noutbuki": [
+        {"slug": "laptop-cleanup", "price": 180, "icon": "wrench",
+         "titles": {"ru": "Чистка ноутбука", "tk": "Noutbuk arassalamak", "en": "Laptop cleaning"},
+         "short": {"ru": "Термопаста, чистка от пыли", "tk": "Ýylylyk pastasy, tozan arassalaýyş", "en": "Thermal paste & dust cleanup"}},
+    ],
+}
+
+
+BRANDS = ["Hikvision", "Dell", "HP", "TP-Link", "Asus", "Lenovo", "Ubiquiti", "Logitech"]
+
+SETTINGS = {
+    "phone": "+993 12 00-00-00",
+    "whatsapp": "99312000000",
+    "address_ru": "Ашхабад, ул. ...",
+    "address_tk": "Aşgabat, ... köç.",
+    "address_en": "Ashgabat, ... str.",
+}
+
+
+# sample reviews keyed by product slug: (name, rating, text, status)
+REVIEWS = {
+    "pc-gamer-pro": [
+        ("Мердан", 5, "Отличная сборка, всё летает.", "approved"),
+        ("Айна", 4, "Хороший ПК, доставили быстро.", "approved"),
+    ],
+    "cam-dome-2mp": [
+        ("Сердар", 5, "Картинка чёткая даже ночью.", "approved"),
+        ("Гость", 3, "Нормально за свои деньги.", "pending"),
+    ],
+    "router-wifi6": [("Байрам", 5, "Wi-Fi стал гораздо стабильнее.", "approved")],
+}
+
+
 def _wipe(db) -> None:
     for model in (
+        ProductReview,
         ProductAttribute, ProductImage, ProductTranslation, Product,
+        ShopServiceTranslation, ShopService,
         CategoryAttributeTranslation, CategoryAttribute,
         ShopCategoryTranslation, ShopCategory,
+        ShopBrand,
     ):
         db.query(model).delete()
     db.commit()
@@ -160,8 +228,9 @@ def seed_shop() -> None:
 
             for p_order, p in enumerate(c["products"]):
                 prod = Product(
-                    slug=p["slug"], price=p["price"], currency="TMT",
-                    in_stock=p["in_stock"], sort_order=p_order, enabled=True,
+                    slug=p["slug"], price=p["price"], old_price=p.get("old_price"),
+                    currency="TMT", in_stock=p["in_stock"], stock_qty=p.get("stock_qty"),
+                    sort_order=p_order, enabled=True,
                 )
                 for lang in LANGS:
                     prod.translations.append(ProductTranslation(
@@ -179,6 +248,17 @@ def seed_shop() -> None:
                 cat.products.append(prod)
                 n_prod += 1
 
+            for s_order, s in enumerate(SERVICES.get(c["slug"], [])):
+                svc = ShopService(
+                    slug=s["slug"], price=s["price"], currency="TMT",
+                    icon=s["icon"], enabled=True, sort_order=s_order,
+                )
+                for lang in LANGS:
+                    svc.translations.append(ShopServiceTranslation(
+                        lang=lang, title=s["titles"][lang], short=s["short"][lang],
+                    ))
+                cat.services.append(svc)
+
             db.add(cat)
 
         # wire parent → child relationships now that all categories exist
@@ -187,8 +267,26 @@ def seed_shop() -> None:
             if parent_slug:
                 by_slug[c["slug"]].parent = by_slug[parent_slug]
 
+        # sample reviews need product ids → flush inserts first
+        db.flush()
+        prod_by_slug = {p.slug: p for cat in by_slug.values() for p in cat.products}
+        for slug, items in REVIEWS.items():
+            p = prod_by_slug.get(slug)
+            if p is None:
+                continue
+            for name, rating, text, status in items:
+                db.add(ProductReview(product_id=p.id, name=name, rating=rating, text=text, status=status))
+
+        for b_order, name in enumerate(BRANDS):
+            db.add(ShopBrand(name=name, sort_order=b_order, enabled=True))
+
+        # contacts singleton (id=1) — only seed defaults if absent, so re-seeding
+        # the catalog doesn't clobber contacts an admin has already edited
+        if db.get(ShopSettings, 1) is None:
+            db.add(ShopSettings(id=1, **SETTINGS))
+
         db.commit()
-        print(f"Seeded {len(DATA)} categories, {n_prod} products.")
+        print(f"Seeded {len(DATA)} categories, {n_prod} products, {len(BRANDS)} brands.")
     finally:
         db.close()
 

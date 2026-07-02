@@ -2,8 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { CatalogCategory } from "@/lib/shop-types";
-import { SHOP, waLink } from "@/lib/shop-config";
+import type { CatalogCategory, ShopService, ShopSettings } from "@/lib/shop-types";
 import { LANGS, ShopProvider, useShop } from "./shop-context";
 import CartDrawer from "./CartDrawer";
 import QuickView from "./QuickView";
@@ -17,14 +16,18 @@ const LANG_LABEL: Record<string, string> = { ru: "РУ", tk: "TK", en: "EN" };
 export default function ShopChrome({
   mediaBase,
   categories,
+  settings,
+  services,
   children,
 }: {
   mediaBase: string;
   categories: CatalogCategory[];
+  settings?: ShopSettings;
+  services?: ShopService[];
   children: React.ReactNode;
 }) {
   return (
-    <ShopProvider mediaBase={mediaBase} categories={categories}>
+    <ShopProvider mediaBase={mediaBase} categories={categories} settings={settings} services={services}>
       <Header />
       <main className="shop-main">{children}</main>
       <Footer />
@@ -44,31 +47,15 @@ function ToastHost() {
 }
 
 function Header() {
-  const { t, lang, setLang, count, openCart } = useShop();
+  const { t, lang, setLang, count, openCart, favs } = useShop();
   const router = useRouter();
   const [q, setQ] = useState("");
-  const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // hide on scroll-down, slide back down on scroll-up (rAF-throttled, jitter-guarded)
+  // header stays pinned at all times; only track scroll for the elevation shadow
   useEffect(() => {
-    let last = window.scrollY;
     let ticking = false;
-    const update = () => {
-      const y = window.scrollY;
-      setScrolled(y > 4);
-      if (y < 90) {
-        setHidden(false);
-      } else {
-        const delta = y - last;
-        if (Math.abs(delta) > 6) {
-          if (delta > 0 && y > 120) setHidden(true);
-          else if (delta < 0) setHidden(false);
-        }
-      }
-      last = y;
-      ticking = false;
-    };
+    const update = () => { setScrolled(window.scrollY > 4); ticking = false; };
     const onScroll = () => {
       if (!ticking) { ticking = true; requestAnimationFrame(update); }
     };
@@ -83,15 +70,22 @@ function Header() {
   }
 
   return (
-    <header className={`shop-head ${hidden ? "hide" : ""} ${scrolled ? "scrolled" : ""}`}>
+    <header className={`shop-head ${scrolled ? "scrolled" : ""}`}>
       <div className="shop-wrap shop-head-in">
         <Link href="/shop" className="shop-logo">KM <span>{t("shop")}</span></Link>
+        <Link href="/" className="shop-back-site" title={t("backToSite")}>
+          <Icon name="arrow" size={15} className="flip" /> <span>{t("backToSite")}</span>
+        </Link>
         <form className="shop-search" onSubmit={submitSearch}>
           <Icon name="search" size={16} className="shop-search-ic" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("searchTitle")} />
           <button type="submit" aria-label={t("searchTitle")}><Icon name="arrow" size={16} /></button>
         </form>
         <div className="shop-head-right">
+          <Link href="/shop/favorites" className="shop-fav-btn" aria-label={t("favorites")} title={t("favorites")}>
+            <Icon name="heart" size={18} />
+            {favs.length > 0 && <span className="shop-cart-badge">{favs.length}</span>}
+          </Link>
           <div className="shop-langs">
             {LANGS.map((l) => (
               <button key={l} className={l === lang ? "on" : ""} onClick={() => setLang(l)}>{LANG_LABEL[l]}</button>
@@ -108,7 +102,7 @@ function Header() {
 }
 
 function Footer() {
-  const { t, lang } = useShop();
+  const { t, pick, settings, wa } = useShop();
   return (
     <footer className="shop-foot">
       <div className="shop-wrap shop-foot-in">
@@ -118,12 +112,12 @@ function Footer() {
         </div>
         <div className="shop-foot-col">
           <div className="shop-foot-h">{t("guarantee")}</div>
-          <p>{SHOP.address[lang] ?? SHOP.address.ru}</p>
+          <p>{pick(settings.address)}</p>
         </div>
         <div className="shop-foot-col">
           <div className="shop-foot-h">{t("needHelp")}</div>
-          <a className="shop-foot-cta" href={`tel:${SHOP.phone.replace(/\s/g, "")}`}><Icon name="phone" size={15} /> {SHOP.phone}</a>
-          <a className="shop-foot-cta wa" href={waLink(t("needHelp"))} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={15} /> WhatsApp</a>
+          {settings.phone && <a className="shop-foot-cta" href={`tel:${settings.phone.replace(/\s/g, "")}`}><Icon name="phone" size={15} /> {settings.phone}</a>}
+          {settings.whatsapp && <a className="shop-foot-cta wa" href={wa(t("needHelp"))} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={15} /> WhatsApp</a>}
         </div>
       </div>
       <div className="shop-wrap">

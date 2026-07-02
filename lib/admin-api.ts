@@ -79,6 +79,25 @@ export const api = {
   uploadProductImage: (productId: number, form: FormData) => req<AdminProductImage>(`/api/admin/shop/products/${productId}/images`, { method: "POST", body: form }),
   deleteProductImage: (id: number) => req(`/api/admin/shop/images/${id}`, { method: "DELETE" }),
   reorderProductImages: (productId: number, ids: number[]) => req(`/api/admin/shop/products/${productId}/images/reorder`, { method: "POST", body: JSON.stringify({ ids }) }),
+  // shop: category services (priced add-ons)
+  getShopServices: (catId: number) => req<AdminShopService[]>(`/api/admin/shop/categories/${catId}/services`),
+  createShopService: (catId: number, body: unknown) => req<AdminShopService>(`/api/admin/shop/categories/${catId}/services`, { method: "POST", body: JSON.stringify(body) }),
+  updateShopService: (id: number, body: unknown) => req<AdminShopService>(`/api/admin/shop/services/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteShopService: (id: number) => req(`/api/admin/shop/services/${id}`, { method: "DELETE" }),
+  reorderShopServices: (catId: number, ids: number[]) => req(`/api/admin/shop/categories/${catId}/services/reorder`, { method: "POST", body: JSON.stringify({ ids }) }),
+  // shop: brands
+  getBrands: () => req<AdminBrand[]>("/api/admin/shop/brands"),
+  createBrand: (body: unknown) => req<AdminBrand>("/api/admin/shop/brands", { method: "POST", body: JSON.stringify(body) }),
+  updateBrand: (id: number, body: unknown) => req<AdminBrand>(`/api/admin/shop/brands/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteBrand: (id: number) => req(`/api/admin/shop/brands/${id}`, { method: "DELETE" }),
+  reorderBrands: (ids: number[]) => req("/api/admin/shop/brands/reorder", { method: "POST", body: JSON.stringify({ ids }) }),
+  // shop: reviews (moderation)
+  getReviews: (status?: string) => req<AdminReview[]>(`/api/admin/shop/reviews${status ? `?status=${status}` : ""}`),
+  setReviewStatus: (id: number, status: string) => req<AdminReview>(`/api/admin/shop/reviews/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  deleteReview: (id: number) => req(`/api/admin/shop/reviews/${id}`, { method: "DELETE" }),
+  // shop: settings (contacts)
+  getShopSettings: () => req<AdminShopSettings>("/api/admin/shop/settings"),
+  updateShopSettings: (body: unknown) => req<AdminShopSettings>("/api/admin/shop/settings", { method: "PUT", body: JSON.stringify(body) }),
   // shop: orders
   getOrders: () => req<AdminOrder[]>("/api/admin/shop/orders"),
   setOrderStatus: (id: number, status: string) => req<AdminOrder>(`/api/admin/shop/orders/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
@@ -101,12 +120,23 @@ export interface ProductSpec { label: string; value: string }
 export interface AdminProductTr { lang: string; title: string; short: string; body: string; specs: ProductSpec[] }
 export interface AdminProductAttr { attribute_id: number; value: string; num_value: number | null }
 export interface AdminProduct {
-  id: number; slug: string; category_id: number; price: number; currency: string;
+  id: number; slug: string; category_id: number; price: number; old_price: number | null; stock_qty: number | null; currency: string;
   in_stock: boolean; sku: string; enabled: boolean; sort_order: number; image_count: number;
   translations: AdminProductTr[]; attributes: AdminProductAttr[];
 }
 export interface AdminProductImage { id: number; filename: string; sort_order: number }
-export interface AdminOrderItem { product_id: number | null; title: string; price: number; qty: number }
+export interface AdminShopServiceTr { lang: string; title: string; short: string }
+export interface AdminShopService {
+  id: number; slug: string; category_id: number; price: number; currency: string;
+  icon: string; enabled: boolean; sort_order: number; translations: AdminShopServiceTr[];
+}
+export interface AdminBrand { id: number; name: string; enabled: boolean; sort_order: number }
+export interface AdminReview {
+  id: number; product_id: number; product_title: string; product_slug: string;
+  name: string; rating: number; text: string; status: string; created_at: string;
+}
+export interface AdminShopSettings { phone: string; whatsapp: string; address_ru: string; address_tk: string; address_en: string }
+export interface AdminOrderItem { product_id: number | null; service_id?: number | null; kind?: "product" | "service"; title: string; price: number; qty: number }
 export interface AdminOrder {
   id: number; customer_name: string; phone: string; address: string;
   payment_method: string; comment: string; status: string; total: number;

@@ -63,10 +63,6 @@ export default function CategoryEdit() {
       <div className="adm-block">
         <h3>Общее</h3>
         <div className="adm-field">
-          <label>slug</label>
-          <input className="adm-in" value={cat.slug} onChange={(e) => setCat({ ...cat, slug: e.target.value })} />
-        </div>
-        <div className="adm-field">
           <label>Родительская категория</label>
           <select
             className="adm-in"
@@ -85,6 +81,13 @@ export default function CategoryEdit() {
           <input type="checkbox" checked={cat.enabled} onChange={(e) => setCat({ ...cat, enabled: e.target.checked })} />
           Показывать на сайте
         </label>
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12, color: "var(--tx3)" }}>Дополнительно</summary>
+          <div className="adm-field" style={{ marginTop: 10 }}>
+            <label>slug (адрес)</label>
+            <input className="adm-in" value={cat.slug} onChange={(e) => setCat({ ...cat, slug: e.target.value })} />
+          </div>
+        </details>
       </div>
 
       <div className="adm-tabs">

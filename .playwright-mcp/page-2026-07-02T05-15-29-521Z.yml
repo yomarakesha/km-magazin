@@ -1,0 +1,178 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - generic [ref=f2e3]:
+      - link "KM Магазин" [ref=f2e4] [cursor=pointer]:
+        - /url: /shop
+        - text: KM
+        - generic [ref=f2e5]: Магазин
+      - link "На сайт" [ref=f2e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=f2e7]
+        - generic [ref=f2e9]: На сайт
+      - generic [ref=f2e10]:
+        - img [ref=f2e11]
+        - textbox "Поиск" [ref=f2e14]:
+          - /placeholder: Поиск товаров…
+        - button "Поиск" [ref=f2e15] [cursor=pointer]:
+          - img [ref=f2e16]
+      - generic [ref=f2e18]:
+        - link "Избранное" [ref=f2e19] [cursor=pointer]:
+          - /url: /shop/favorites
+          - img [ref=f2e20]
+        - generic [ref=f2e22]:
+          - button "РУ" [ref=f2e23] [cursor=pointer]
+          - button "TK" [ref=f2e24] [cursor=pointer]
+          - button "EN" [ref=f2e25] [cursor=pointer]
+        - button "Корзина" [ref=f2e26] [cursor=pointer]:
+          - img [ref=f2e27]
+          - generic [ref=f2e31]: Корзина
+  - main [ref=f2e32]:
+    - generic [ref=f2e33]:
+      - paragraph [ref=f2e34]:
+        - link "Каталог" [ref=f2e35] [cursor=pointer]:
+          - /url: /shop
+        - text: ›
+        - link "computers" [ref=f2e36] [cursor=pointer]:
+          - /url: /shop/category/computers
+      - generic [ref=f2e37]:
+        - button "Игровой ПК Gamer Pro" [ref=f2e39]:
+          - generic [ref=f2e40]:
+            - img [ref=f2e42]
+            - generic [ref=f2e45]: KM
+        - generic [ref=f2e46]:
+          - generic [ref=f2e47]: В наличии
+          - heading "Игровой ПК Gamer Pro" [level=1] [ref=f2e48]
+          - link "4.5 / 5" [ref=f2e49] [cursor=pointer]:
+            - /url: "#reviews"
+            - generic "4.5 / 5" [ref=f2e50]:
+              - img [ref=f2e52]
+              - img [ref=f2e55]
+              - img [ref=f2e58]
+              - img [ref=f2e61]
+              - img [ref=f2e64]
+              - generic [ref=f2e66]: 4.5 · 2
+          - paragraph [ref=f2e67]: Core i7, RTX 4070, 32 ГБ
+          - generic [ref=f2e68]: 27 000 TMT
+          - paragraph [ref=f2e69]:
+            - img [ref=f2e70]
+            - text: "Осталось: 3"
+          - generic [ref=f2e73]:
+            - button "В корзину" [ref=f2e74] [cursor=pointer]
+            - button "Избранное" [ref=f2e75] [cursor=pointer]:
+              - img [ref=f2e76]
+              - text: Избранное
+            - link "Заказать в WhatsApp" [ref=f2e78] [cursor=pointer]:
+              - /url: https://wa.me/99312000000?text=%D0%98%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B9%20%D0%9F%D0%9A%20Gamer%20Pro%20%E2%80%94%2027000%20TMT
+              - img [ref=f2e79]
+              - text: Заказать в WhatsApp
+          - generic [ref=f2e82]:
+            - generic [ref=f2e83]:
+              - img [ref=f2e84]
+              - text: Быстрая доставка
+            - generic [ref=f2e89]:
+              - img [ref=f2e90]
+              - text: Официальная гарантия
+            - generic [ref=f2e92]:
+              - img [ref=f2e93]
+              - text: +993 12 00-00-00
+          - generic [ref=f2e95]:
+            - generic [ref=f2e96]: Ключевые характеристики
+            - generic [ref=f2e97]:
+              - generic [ref=f2e98]:
+                - generic [ref=f2e99]: Core i7
+                - generic [ref=f2e100]: Процессор
+              - generic [ref=f2e101]:
+                - generic [ref=f2e102]: 32 GB
+                - generic [ref=f2e103]: Память
+              - generic [ref=f2e104]:
+                - generic [ref=f2e105]: RTX 4070
+                - generic [ref=f2e106]: Видеокарта
+              - generic [ref=f2e107]:
+                - generic [ref=f2e108]: 1024 GB
+                - generic [ref=f2e109]: Накопитель
+      - generic [ref=f2e111]:
+        - generic [ref=f2e112]:
+          - img [ref=f2e113]
+          - heading "Услуги" [level=2] [ref=f2e115]
+        - generic [ref=f2e116]:
+          - generic [ref=f2e117]:
+            - img [ref=f2e119]
+            - generic [ref=f2e121]:
+              - generic [ref=f2e122]: Ремонт компьютера
+              - paragraph [ref=f2e123]: Диагностика и ремонт
+            - generic [ref=f2e124]:
+              - generic [ref=f2e125]: 300 TMT
+              - button "В корзину" [ref=f2e126] [cursor=pointer]
+          - generic [ref=f2e127]:
+            - img [ref=f2e129]
+            - generic [ref=f2e132]:
+              - generic [ref=f2e133]: Переустановка ОС
+              - paragraph [ref=f2e134]: Windows + драйверы + программы
+            - generic [ref=f2e135]:
+              - generic [ref=f2e136]: 150 TMT
+              - button "В корзину" [ref=f2e137] [cursor=pointer]
+      - generic [ref=f2e138]:
+        - generic [ref=f2e139]:
+          - img [ref=f2e140]
+          - heading "Отзывы · 2" [level=2] [ref=f2e142]
+          - generic "4.5 / 5" [ref=f2e143]:
+            - img [ref=f2e145]
+            - img [ref=f2e148]
+            - img [ref=f2e151]
+            - img [ref=f2e154]
+            - img [ref=f2e157]
+        - generic [ref=f2e159]:
+          - generic [ref=f2e160]:
+            - generic [ref=f2e161]:
+              - generic [ref=f2e162]: Айна
+              - generic "4 / 5" [ref=f2e163]:
+                - img [ref=f2e165]
+                - img [ref=f2e168]
+                - img [ref=f2e171]
+                - img [ref=f2e174]
+                - img [ref=f2e177]
+              - generic [ref=f2e179]: 02.07.2026
+            - paragraph [ref=f2e180]: Хороший ПК, доставили быстро.
+          - generic [ref=f2e181]:
+            - generic [ref=f2e182]:
+              - generic [ref=f2e183]: Мердан
+              - generic "5 / 5" [ref=f2e184]:
+                - img [ref=f2e186]
+                - img [ref=f2e189]
+                - img [ref=f2e192]
+                - img [ref=f2e195]
+                - img [ref=f2e198]
+              - generic [ref=f2e200]: 02.07.2026
+            - paragraph [ref=f2e201]: Отличная сборка, всё летает.
+        - button "Оставить отзыв" [ref=f2e202] [cursor=pointer]
+      - generic [ref=f2e204]:
+        - generic [ref=f2e205]:
+          - generic [ref=f2e206]: Игровой ПК Gamer Pro
+          - generic [ref=f2e207]: В наличии
+        - generic [ref=f2e208]:
+          - generic [ref=f2e209]: 27 000 TMT
+          - button [ref=f2e210] [cursor=pointer]: В корзину
+  - contentinfo [ref=f2e211]:
+    - generic [ref=f2e212]:
+      - generic [ref=f2e213]:
+        - generic [ref=f2e214]: Доставка
+        - paragraph [ref=f2e215]: Доставка по городу. Оплата наличными или терминалом при получении.
+      - generic [ref=f2e216]:
+        - generic [ref=f2e217]: Гарантия и сервис
+        - paragraph [ref=f2e218]: Ашхабад, ул. ...
+      - generic [ref=f2e219]:
+        - generic [ref=f2e220]: Нужна помощь с выбором?
+        - link "+993 12 00-00-00" [ref=f2e221] [cursor=pointer]:
+          - /url: tel:+9931200-00-00
+          - img [ref=f2e222]
+          - text: +993 12 00-00-00
+        - link "WhatsApp" [ref=f2e224] [cursor=pointer]:
+          - /url: https://wa.me/99312000000?text=%D0%9D%D1%83%D0%B6%D0%BD%D0%B0%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%20%D1%81%20%D0%B2%D1%8B%D0%B1%D0%BE%D1%80%D0%BE%D0%BC%3F
+          - img [ref=f2e225]
+          - text: WhatsApp
+    - link "На сайт" [ref=f2e229] [cursor=pointer]:
+      - /url: /
+      - img [ref=f2e230]
+      - text: На сайт
+  - button "Open Next.js Dev Tools" [ref=f2e237] [cursor=pointer]:
+    - img [ref=f2e238]

@@ -129,6 +129,12 @@ class ShopCategory(Base):
         lazy="selectin",
         order_by="Product.sort_order",
     )
+    services: Mapped[list["ShopService"]] = relationship(
+        back_populates="category",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="ShopService.sort_order",
+    )
 
 
 class ShopCategoryTranslation(Base):
@@ -183,8 +189,10 @@ class Product(Base):
     slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("shop_categories.id", ondelete="CASCADE"))
     price: Mapped[int] = mapped_column(Integer, default=0)  # whole manat
+    old_price: Mapped[int | None] = mapped_column(Integer, nullable=True)  # pre-discount price
     currency: Mapped[str] = mapped_column(String(8), default="TMT")
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)  # in stock vs. to order
+    stock_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = not tracked
     sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -248,6 +256,80 @@ class ProductAttribute(Base):
     attribute: Mapped["CategoryAttribute"] = relationship("CategoryAttribute")
 
 
+class ShopService(Base):
+    """A priced service attached to a shop category (e.g. install, setup,
+    OS reinstall). Customers add it to the cart alongside products."""
+
+    __tablename__ = "shop_services"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey("shop_categories.id", ondelete="CASCADE"))
+    price: Mapped[int] = mapped_column(Integer, default=0)  # whole manat
+    currency: Mapped[str] = mapped_column(String(8), default="TMT")
+    icon: Mapped[str] = mapped_column(String(32), default="wrench")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    category: Mapped["ShopCategory"] = relationship("ShopCategory", back_populates="services")
+    translations: Mapped[list["ShopServiceTranslation"]] = relationship(
+        back_populates="service", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class ShopServiceTranslation(Base):
+    __tablename__ = "shop_service_translations"
+    __table_args__ = (UniqueConstraint("service_id", "lang", name="uq_shopservice_lang"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("shop_services.id", ondelete="CASCADE"))
+    lang: Mapped[str] = mapped_column(String(2))
+    title: Mapped[str] = mapped_column(String(256), default="")
+    short: Mapped[str] = mapped_column(String(256), default="")
+
+    service: Mapped["ShopService"] = relationship(back_populates="translations")
+
+
+class ProductReview(Base):
+    """A customer review; shown publicly only after admin approval."""
+
+    __tablename__ = "shop_product_reviews"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("shop_products.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(128))
+    rating: Mapped[int] = mapped_column(Integer, default=5)  # 1..5
+    text: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(8), default="pending")  # pending|approved|rejected
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    product: Mapped["Product"] = relationship("Product")
+
+
+class ShopBrand(Base):
+    """A brand/partner shown in the storefront brands strip."""
+
+    __tablename__ = "shop_brands"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ShopSettings(Base):
+    """Singleton (id=1) store contact settings shown across the shop."""
+
+    __tablename__ = "shop_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    phone: Mapped[str] = mapped_column(String(64), default="")
+    whatsapp: Mapped[str] = mapped_column(String(32), default="")
+    address_ru: Mapped[str] = mapped_column(String(256), default="")
+    address_tk: Mapped[str] = mapped_column(String(256), default="")
+    address_en: Mapped[str] = mapped_column(String(256), default="")
+
+
 class Order(Base):
     __tablename__ = "shop_orders"
 
@@ -273,6 +355,9 @@ class OrderItem(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("shop_orders.id", ondelete="CASCADE"))
     product_id: Mapped[int | None] = mapped_column(
         ForeignKey("shop_products.id", ondelete="SET NULL"), nullable=True
+    )
+    service_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_services.id", ondelete="SET NULL"), nullable=True
     )
     title_snapshot: Mapped[str] = mapped_column(String(256), default="")
     price_snapshot: Mapped[int] = mapped_column(Integer, default=0)

@@ -3,7 +3,8 @@
 type IconName =
   | "search" | "cart" | "eye" | "check" | "close" | "minus" | "plus"
   | "phone" | "truck" | "filter" | "chevron" | "arrow" | "whatsapp"
-  | "box" | "grid" | "shield" | "trash" | "compare";
+  | "box" | "grid" | "shield" | "trash" | "compare"
+  | "wrench" | "settings" | "refresh" | "heart" | "star";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
@@ -24,6 +25,11 @@ const PATHS: Record<IconName, React.ReactNode> = {
   shield: <path d="M12 3 5 6v6c0 4 3 6.5 7 8 4-1.5 7-4 7-8V6Z" />,
   trash: <><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></>,
   compare: <><rect x="3" y="5" width="7" height="14" rx="1.2" /><rect x="14" y="5" width="7" height="14" rx="1.2" /><path d="M12 3v18" /></>,
+  wrench: <path d="M15 6a3.5 3.5 0 0 0-4.6 4.2L4 16.6 7.4 20l6.4-6.4A3.5 3.5 0 0 0 18 9l-2 2-2-2 2-2a3.5 3.5 0 0 0-1-1Z" />,
+  settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
+  refresh: <><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 4v4h-4" /></>,
+  heart: <path d="M12 20.5s-7.5-4.6-9.3-9A5 5 0 0 1 12 6.5 5 5 0 0 1 21.3 11.5c-1.8 4.4-9.3 9-9.3 9Z" />,
+  star: <path d="m12 3 2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-2.9-5.4 2.9 1.1-6L3.2 9.4l6.1-.8Z" />,
 };
 
 export default function Icon({

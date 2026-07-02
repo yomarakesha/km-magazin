@@ -4,7 +4,7 @@ dynamic attribute filters (facets), product detail and order creation.
 Texts are returned as per-language maps ({ru, tk, en}) so the SSR frontend can
 switch language client-side, mirroring how the landing handles i18n.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -16,14 +16,36 @@ from ..models import (
     OrderItem,
     Product,
     ProductAttribute,
+    ProductReview,
     ProductTranslation,
+    ShopBrand,
     ShopCategory,
+    ShopService,
+    ShopSettings,
 )
-from ..schemas import OrderIn
+from ..notify import order_message, telegram_notify
+from ..schemas import OrderIn, ReviewIn
 
 router = APIRouter(prefix="/api/shop", tags=["shop"])
 
 PRODUCTS_SUBDIR = "products"
+
+
+DEFAULT_PAGE = 12
+MAX_PAGE = 48
+
+
+def _page_params(params) -> tuple[int, int]:
+    """Clamped (limit, offset) from the query string."""
+    try:
+        limit = min(max(int(params.get("limit", DEFAULT_PAGE)), 1), MAX_PAGE)
+    except ValueError:
+        limit = DEFAULT_PAGE
+    try:
+        offset = max(int(params.get("offset", 0)), 0)
+    except ValueError:
+        offset = 0
+    return limit, offset
 
 
 def _apply_sort(stmt, sort: str | None):
@@ -47,21 +69,85 @@ def _first_image(p: Product) -> str | None:
     return f"{PRODUCTS_SUBDIR}/{imgs[0].filename}" if imgs else None
 
 
+def _in_stock(p: Product) -> bool:
+    """Effective availability: tracked stock at zero forces 'to order'."""
+    return p.in_stock and (p.stock_qty is None or p.stock_qty > 0)
+
+
 def _card(p: Product) -> dict:
     return {
         "id": p.id,
         "slug": p.slug,
+        "category_id": p.category_id,
         "price": p.price,
+        "old_price": p.old_price,
         "currency": p.currency,
-        "in_stock": p.in_stock,
+        "in_stock": _in_stock(p),
         "image": _first_image(p),
         "title": _imap(p.translations, "title"),
         "short": _imap(p.translations, "short"),
     }
 
 
+def _ratings_map(db: Session, ids: list[int]) -> dict[int, tuple[float, int]]:
+    """product_id → (avg rating, approved review count)."""
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(ProductReview.product_id, func.avg(ProductReview.rating), func.count())
+        .where(ProductReview.product_id.in_(ids), ProductReview.status == "approved")
+        .group_by(ProductReview.product_id)
+    ).all()
+    return {pid: (round(float(avg), 1), int(cnt)) for pid, avg, cnt in rows}
+
+
+def _attach_ratings(cards: list[dict], db: Session) -> list[dict]:
+    ratings = _ratings_map(db, [c["id"] for c in cards])
+    for c in cards:
+        r = ratings.get(c["id"])
+        c["rating"], c["rating_count"] = (r[0], r[1]) if r else (None, 0)
+    return cards
+
+
+def _service_card(s: ShopService) -> dict:
+    return {
+        "id": s.id,
+        "slug": s.slug,
+        "category_id": s.category_id,
+        "price": s.price,
+        "currency": s.currency,
+        "icon": s.icon,
+        "title": _imap(s.translations, "title"),
+        "short": _imap(s.translations, "short"),
+    }
+
+
+def _category_services(cat: ShopCategory, db: Session) -> list[dict]:
+    rows = db.scalars(
+        select(ShopService)
+        .where(ShopService.category_id == cat.id, ShopService.enabled == True)  # noqa: E712
+        .order_by(ShopService.sort_order)
+    ).all()
+    return [_service_card(s) for s in rows]
+
+
+def settings_dict(db: Session) -> dict:
+    """Shop contact settings as a UI-friendly map; falls back to blanks when the
+    singleton row hasn't been created yet."""
+    s = db.get(ShopSettings, 1)
+    return {
+        "phone": s.phone if s else "",
+        "whatsapp": s.whatsapp if s else "",
+        "address": {
+            "ru": s.address_ru if s else "",
+            "tk": s.address_tk if s else "",
+            "en": s.address_en if s else "",
+        },
+    }
+
+
 @router.get("/catalog")
-def catalog(db: Session = Depends(get_db)) -> dict:
+def catalog(request: Request, db: Session = Depends(get_db)) -> dict:
     cats = db.scalars(
         select(ShopCategory).where(ShopCategory.enabled == True).order_by(ShopCategory.sort_order)  # noqa: E712
     ).all()
@@ -75,13 +161,26 @@ def catalog(db: Session = Depends(get_db)) -> dict:
         }
         for c in cats
     ]
+    limit, offset = _page_params(request.query_params)
+    total = db.scalar(select(func.count()).select_from(Product).where(Product.enabled == True))  # noqa: E712
     featured = db.scalars(
-        select(Product).where(Product.enabled == True).order_by(Product.sort_order).limit(12)  # noqa: E712
+        select(Product).where(Product.enabled == True)  # noqa: E712
+        .order_by(Product.sort_order).offset(offset).limit(limit)
+    ).all()
+    services = db.scalars(
+        select(ShopService).where(ShopService.enabled == True).order_by(ShopService.sort_order)  # noqa: E712
+    ).all()
+    brands = db.scalars(
+        select(ShopBrand).where(ShopBrand.enabled == True).order_by(ShopBrand.sort_order)  # noqa: E712
     ).all()
     return {
         "mediaBase": f"{PUBLIC_URL}/media",
         "categories": categories,
-        "products": [_card(p) for p in featured],
+        "products": _attach_ratings([_card(p) for p in featured], db),
+        "total": int(total or 0),
+        "services": [_service_card(s) for s in services],
+        "brands": [{"id": b.id, "name": b.name} for b in brands],
+        "settings": settings_dict(db),
     }
 
 
@@ -131,12 +230,18 @@ def category(slug: str, request: Request, db: Session = Depends(get_db)) -> dict
 
     facets = _build_facets(cat, filtered_ids, db)
 
+    # facets/counts reflect the full filtered set; only the product list pages
+    limit, offset = _page_params(params)
+    page = prods[offset : offset + limit]
+
     return {
         "mediaBase": f"{PUBLIC_URL}/media",
         "slug": cat.slug,
         "name": _imap(cat.translations, "name"),
         "facets": facets,
-        "products": [_card(p) for p in prods],
+        "products": _attach_ratings([_card(p) for p in page], db),
+        "total": len(prods),
+        "services": _category_services(cat, db),
     }
 
 
@@ -206,10 +311,12 @@ def search(request: Request, db: Session = Depends(get_db)) -> dict:
         )
         stmt = stmt.where(or_(Product.id.in_(text_match), Product.sku.ilike(like)))
     prods = db.scalars(_apply_sort(stmt, params.get("sort"))).all()
+    limit, offset = _page_params(params)
     return {
         "mediaBase": f"{PUBLIC_URL}/media",
         "query": q,
-        "products": [_card(p) for p in prods],
+        "products": _attach_ratings([_card(p) for p in prods[offset : offset + limit]], db),
+        "total": len(prods),
     }
 
 
@@ -235,25 +342,55 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
         attributes.append(
             {"key": a.key, "label": _imap(a.translations, "label"), "value": pa.value, "unit": a.unit or ""}
         )
+    reviews = db.scalars(
+        select(ProductReview)
+        .where(ProductReview.product_id == p.id, ProductReview.status == "approved")
+        .order_by(ProductReview.created_at.desc())
+        .limit(30)
+    ).all()
+    rating = _ratings_map(db, [p.id]).get(p.id)
     return {
         "mediaBase": f"{PUBLIC_URL}/media",
         "id": p.id,
         "slug": p.slug,
         "category": p.category.slug,
+        "category_id": p.category_id,
         "price": p.price,
+        "old_price": p.old_price,
         "currency": p.currency,
-        "in_stock": p.in_stock,
+        "in_stock": _in_stock(p),
+        "stock_qty": p.stock_qty,
         "title": _imap(p.translations, "title"),
         "short": _imap(p.translations, "short"),
         "body": _imap(p.translations, "body"),
         "specs": {t.lang: (t.specs or []) for t in p.translations},
         "images": [f"{PRODUCTS_SUBDIR}/{im.filename}" for im in sorted(p.images, key=lambda x: x.sort_order)],
         "attributes": attributes,
+        "services": _category_services(p.category, db),
+        "rating": rating[0] if rating else None,
+        "rating_count": rating[1] if rating else 0,
+        "reviews": [
+            {"name": r.name, "rating": r.rating, "text": r.text, "created_at": r.created_at.isoformat()}
+            for r in reviews
+        ],
     }
 
 
+@router.post("/products/{slug}/reviews", status_code=201)
+def create_review(slug: str, payload: ReviewIn, db: Session = Depends(get_db)) -> dict:
+    """Submit a review; it stays hidden until an admin approves it."""
+    p = db.scalar(select(Product).where(Product.slug == slug))
+    if not p or not p.enabled:
+        raise HTTPException(404, "Product not found")
+    db.add(ProductReview(
+        product_id=p.id, name=payload.name.strip(), rating=payload.rating, text=payload.text.strip()
+    ))
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/orders", status_code=201)
-def create_order(payload: OrderIn, db: Session = Depends(get_db)) -> dict:
+def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     """Create an order. The total is recomputed server-side from DB prices;
     item title/price are snapshotted so the order is stable over time."""
     order = Order(
@@ -267,20 +404,45 @@ def create_order(payload: OrderIn, db: Session = Depends(get_db)) -> dict:
     )
     total = 0
     for it in payload.items:
-        p = db.get(Product, it.product_id)
-        if not p or not p.enabled:
-            raise HTTPException(400, f"Product {it.product_id} is unavailable")
-        title = next((t.title for t in p.translations if t.lang == "ru"), None) or p.slug
-        order.items.append(
-            OrderItem(
-                product_id=p.id,
-                title_snapshot=title,
-                price_snapshot=p.price,
-                qty=it.qty,
+        ref = it.ref_id()
+        if ref is None:
+            raise HTTPException(400, "Order item is missing an id")
+        if it.kind == "service":
+            s = db.get(ShopService, ref)
+            if not s or not s.enabled:
+                raise HTTPException(400, f"Service {ref} is unavailable")
+            title = next((t.title for t in s.translations if t.lang == "ru"), None) or s.slug
+            order.items.append(
+                OrderItem(
+                    service_id=s.id,
+                    title_snapshot=title,
+                    price_snapshot=s.price,
+                    qty=it.qty,
+                )
             )
-        )
-        total += p.price * it.qty
+            total += s.price * it.qty
+        else:
+            p = db.get(Product, ref)
+            if not p or not p.enabled:
+                raise HTTPException(400, f"Product {ref} is unavailable")
+            title = next((t.title for t in p.translations if t.lang == "ru"), None) or p.slug
+            order.items.append(
+                OrderItem(
+                    product_id=p.id,
+                    title_snapshot=title,
+                    price_snapshot=p.price,
+                    qty=it.qty,
+                )
+            )
+            if p.stock_qty is not None:
+                p.stock_qty = max(0, p.stock_qty - it.qty)
+            total += p.price * it.qty
     order.total = total
     db.add(order)
     db.commit()
+    lines = [f"{it.title_snapshot} × {it.qty} = {it.price_snapshot * it.qty} TMT" for it in order.items]
+    background.add_task(
+        telegram_notify,
+        order_message(order.id, order.customer_name, order.phone, total, lines),
+    )
     return {"ok": True, "id": order.id, "total": total}
