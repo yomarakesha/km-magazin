@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useShop, cartUid } from "@/components/shop/shop-context";
-import { createOrder } from "@/lib/shop-api";
+import { checkPromo, createOrder, type PromoCheckResult } from "@/lib/shop-api";
 import Icon from "@/components/shop/ui/Icon";
 
 export default function CheckoutPage() {
@@ -15,6 +15,27 @@ export default function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<number | null>(null);
   const [err, setErr] = useState("");
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState<PromoCheckResult | null>(null);
+  const [promoErr, setPromoErr] = useState("");
+  const [promoBusy, setPromoBusy] = useState(false);
+
+  const discount = promo ? Math.min(promo.discount, total) : 0;
+  const payable = total - discount;
+
+  async function applyPromo() {
+    if (!promoInput.trim()) return;
+    setPromoBusy(true);
+    setPromoErr("");
+    try {
+      setPromo(await checkPromo(promoInput.trim(), total));
+    } catch {
+      setPromo(null);
+      setPromoErr(t("promoInvalid"));
+    } finally {
+      setPromoBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +46,7 @@ export default function CheckoutPage() {
       const res = await createOrder({
         customer_name: name.trim(), phone: phone.trim(), address: address.trim(),
         payment_method: payment, comment: comment.trim(),
+        promo_code: promo?.code ?? "",
         items: items.map((it) => ({ kind: it.kind, id: it.id, qty: it.qty })),
       });
       clear();
@@ -41,7 +63,10 @@ export default function CheckoutPage() {
           <h1 className="shop-h1">{t("orderOk")}</h1>
           <p>{t("orderOkText")}</p>
           <p className="shop-order-no">{t("orderNumber")}: <b>#{done}</b></p>
-          <Link href="/shop" className="shop-btn">{t("continueShopping")}</Link>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href={`/shop/order/${done}?phone=${encodeURIComponent(phone.trim())}`} className="shop-btn ghost">{t("trackOrder")}</Link>
+            <Link href="/shop" className="shop-btn">{t("continueShopping")}</Link>
+          </div>
         </div>
       </div>
     );
@@ -60,7 +85,8 @@ export default function CheckoutPage() {
   const waText = [
     `${t("checkout")}:`,
     ...items.map((it) => `• ${pick(it.titles)} × ${it.qty} — ${(it.price * it.qty).toLocaleString("ru-RU")} ${it.currency}`),
-    `${t("total")}: ${total.toLocaleString("ru-RU")} TMT`,
+    ...(discount > 0 ? [`${t("discount")} (${promo?.code}): −${discount.toLocaleString("ru-RU")} TMT`] : []),
+    `${t("total")}: ${payable.toLocaleString("ru-RU")} TMT`,
   ].join("\n");
 
   return (
@@ -92,6 +118,23 @@ export default function CheckoutPage() {
           <label>{t("comment")}
             <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
           </label>
+          <label>{t("promo")}
+            {promo ? (
+              <span className="shop-promo-ok">
+                <b>{promo.code}</b> — {t("promoApplied")} (−{discount.toLocaleString("ru-RU")} TMT)
+                <button type="button" className="shop-promo-x" onClick={() => { setPromo(null); setPromoInput(""); }}>{t("promoRemove")}</button>
+              </span>
+            ) : (
+              <span style={{ display: "flex", gap: 8 }}>
+                <input value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoErr(""); }}
+                  placeholder="SALE10" style={{ flex: 1 }} />
+                <button type="button" className="shop-btn ghost" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()}>
+                  {promoBusy ? "…" : t("promoApply")}
+                </button>
+              </span>
+            )}
+            {promoErr && <span className="shop-err" style={{ marginTop: 6 }}>{promoErr}</span>}
+          </label>
           {err && <p className="shop-err">{err}</p>}
           <button className="shop-btn block" type="submit" disabled={busy}>{busy ? t("sending") : t("placeOrder")}</button>
           {settings.whatsapp && <a className="shop-btn wa block" href={wa(waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</a>}
@@ -105,7 +148,13 @@ export default function CheckoutPage() {
               <span>{(it.price * it.qty).toLocaleString("ru-RU")} TMT</span>
             </div>
           ))}
-          <div className="shop-order-row total"><span>{t("total")}</span><b>{total.toLocaleString("ru-RU")} TMT</b></div>
+          {discount > 0 && (
+            <div className="shop-order-row" style={{ color: "var(--sh-acc-d)" }}>
+              <span>{t("discount")} ({promo?.code})</span>
+              <span>−{discount.toLocaleString("ru-RU")} TMT</span>
+            </div>
+          )}
+          <div className="shop-order-row total"><span>{t("total")}</span><b>{payable.toLocaleString("ru-RU")} TMT</b></div>
         </aside>
       </div>
     </div>

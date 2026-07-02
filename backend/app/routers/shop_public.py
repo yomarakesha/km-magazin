@@ -18,13 +18,14 @@ from ..models import (
     ProductAttribute,
     ProductReview,
     ProductTranslation,
+    PromoCode,
     ShopBrand,
     ShopCategory,
     ShopService,
     ShopSettings,
 )
 from ..notify import order_message, telegram_notify
-from ..schemas import OrderIn, ReviewIn
+from ..schemas import OrderIn, PromoCheckIn, ReviewIn
 
 router = APIRouter(prefix="/api/shop", tags=["shop"])
 
@@ -389,6 +390,68 @@ def create_review(slug: str, payload: ReviewIn, db: Session = Depends(get_db)) -
     return {"ok": True}
 
 
+def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | None, int]:
+    """Resolve a promo code against a subtotal. Returns (promo, discount) or
+    (None, 0) when the code is unknown, inactive, expired or below min_total."""
+    from datetime import datetime
+
+    code = code.strip()
+    if not code:
+        return None, 0
+    promo = db.scalar(select(PromoCode).where(func.lower(PromoCode.code) == code.lower()))
+    if not promo or not promo.active:
+        return None, 0
+    if promo.expires_at and promo.expires_at < datetime.utcnow():
+        return None, 0
+    if subtotal < promo.min_total:
+        return None, 0
+    raw = subtotal * promo.value // 100 if promo.kind == "percent" else promo.value
+    return promo, max(0, min(raw, subtotal))
+
+
+@router.post("/promo/check")
+def promo_check(payload: PromoCheckIn, db: Session = Depends(get_db)) -> dict:
+    promo, discount = promo_discount(db, payload.code, payload.subtotal)
+    if not promo:
+        raise HTTPException(404, "Promo code is not valid")
+    return {
+        "code": promo.code,
+        "kind": promo.kind,
+        "value": promo.value,
+        "min_total": promo.min_total,
+        "discount": discount,
+    }
+
+
+def _digits(s: str) -> str:
+    return "".join(ch for ch in s if ch.isdigit())
+
+
+@router.get("/orders/{order_id}")
+def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) -> dict:
+    """Customer-facing order lookup: the phone must match the one on the order
+    (digits-only comparison) so order ids alone don't leak anything."""
+    o = db.get(Order, order_id)
+    if not o or not phone or _digits(phone) != _digits(o.phone) or not _digits(phone):
+        raise HTTPException(404, "Order not found")
+    return {
+        "id": o.id,
+        "status": o.status,
+        "payment_method": o.payment_method,
+        "total": o.total,
+        "created_at": o.created_at,
+        "items": [
+            {
+                "title": it.title_snapshot,
+                "price": it.price_snapshot,
+                "qty": it.qty,
+                "kind": "service" if it.service_id is not None else "product",
+            }
+            for it in o.items
+        ],
+    }
+
+
 @router.post("/orders", status_code=201)
 def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     """Create an order. The total is recomputed server-side from DB prices;
@@ -437,12 +500,20 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
             if p.stock_qty is not None:
                 p.stock_qty = max(0, p.stock_qty - it.qty)
             total += p.price * it.qty
+    promo, discount = promo_discount(db, payload.promo_code, total)
+    if promo:
+        order.promo_code = promo.code
+        order.discount = discount
+        promo.used_count += 1
+        total -= discount
     order.total = total
     db.add(order)
     db.commit()
     lines = [f"{it.title_snapshot} × {it.qty} = {it.price_snapshot * it.qty} TMT" for it in order.items]
+    if promo:
+        lines.append(f"Промокод {promo.code}: −{discount} TMT")
     background.add_task(
         telegram_notify,
         order_message(order.id, order.customer_name, order.phone, total, lines),
     )
-    return {"ok": True, "id": order.id, "total": total}
+    return {"ok": True, "id": order.id, "total": total, "discount": discount if promo else 0}

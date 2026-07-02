@@ -391,6 +391,22 @@
 .shop-order-row.total { border-top: 1px solid var(--sh-line); margin-top: 8px; padding-top: 12px; color: var(--sh-tx); font-size: 16px; font-weight: 700; }
 .shop-order-row.total b { font-family: var(--disp); }
 
+/* promo code row (checkout) */
+.shop-promo-ok { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--sh-acc-d); background: var(--sh-acc-tint); border: 1px solid var(--sh-acc); border-radius: 10px; padding: 10px 12px; }
+.shop-promo-x { background: none; border: none; cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--sh-tx3); text-decoration: underline; padding: 0; margin-left: auto; }
+.shop-promo-x:hover { color: var(--sh-tx); }
+
+/* order tracking (customer /shop/order/[id]) */
+.shop-track { list-style: none; display: flex; gap: 0; margin: 18px 0 20px; padding: 0; }
+.shop-track li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px; color: var(--sh-tx3); position: relative; text-align: center; }
+.shop-track li::before { content: ""; position: absolute; top: 14px; left: -50%; width: 100%; height: 2px; background: var(--sh-line); }
+.shop-track li:first-child::before { display: none; }
+.shop-track li.done { color: var(--sh-tx); font-weight: 600; }
+.shop-track li.done::before { background: var(--sh-acc); }
+.shop-track .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--sh-card); border: 2px solid var(--sh-line); display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; position: relative; z-index: 1; }
+.shop-track li.done .dot { background: var(--sh-acc); border-color: var(--sh-acc); color: #fff; }
+.shop-track-cancelled { display: inline-block; font-family: var(--mono); font-size: 13px; font-weight: 700; color: #c0392b; background: rgba(192, 57, 43, 0.08); border: 1px solid rgba(192, 57, 43, 0.25); border-radius: 8px; padding: 8px 14px; margin: 12px 0 16px; }
+
 .shop-ok { text-align: center; padding: 56px 16px; }
 .shop-ok-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--sh-acc-tint); color: var(--sh-acc-d); display: inline-flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 18px; }
 .shop-ok p { color: var(--sh-tx2); }

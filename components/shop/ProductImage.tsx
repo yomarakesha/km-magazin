@@ -1,8 +1,17 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 import Icon from "./ui/Icon";
 
 type Variant = "card" | "pdp" | "thumb" | "mini";
+
+// responsive `sizes` per usage so the optimizer picks a sensible width
+const SIZES: Record<Variant, string> = {
+  card: "(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 260px",
+  pdp: "(max-width: 900px) 100vw, 560px",
+  thumb: "96px",
+  mini: "64px",
+};
 
 function hash(s: string) {
   let h = 0;
@@ -49,8 +58,14 @@ export default function ProductImage({
   if (src) {
     return (
       <span className={`shop-img ${loaded ? "on" : ""}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt || ""} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} />
+        <Image
+          src={src}
+          alt={alt || ""}
+          fill
+          sizes={SIZES[variant]}
+          priority={variant === "pdp"}
+          onLoad={() => setLoaded(true)}
+        />
       </span>
     );
   }

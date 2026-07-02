@@ -1,20 +1,25 @@
-import type { Catalog, I18n, ProductDetail } from "./shop-types";
+import type { Catalog, CategoryView, I18n, ProductDetail } from "./shop-types";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8000";
 
-/** SSR: category name map for metadata (no filters applied). */
-export async function getCategoryName(slug: string): Promise<I18n | null> {
+/** SSR: full category view (no filters) for metadata + JSON-LD ItemList. */
+export async function getCategory(slug: string): Promise<CategoryView | null> {
   try {
     const res = await fetch(`${API_URL}/api/shop/categories/${encodeURIComponent(slug)}`, {
       cache: "no-store",
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return null;
-    const json = await res.json();
-    return json.name as I18n;
+    return (await res.json()) as CategoryView;
   } catch {
     return null;
   }
+}
+
+/** SSR: category name map for metadata (no filters applied). */
+export async function getCategoryName(slug: string): Promise<I18n | null> {
+  const view = await getCategory(slug);
+  return view ? view.name : null;
 }
 
 /** SSR: load the shop catalog (categories + featured products). */

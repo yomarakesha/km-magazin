@@ -99,7 +99,19 @@ export const api = {
   getShopSettings: () => req<AdminShopSettings>("/api/admin/shop/settings"),
   updateShopSettings: (body: unknown) => req<AdminShopSettings>("/api/admin/shop/settings", { method: "PUT", body: JSON.stringify(body) }),
   // shop: orders
-  getOrders: () => req<AdminOrder[]>("/api/admin/shop/orders"),
+  getOrders: (opts?: { status?: string; q?: string }) => {
+    const p = new URLSearchParams();
+    if (opts?.status) p.set("status", opts.status);
+    if (opts?.q) p.set("q", opts.q);
+    const qs = p.toString();
+    return req<AdminOrder[]>(`/api/admin/shop/orders${qs ? `?${qs}` : ""}`);
+  },
+  getShopStats: () => req<AdminShopStats>("/api/admin/shop/stats"),
+  // shop: promo codes
+  getPromos: () => req<AdminPromo[]>("/api/admin/shop/promos"),
+  createPromo: (body: unknown) => req<AdminPromo>("/api/admin/shop/promos", { method: "POST", body: JSON.stringify(body) }),
+  updatePromo: (id: number, body: unknown) => req<AdminPromo>(`/api/admin/shop/promos/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deletePromo: (id: number) => req(`/api/admin/shop/promos/${id}`, { method: "DELETE" }),
   setOrderStatus: (id: number, status: string) => req<AdminOrder>(`/api/admin/shop/orders/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
   deleteOrder: (id: number) => req(`/api/admin/shop/orders/${id}`, { method: "DELETE" }),
 };
@@ -140,7 +152,19 @@ export interface AdminOrderItem { product_id: number | null; service_id?: number
 export interface AdminOrder {
   id: number; customer_name: string; phone: string; address: string;
   payment_method: string; comment: string; status: string; total: number;
+  promo_code?: string; discount?: number;
   created_at: string; items: AdminOrderItem[];
+}
+export interface AdminPromo {
+  id: number; code: string; kind: "percent" | "fixed"; value: number;
+  min_total: number; active: boolean; expires_at: string | null;
+  used_count: number; created_at: string;
+}
+export interface AdminShopStats {
+  orders_new: number; orders_today: number; orders_week: number; revenue_week: number;
+  reviews_pending: number;
+  top_products: { id: number; title: string; sold: number }[];
+  low_stock: { id: number; title: string; stock_qty: number }[];
 }
 
 export interface AdminTranslation {

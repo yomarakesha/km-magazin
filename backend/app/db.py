@@ -50,6 +50,17 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN old_price INTEGER"))
             if "stock_qty" not in cols:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN stock_qty INTEGER"))
+    if "shop_orders" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_orders")}
+        with engine.begin() as conn:
+            if "promo_code" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_orders ADD COLUMN promo_code VARCHAR(32) NOT NULL DEFAULT ''"
+                ))
+            if "discount" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_orders ADD COLUMN discount INTEGER NOT NULL DEFAULT 0"
+                ))
 
 
 def init_db() -> None:

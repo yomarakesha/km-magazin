@@ -35,7 +35,27 @@ export interface OrderPayload {
   address: string;
   payment_method: "cash" | "terminal";
   comment: string;
+  promo_code?: string;
   items: OrderItemPayload[];
+}
+
+export interface PromoCheckResult {
+  code: string;
+  kind: "percent" | "fixed";
+  value: number;
+  min_total: number;
+  discount: number;
+}
+
+/** Client: validate a promo code against the current cart subtotal. */
+export async function checkPromo(code: string, subtotal: number): Promise<PromoCheckResult> {
+  const res = await fetch(`${API}/api/shop/promo/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, subtotal }),
+  });
+  if (!res.ok) throw new Error(`promo check failed: ${res.status}`);
+  return (await res.json()) as PromoCheckResult;
 }
 
 /** Client: fetch a category view with the given filter query string. */
@@ -65,8 +85,24 @@ export async function postReview(slug: string, body: { name: string; rating: num
   if (!res.ok) throw new Error(`review failed: ${res.status}`);
 }
 
+export interface OrderStatusView {
+  id: number;
+  status: string;
+  payment_method: string;
+  total: number;
+  created_at: string;
+  items: { title: string; price: number; qty: number; kind: "product" | "service" }[];
+}
+
+/** Client: customer order lookup — the phone must match the order's phone. */
+export async function fetchOrderStatus(id: number, phone: string): Promise<OrderStatusView> {
+  const res = await fetch(`${API}/api/shop/orders/${id}?phone=${encodeURIComponent(phone)}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`order lookup failed: ${res.status}`);
+  return (await res.json()) as OrderStatusView;
+}
+
 /** Client: submit an order. The backend recomputes the total from DB prices. */
-export async function createOrder(payload: OrderPayload): Promise<{ ok: boolean; id: number; total: number }> {
+export async function createOrder(payload: OrderPayload): Promise<{ ok: boolean; id: number; total: number; discount: number }> {
   const res = await fetch(`${API}/api/shop/orders`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

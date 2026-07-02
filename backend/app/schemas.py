@@ -238,8 +238,33 @@ class OrderIn(BaseModel):
     address: str = Field(default="", max_length=512)
     payment_method: Literal["cash", "terminal"] = "cash"
     comment: str = Field(default="", max_length=2000)
+    promo_code: str = Field(default="", max_length=32)
     items: list[OrderItemIn] = Field(min_length=1)
 
 
 class OrderStatusIn(BaseModel):
     status: Literal["new", "confirmed", "delivered", "cancelled"]
+
+
+# ---- Shop: promo codes ----
+class PromoCodeIn(BaseModel):
+    code: str = Field(min_length=2, max_length=32)
+    kind: Literal["percent", "fixed"] = "percent"
+    value: int = Field(ge=1)
+    min_total: int = Field(default=0, ge=0)
+    active: bool = True
+    expires_at: str | None = None  # "YYYY-MM-DD" or null = no expiry
+
+
+class PromoCodeUpdateIn(BaseModel):
+    code: str | None = Field(default=None, min_length=2, max_length=32)
+    kind: Literal["percent", "fixed"] | None = None
+    value: int | None = Field(default=None, ge=1)
+    min_total: int | None = Field(default=None, ge=0)
+    active: bool | None = None
+    expires_at: str | None = None
+
+
+class PromoCheckIn(BaseModel):
+    code: str = Field(min_length=1, max_length=32)
+    subtotal: int = Field(ge=0)

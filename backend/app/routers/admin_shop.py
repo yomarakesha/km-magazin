@@ -11,11 +11,13 @@ from ..models import (
     CategoryAttribute,
     CategoryAttributeTranslation,
     Order,
+    OrderItem,
     Product,
     ProductAttribute,
     ProductImage,
     ProductReview,
     ProductTranslation,
+    PromoCode,
     ShopBrand,
     ShopCategory,
     ShopCategoryTranslation,
@@ -31,6 +33,8 @@ from ..schemas import (
     OrderStatusIn,
     ProductIn,
     ProductUpdateIn,
+    PromoCodeIn,
+    PromoCodeUpdateIn,
     ReorderIn,
     ReviewStatusIn,
     ShopBrandIn,
@@ -137,6 +141,8 @@ def _order(o: Order) -> dict:
         "comment": o.comment,
         "status": o.status,
         "total": o.total,
+        "promo_code": o.promo_code,
+        "discount": o.discount,
         "created_at": o.created_at,
         "items": [
             {
@@ -728,12 +734,185 @@ def reorder_images(product_id: int, payload: ReorderIn, db: Session = Depends(ge
 
 
 # --------------------------------------------------------------------------
+# Promo codes
+# --------------------------------------------------------------------------
+def _parse_expiry(raw: str | None):
+    """'YYYY-MM-DD' → end-of-day datetime; empty/None → no expiry."""
+    from datetime import datetime
+
+    if not raw or not raw.strip():
+        return None
+    try:
+        return datetime.strptime(raw.strip(), "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    except ValueError:
+        raise HTTPException(400, "expires_at must be YYYY-MM-DD")
+
+
+def _promo(p: PromoCode) -> dict:
+    return {
+        "id": p.id,
+        "code": p.code,
+        "kind": p.kind,
+        "value": p.value,
+        "min_total": p.min_total,
+        "active": p.active,
+        "expires_at": p.expires_at.strftime("%Y-%m-%d") if p.expires_at else None,
+        "used_count": p.used_count,
+        "created_at": p.created_at,
+    }
+
+
+@router.get("/promos")
+def list_promos(db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(select(PromoCode).order_by(PromoCode.created_at.desc())).all()
+    return [_promo(p) for p in rows]
+
+
+@router.post("/promos", status_code=201)
+def create_promo(payload: PromoCodeIn, db: Session = Depends(get_db)) -> dict:
+    code = payload.code.strip().upper()
+    if db.scalar(select(PromoCode).where(func.lower(PromoCode.code) == code.lower())):
+        raise HTTPException(409, "Code already exists")
+    p = PromoCode(
+        code=code,
+        kind=payload.kind,
+        value=payload.value,
+        min_total=payload.min_total,
+        active=payload.active,
+        expires_at=_parse_expiry(payload.expires_at),
+    )
+    db.add(p)
+    db.commit()
+    return _promo(p)
+
+
+@router.put("/promos/{promo_id}")
+def update_promo(promo_id: int, payload: PromoCodeUpdateIn, db: Session = Depends(get_db)) -> dict:
+    p = db.get(PromoCode, promo_id)
+    if not p:
+        raise HTTPException(404, "Promo code not found")
+    if payload.code is not None:
+        code = payload.code.strip().upper()
+        if db.scalar(
+            select(PromoCode).where(func.lower(PromoCode.code) == code.lower(), PromoCode.id != promo_id)
+        ):
+            raise HTTPException(409, "Code already exists")
+        p.code = code
+    if payload.kind is not None:
+        p.kind = payload.kind
+    if payload.value is not None:
+        p.value = payload.value
+    if payload.min_total is not None:
+        p.min_total = payload.min_total
+    if payload.active is not None:
+        p.active = payload.active
+    if "expires_at" in payload.model_fields_set:
+        # present-with-null clears the expiry; missing key = no change
+        p.expires_at = _parse_expiry(payload.expires_at)
+    db.commit()
+    return _promo(p)
+
+
+@router.delete("/promos/{promo_id}")
+def delete_promo(promo_id: int, db: Session = Depends(get_db)) -> dict:
+    p = db.get(PromoCode, promo_id)
+    if not p:
+        raise HTTPException(404, "Promo code not found")
+    db.delete(p)
+    db.commit()
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
 # Orders
 # --------------------------------------------------------------------------
 @router.get("/orders")
-def list_orders(db: Session = Depends(get_db)) -> list[dict]:
-    rows = db.scalars(select(Order).order_by(Order.created_at.desc())).all()
-    return [_order(o) for o in rows]
+def list_orders(
+    status: str | None = None,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    stmt = select(Order).order_by(Order.created_at.desc())
+    if status:
+        stmt = stmt.where(Order.status == status)
+    if q:
+        needle = f"%{q.strip()}%"
+        stmt = stmt.where(Order.phone.like(needle) | Order.customer_name.like(needle))
+    return [_order(o) for o in db.scalars(stmt).all()]
+
+
+@router.get("/stats")
+def shop_stats(db: Session = Depends(get_db)) -> dict:
+    from datetime import datetime, timedelta
+
+    now = datetime.utcnow()
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+    not_cancelled = Order.status != "cancelled"
+
+    orders_new = db.scalar(select(func.count(Order.id)).where(Order.status == "new")) or 0
+    orders_today = db.scalar(
+        select(func.count(Order.id)).where(Order.created_at >= today, not_cancelled)
+    ) or 0
+    orders_week = db.scalar(
+        select(func.count(Order.id)).where(Order.created_at >= week_ago, not_cancelled)
+    ) or 0
+    revenue_week = db.scalar(
+        select(func.coalesce(func.sum(Order.total), 0)).where(
+            Order.created_at >= week_ago, not_cancelled
+        )
+    ) or 0
+    reviews_pending = db.scalar(
+        select(func.count(ProductReview.id)).where(ProductReview.status == "pending")
+    ) or 0
+
+    # top products by qty sold over the last 30 days (delivered/confirmed/new)
+    top_rows = db.execute(
+        select(OrderItem.product_id, func.sum(OrderItem.qty).label("sold"))
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            Order.created_at >= month_ago,
+            not_cancelled,
+            OrderItem.product_id.is_not(None),
+        )
+        .group_by(OrderItem.product_id)
+        .order_by(func.sum(OrderItem.qty).desc())
+        .limit(5)
+    ).all()
+    top_products = []
+    for pid, sold in top_rows:
+        p = db.get(Product, pid)
+        if not p:
+            continue
+        title = next((t.title for t in p.translations if t.lang == "ru"), None) or p.slug
+        top_products.append({"id": p.id, "title": title, "sold": int(sold)})
+
+    # tracked-stock products running low (<=5), lowest first
+    low_rows = db.scalars(
+        select(Product)
+        .where(Product.stock_qty.is_not(None), Product.stock_qty <= 5, Product.enabled)
+        .order_by(Product.stock_qty)
+        .limit(8)
+    ).all()
+    low_stock = [
+        {
+            "id": p.id,
+            "title": next((t.title for t in p.translations if t.lang == "ru"), None) or p.slug,
+            "stock_qty": p.stock_qty,
+        }
+        for p in low_rows
+    ]
+
+    return {
+        "orders_new": orders_new,
+        "orders_today": orders_today,
+        "orders_week": orders_week,
+        "revenue_week": int(revenue_week),
+        "reviews_pending": reviews_pending,
+        "top_products": top_products,
+        "low_stock": low_stock,
+    }
 
 
 @router.patch("/orders/{order_id}")

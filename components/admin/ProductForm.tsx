@@ -59,11 +59,35 @@ export default function ProductForm({
   const [lang, setLang] = useState<(typeof LANGS)[number]>("ru");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // inline "new characteristic" mini-form (creates a category attribute on the fly)
+  const [naLabel, setNaLabel] = useState("");
+  const [naType, setNaType] = useState<"select" | "number">("select");
+  const [naUnit, setNaUnit] = useState("");
+  const [naBusy, setNaBusy] = useState(false);
+
+  const loadAttrs = (catId: number) =>
+    catId ? api.getAttributes(catId).then(setAttrs).catch(() => setAttrs([])) : setAttrs([]);
 
   useEffect(() => {
-    if (!v.category_id) { setAttrs([]); return; }
-    api.getAttributes(v.category_id).then(setAttrs).catch(() => setAttrs([]));
-  }, [v.category_id]);
+    loadAttrs(v.category_id);
+  }, [v.category_id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function addAttribute() {
+    if (!v.category_id) { setErr("Сначала выберите категорию"); return; }
+    if (!naLabel.trim()) { setErr("Укажите название характеристики"); return; }
+    setErr("");
+    setNaBusy(true);
+    try {
+      const key = slugify(naLabel).replace(/-/g, "_");
+      await api.createAttribute(v.category_id, {
+        key: key || `attr_${Date.now()}`, type: naType, unit: naUnit.trim(), filterable: true,
+        translations: LANGS.map((l) => ({ lang: l, label: naLabel.trim() })),
+      });
+      setNaLabel(""); setNaUnit(""); setNaType("select");
+      await loadAttrs(v.category_id);
+    } catch (e) { setErr(String(e)); }
+    finally { setNaBusy(false); }
+  }
 
   const tr = (l: string): AdminProductTr =>
     v.translations.find((t) => t.lang === l) ?? { lang: l, title: "", short: "", body: "", specs: [] };
@@ -139,19 +163,47 @@ export default function ProductForm({
         </details>
       </div>
 
-      {attrs.length > 0 && (
-        <div className="adm-block">
-          <h3>Характеристики (для фильтра)</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {attrs.map((a) => (
-              <div className="adm-field" key={a.id}>
-                <label>{a.translations.find((x) => x.lang === "ru")?.label || a.key}{a.unit ? `, ${a.unit}` : ""}{a.type === "number" ? " (число)" : ""}</label>
-                <input className="adm-in" value={attrVals[a.id] ?? ""} onChange={(e) => setAttrVals({ ...attrVals, [a.id]: e.target.value })} />
+      <div className="adm-block">
+        <h3>Характеристики (для фильтра)</h3>
+        {!v.category_id ? (
+          <p style={{ color: "var(--tx3)", fontSize: 13, margin: 0 }}>Сначала выберите категорию — характеристики привязаны к ней.</p>
+        ) : (
+          <>
+            {attrs.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {attrs.map((a) => (
+                  <div className="adm-field" key={a.id}>
+                    <label>{a.translations.find((x) => x.lang === "ru")?.label || a.key}{a.unit ? `, ${a.unit}` : ""}{a.type === "number" ? " (число)" : ""}</label>
+                    <input className="adm-in" value={attrVals[a.id] ?? ""} onChange={(e) => setAttrVals({ ...attrVals, [a.id]: e.target.value })} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
+            <div style={{ marginTop: attrs.length > 0 ? 14 : 0, padding: 12, border: "1px dashed var(--line)", borderRadius: 8 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--tx3)", marginBottom: 8 }}>
+                {attrs.length === 0 ? "У категории пока нет характеристик — добавьте первую:" : "Добавить новую характеристику категории:"}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 8, alignItems: "end" }}>
+                <div className="adm-field"><label>Название (RU)</label>
+                  <input className="adm-in" value={naLabel} placeholder="напр. Диагональ" onChange={(e) => setNaLabel(e.target.value)} /></div>
+                <div className="adm-field"><label>Тип</label>
+                  <select className="adm-in" value={naType} onChange={(e) => setNaType(e.target.value as "select" | "number")}>
+                    <option value="select">Выбор значений</option>
+                    <option value="number">Число (диапазон)</option>
+                  </select></div>
+                <div className="adm-field"><label>Ед. изм.</label>
+                  <input className="adm-in" value={naUnit} placeholder="дюйм, ГБ…" onChange={(e) => setNaUnit(e.target.value)} /></div>
+                <button className="adm-btn sm" onClick={addAttribute} disabled={naBusy} style={{ marginBottom: 6 }}>
+                  {naBusy ? "…" : "+ Добавить"}
+                </button>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--tx3)", margin: "6px 0 0" }}>
+                Характеристика появится у всех товаров этой категории и в фильтрах магазина. Названия для других языков можно уточнить в разделе категории.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
 
       <div className="adm-tabs">
         {LANGS.map((l) => (

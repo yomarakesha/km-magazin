@@ -330,6 +330,23 @@ class ShopSettings(Base):
     address_en: Mapped[str] = mapped_column(String(256), default="")
 
 
+class PromoCode(Base):
+    """A discount code applied at checkout. `kind` is percent (value = %)
+    or fixed (value = TMT off). The discount is recomputed server-side."""
+
+    __tablename__ = "shop_promo_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True)
+    kind: Mapped[str] = mapped_column(String(8), default="percent")  # percent|fixed
+    value: Mapped[int] = mapped_column(Integer, default=0)
+    min_total: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class Order(Base):
     __tablename__ = "shop_orders"
 
@@ -341,6 +358,8 @@ class Order(Base):
     comment: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(16), default="new")  # new|confirmed|delivered|cancelled
     total: Mapped[int] = mapped_column(Integer, default=0)
+    promo_code: Mapped[str] = mapped_column(String(32), default="")
+    discount: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     items: Mapped[list["OrderItem"]] = relationship(

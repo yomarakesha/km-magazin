@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/shop/products", label: "Товары" },
   { href: "/admin/shop/brands", label: "Бренды" },
   { href: "/admin/shop/reviews", label: "Отзывы" },
+  { href: "/admin/shop/promos", label: "Промокоды" },
   { href: "/admin/shop/orders", label: "Заказы" },
   { href: "/admin/shop/settings", label: "Контакты" },
 ];
