@@ -10,6 +10,15 @@ connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite")
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
+if DATABASE_URL.startswith("sqlite"):
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_pragmas(dbapi_conn, _record) -> None:
+        # Wait for a writer lock instead of failing immediately — concurrent
+        # order creation serializes cleanly instead of raising "database is locked".
+        dbapi_conn.execute("PRAGMA busy_timeout=5000")
+
 
 class Base(DeclarativeBase):
     pass
@@ -50,6 +59,8 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN old_price INTEGER"))
             if "stock_qty" not in cols:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN stock_qty INTEGER"))
+            if "updated_at" not in cols:
+                conn.execute(text("ALTER TABLE shop_products ADD COLUMN updated_at DATETIME"))
     if "shop_orders" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_orders")}
         with engine.begin() as conn:
@@ -61,6 +72,20 @@ def _migrate() -> None:
                 conn.execute(text(
                     "ALTER TABLE shop_orders ADD COLUMN discount INTEGER NOT NULL DEFAULT 0"
                 ))
+            if "payment_status" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_orders ADD COLUMN payment_status VARCHAR(16) "
+                    "NOT NULL DEFAULT 'unpaid'"
+                ))
+            if "payment_provider" not in cols:
+                conn.execute(text("ALTER TABLE shop_orders ADD COLUMN payment_provider VARCHAR(32)"))
+            if "payment_ref" not in cols:
+                conn.execute(text("ALTER TABLE shop_orders ADD COLUMN payment_ref VARCHAR(128)"))
+    if "shop_promo_codes" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_promo_codes")}
+        if "max_uses" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE shop_promo_codes ADD COLUMN max_uses INTEGER"))
 
 
 def init_db() -> None:

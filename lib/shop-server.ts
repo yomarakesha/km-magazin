@@ -1,12 +1,20 @@
 import type { Catalog, CategoryView, I18n, ProductDetail } from "./shop-types";
+import type { SearchResult } from "./shop-api";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8000";
+
+// SSR fetches are cached for 60s and tagged "shop"; the backend pings
+// POST /api/revalidate after any admin shop write, so edits show up right
+// away while normal traffic stops hammering the API on every render.
+const SHOP_CACHE: { next: { revalidate: number; tags: string[] } } = {
+  next: { revalidate: 60, tags: ["shop"] },
+};
 
 /** SSR: full category view (no filters) for metadata + JSON-LD ItemList. */
 export async function getCategory(slug: string): Promise<CategoryView | null> {
   try {
     const res = await fetch(`${API_URL}/api/shop/categories/${encodeURIComponent(slug)}`, {
-      cache: "no-store",
+      ...SHOP_CACHE,
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return null;
@@ -26,7 +34,7 @@ export async function getCategoryName(slug: string): Promise<I18n | null> {
 export async function getCatalog(): Promise<Catalog | null> {
   try {
     const res = await fetch(`${API_URL}/api/shop/catalog`, {
-      cache: "no-store",
+      ...SHOP_CACHE,
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) throw new Error(`catalog fetch failed: ${res.status}`);
@@ -37,11 +45,26 @@ export async function getCatalog(): Promise<Catalog | null> {
   }
 }
 
+/** SSR: first page of search results, so they land in the HTML and get
+ * crawled; the client hydrates and takes over sort/load-more. */
+export async function getSearch(query: string): Promise<SearchResult | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/search?${query}`, {
+      ...SHOP_CACHE,
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as SearchResult;
+  } catch {
+    return null;
+  }
+}
+
 /** SSR: load a single product by slug. */
 export async function getProduct(slug: string): Promise<ProductDetail | null> {
   try {
     const res = await fetch(`${API_URL}/api/shop/products/${encodeURIComponent(slug)}`, {
-      cache: "no-store",
+      ...SHOP_CACHE,
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return null;

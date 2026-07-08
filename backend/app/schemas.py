@@ -140,7 +140,7 @@ class ProductIn(BaseModel):
     old_price: int | None = None
     currency: str = "TMT"
     in_stock: bool = True
-    stock_qty: int | None = None
+    stock_qty: int | None = Field(default=None, ge=0)
     sku: str = ""
     enabled: bool = True
     translations: list[ProductTranslationIn] = Field(default_factory=list)
@@ -156,7 +156,7 @@ class ProductUpdateIn(BaseModel):
     currency: str | None = None
     in_stock: bool | None = None
     # present-with-null disables stock tracking
-    stock_qty: int | None = None
+    stock_qty: int | None = Field(default=None, ge=0)
     sku: str | None = None
     enabled: bool | None = None
     translations: list[ProductTranslationIn] | None = None
@@ -242,8 +242,22 @@ class OrderIn(BaseModel):
     items: list[OrderItemIn] = Field(min_length=1)
 
 
+class CartItemRef(BaseModel):
+    kind: Literal["product", "service"] = "product"
+    id: int
+    qty: int = Field(default=1, ge=1, le=999)
+
+
+class CartValidateIn(BaseModel):
+    items: list[CartItemRef] = Field(min_length=1, max_length=100)
+
+
 class OrderStatusIn(BaseModel):
     status: Literal["new", "confirmed", "delivered", "cancelled"]
+
+
+class OrderPaymentIn(BaseModel):
+    payment_status: Literal["unpaid", "pending", "paid", "refunded"]
 
 
 # ---- Shop: promo codes ----
@@ -254,6 +268,7 @@ class PromoCodeIn(BaseModel):
     min_total: int = Field(default=0, ge=0)
     active: bool = True
     expires_at: str | None = None  # "YYYY-MM-DD" or null = no expiry
+    max_uses: int | None = Field(default=None, ge=1)  # None = unlimited
 
 
 class PromoCodeUpdateIn(BaseModel):
@@ -263,6 +278,8 @@ class PromoCodeUpdateIn(BaseModel):
     min_total: int | None = Field(default=None, ge=0)
     active: bool | None = None
     expires_at: str | None = None
+    # present-with-null clears the cap; missing key = no change
+    max_uses: int | None = Field(default=None, ge=1)
 
 
 class PromoCheckIn(BaseModel):

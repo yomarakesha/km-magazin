@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KANAGATLY MAHABAT — Blank D · Header block</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --green:#00A650; --green-br:#22e07d; --green-d:#0a6e3b;
+    --ink:#0b110e; --tx2:#5b6a63; --tx3:#94a29a;
+    --line:rgba(14,21,18,.12);
+    --disp:"Unbounded",sans-serif; --body:"Manrope",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#e7ebe8}
+  body{font-family:var(--body);color:var(--ink);display:flex;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+  .sheet{position:relative;width:210mm;min-height:297mm;background:#fff;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.28);display:flex;flex-direction:column}
+
+  /* ── header block ── */
+  .hero{position:relative;overflow:hidden;color:#eafff3;
+    background:linear-gradient(120deg,#0a3a24 0%,#0a6e3b 48%,#00A650 100%);
+    padding:18mm 18mm 15mm;display:flex;justify-content:space-between;align-items:center;gap:24px}
+  .hero::after{content:"";position:absolute;right:-8%;top:-60%;width:60%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.12),transparent 60%)}
+  .hero .brand{display:flex;align-items:center;gap:16px;position:relative;z-index:2}
+  .hero .logo{width:64px;height:64px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+  .hero .logo img{width:64px;height:64px;border-radius:50%}
+  .hero .name{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:.05em;line-height:1.12}
+  .hero .tag{font-family:var(--mono);font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:rgba(234,255,243,.75);margin-top:9px}
+  .hero .contacts{position:relative;z-index:2;text-align:right;display:flex;flex-direction:column;gap:8px;width:235px;flex:none}
+  .hero .ct .lb{font-family:var(--mono);font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(234,255,243,.6)}
+  .hero .ct .vl{font-size:11px;font-weight:600;line-height:1.35;margin-top:1px;word-break:break-word}
+  .hero .ct .vl.sm{font-weight:500;font-size:10.5px;margin-left:auto;color:rgba(234,255,243,.9)}
+
+  /* thin accent under hero */
+  .accent{height:4px;background:linear-gradient(90deg,var(--green-br),var(--green),var(--green-d))}
+
+  .body{flex:1;padding:18mm 22mm}
+  .ph{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#c7cfca}
+
+  .foot{margin-top:auto;padding:0 22mm 16mm}
+  .foot .bar{height:1px;background:var(--line);margin-bottom:12px}
+  .foot .row{display:flex;justify-content:space-between;gap:16px;
+    font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
+  .foot .row b{color:var(--green-d)}
+
+  @page{size:A4;margin:0}
+  @media print{html,body{background:#fff;padding:0}.sheet{box-shadow:none}
+    .hero,.accent{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="hero">
+      <div class="brand">
+        <div class="logo"><img src="km-logo.png" alt="KM" /></div>
+        <div><div class="name">KANAGATLY<br/>MAHABAT</div><div class="tag">Howpsuzlyk &amp; Tehnologiýa</div></div>
+      </div>
+      <div class="contacts">
+        <div class="ct"><div class="lb">Salgy</div><div class="vl sm">ş. Aşgabat, 10 ýyl abadançylyk, jaý 142, 1-nji gat</div></div>
+        <div class="ct"><div class="lb">Tel</div><div class="vl">+993 65 55 55 68</div></div>
+        <div class="ct"><div class="lb">Email</div><div class="vl">kanagatlymahabat@gmail.com</div></div>
+      </div>
+    </header>
+    <div class="accent"></div>
+    <main class="body"><span class="ph">— letter body —</span></main>
+    <footer class="foot">
+      <div class="bar"></div>
+      <div class="row"><span><b>KANAGATLY MAHABAT</b> · Howpsuzlyk ulgamlary</span><span>+993 65 55 55 68 · kanagatlymahabat@gmail.com</span></div>
+    </footer>
+  </div>
+</body>
+</html>

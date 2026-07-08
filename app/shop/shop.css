@@ -534,6 +534,12 @@
 .shop-fb-toggle { display: inline-flex; align-items: center; gap: 6px; background: var(--sh-card); border: 1px solid var(--sh-line2); color: var(--sh-tx2); border-radius: 30px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.15s; }
 .shop-fb-toggle:hover { border-color: var(--sh-acc); color: var(--sh-tx); }
 .shop-fb-toggle.on { background: var(--sh-acc-tint); border-color: var(--sh-acc); color: var(--sh-acc-ink); }
+.shop-fb-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 2px; border-radius: 20px; background: var(--sh-acc); color: var(--sh-acc-ink); font-size: 11px; font-weight: 700; }
+
+/* payment status pill (my orders / tracking) */
+.shop-pay-badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; border: 1px solid var(--sh-line2); color: var(--sh-tx2); }
+.shop-pay-badge.paid { border-color: var(--sh-acc); color: var(--sh-acc-ink); background: var(--sh-acc-tint); }
+.shop-pay-badge.refunded { border-color: #d98a3a; color: #d98a3a; }
 
 .shop-fdd { position: relative; }
 .shop-fdd > summary { list-style: none; display: inline-flex; align-items: center; gap: 7px; background: var(--sh-card); border: 1px solid var(--sh-line2); color: var(--sh-tx); border-radius: 30px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; transition: 0.15s; }

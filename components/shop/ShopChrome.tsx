@@ -82,6 +82,9 @@ function Header() {
           <button type="submit" aria-label={t("searchTitle")}><Icon name="arrow" size={16} /></button>
         </form>
         <div className="shop-head-right">
+          <Link href="/shop/orders" className="shop-fav-btn" aria-label={t("myOrders")} title={t("myOrders")}>
+            <Icon name="box" size={18} />
+          </Link>
           <Link href="/shop/favorites" className="shop-fav-btn" aria-label={t("favorites")} title={t("favorites")}>
             <Icon name="heart" size={18} />
             {favs.length > 0 && <span className="shop-cart-badge">{favs.length}</span>}

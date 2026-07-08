@@ -2,17 +2,20 @@
 import { useEffect, useState } from "react";
 import { api, type AdminPromo } from "@/lib/admin-api";
 import { useToast } from "../../_components/useToast";
+import { useConfirm } from "../../_components/useConfirm";
 
 const KIND_LABEL: Record<string, string> = { percent: "% от суммы", fixed: "Фикс. сумма (TMT)" };
 
 export default function PromosPage() {
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminPromo[]>([]);
   const [code, setCode] = useState("");
   const [kind, setKind] = useState<"percent" | "fixed">("percent");
   const [value, setValue] = useState("");
   const [minTotal, setMinTotal] = useState("");
   const [expires, setExpires] = useState("");
+  const [maxUses, setMaxUses] = useState("");
 
   const load = () => api.getPromos().then(setList).catch((e) => show(String(e), "err"));
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -30,8 +33,9 @@ export default function PromosPage() {
         min_total: Number(minTotal) || 0,
         active: true,
         expires_at: expires || null,
+        max_uses: Number(maxUses) > 0 ? Number(maxUses) : null,
       });
-      setCode(""); setValue(""); setMinTotal(""); setExpires("");
+      setCode(""); setValue(""); setMinTotal(""); setExpires(""); setMaxUses("");
       load();
     } catch (e) { show(String(e), "err"); }
   }
@@ -41,7 +45,7 @@ export default function PromosPage() {
     load();
   }
   async function remove(p: AdminPromo) {
-    if (!confirm(`Удалить промокод «${p.code}»?`)) return;
+    if (!(await ask(`Удалить промокод «${p.code}»?`))) return;
     await api.deletePromo(p.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -55,7 +59,7 @@ export default function PromosPage() {
 
       <div className="adm-block" style={{ borderStyle: "dashed" }}>
         <h3>Новый промокод</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr 1fr 1fr 0.8fr auto", gap: 10, alignItems: "end" }}>
           <div className="adm-field" style={{ marginBottom: 0 }}><label>Код</label>
             <input className="adm-in" value={code} placeholder="напр. SALE10"
               onChange={(e) => setCode(e.target.value.toUpperCase())} /></div>
@@ -72,6 +76,9 @@ export default function PromosPage() {
               onChange={(e) => setMinTotal(e.target.value)} /></div>
           <div className="adm-field" style={{ marginBottom: 0 }}><label>Действует до (пусто = бессрочно)</label>
             <input className="adm-in" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} /></div>
+          <div className="adm-field" style={{ marginBottom: 0 }}><label>Лимит (пусто = без лимита)</label>
+            <input className="adm-in" type="number" min={1} value={maxUses} placeholder="∞"
+              onChange={(e) => setMaxUses(e.target.value)} /></div>
           <button className="adm-btn" onClick={add}>+ Добавить</button>
         </div>
       </div>
@@ -92,7 +99,8 @@ export default function PromosPage() {
                   <span style={{ fontSize: 11, color: "var(--tx3)", display: "block" }}>{KIND_LABEL[p.kind]}</span></td>
                 <td>{p.min_total > 0 ? `${p.min_total} TMT` : "—"}</td>
                 <td>{p.expires_at ?? "бессрочно"}{expired(p) && <span style={{ color: "#ff9a9a", fontSize: 11, display: "block" }}>истёк</span>}</td>
-                <td>{p.used_count} раз</td>
+                <td>{p.used_count}{p.max_uses != null ? ` / ${p.max_uses}` : ""} раз
+                  {p.max_uses != null && p.used_count >= p.max_uses && <span style={{ color: "#ff9a9a", fontSize: 11, display: "block" }}>исчерпан</span>}</td>
                 <td>
                   <button className="adm-btn ghost sm" onClick={() => toggle(p)}>{p.active ? "Выключить" : "Включить"}</button>
                 </td>
@@ -104,6 +112,7 @@ export default function PromosPage() {
         </div>
       )}
       {node}
+      {confirmNode}
     </>
   );
 }

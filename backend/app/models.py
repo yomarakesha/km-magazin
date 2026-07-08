@@ -196,6 +196,10 @@ class Product(Base):
     sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # feeds sitemap <lastmod>; NULL for rows predating the column
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, default=_now, onupdate=_now
+    )
 
     category: Mapped["ShopCategory"] = relationship(back_populates="products")
     translations: Mapped[list["ProductTranslation"]] = relationship(
@@ -344,6 +348,7 @@ class PromoCode(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     used_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = unlimited
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
@@ -360,6 +365,11 @@ class Order(Base):
     total: Mapped[int] = mapped_column(Integer, default=0)
     promo_code: Mapped[str] = mapped_column(String(32), default="")
     discount: Mapped[int] = mapped_column(Integer, default=0)
+    # Online-payment slot: unpaid|pending|paid|refunded. Provider/ref are set
+    # once a real gateway is wired in (see backend/app/payments/).
+    payment_status: Mapped[str] = mapped_column(String(16), default="unpaid")
+    payment_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    payment_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     items: Mapped[list["OrderItem"]] = relationship(

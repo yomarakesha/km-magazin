@@ -6,6 +6,7 @@ from ..config import PUBLIC_URL
 from ..content_builder import build_content
 from ..db import get_db
 from ..models import Lead
+from ..ratelimit import limiter
 from ..schemas import LeadIn
 
 router = APIRouter(prefix="/api", tags=["public"])
@@ -19,7 +20,7 @@ def get_content(db: Session = Depends(get_db)) -> dict:
     }
 
 
-@router.post("/leads", status_code=201)
+@router.post("/leads", status_code=201, dependencies=[Depends(limiter("leads", 3))])
 def create_lead(payload: LeadIn, db: Session = Depends(get_db)) -> dict:
     lead = Lead(
         name=payload.name.strip(),

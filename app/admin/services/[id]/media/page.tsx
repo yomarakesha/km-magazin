@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type AdminMedia } from "@/lib/admin-api";
 import { useToast } from "../../../_components/useToast";
+import { useConfirm } from "../../../_components/useConfirm";
 
 const MEDIA_BASE = `${api.base}/media`;
 
@@ -11,6 +12,7 @@ export default function MediaPage() {
   const serviceId = Number(id);
   const router = useRouter();
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminMedia[]>([]);
   const [kind, setKind] = useState<"img" | "video">("img");
   const [caption, setCaption] = useState("photo");
@@ -56,7 +58,7 @@ export default function MediaPage() {
   }
 
   async function del(m: AdminMedia) {
-    if (!confirm("Удалить файл?")) return;
+    if (!(await ask("Удалить файл?"))) return;
     await api.deleteMedia(m.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -131,6 +133,7 @@ export default function MediaPage() {
         ))}
       </div>
       {node}
+      {confirmNode}
     </>
   );
 }

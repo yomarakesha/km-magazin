@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api, type AdminShopService, type AdminShopServiceTr } from "@/lib/admin-api";
 import { slugify } from "@/lib/slug";
 import { useToast } from "../../../../_components/useToast";
+import { useConfirm } from "../../../../_components/useConfirm";
 
 const LANGS = ["ru", "tk", "en"] as const;
 const LANG_LABEL: Record<string, string> = { ru: "RU", tk: "TK", en: "EN" };
@@ -17,6 +18,7 @@ export default function ShopServicesPage() {
   const catId = Number(id);
   const router = useRouter();
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminShopService[]>([]);
   const [nw, setNw] = useState<NewSvc>(emptyNew);
 
@@ -63,7 +65,7 @@ export default function ShopServicesPage() {
   }
 
   async function remove(s: AdminShopService) {
-    if (!confirm(`Удалить услугу «${s.slug}»?`)) return;
+    if (!(await ask(`Удалить услугу «${s.slug}»?`))) return;
     await api.deleteShopService(s.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -157,6 +159,7 @@ export default function ShopServicesPage() {
         </div>
       </div>
       {node}
+      {confirmNode}
     </>
   );
 }

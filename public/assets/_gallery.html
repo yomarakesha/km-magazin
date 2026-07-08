@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<style>
+  body{margin:0;background:#cfd6d1;font-family:system-ui;padding:20px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:34px;justify-items:center}
+  .cell{text-align:center}
+  .cap{font-family:monospace;font-size:13px;letter-spacing:.1em;color:#0a6e3b;margin-bottom:10px;font-weight:700}
+  .frame{width:210mm;height:297mm;transform:scale(.46);transform-origin:top left;border:none;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .box{width:calc(210mm*.46);height:calc(297mm*.46);overflow:hidden}
+</style></head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="cap">A · MINIMAL</div><div class="box"><iframe class="frame" src="blank-a-minimal.html"></iframe></div></div>
+    <div class="cell"><div class="cap">B · SIDEBAR</div><div class="box"><iframe class="frame" src="blank-b-sidebar.html"></iframe></div></div>
+    <div class="cell"><div class="cap">C · CENTERED</div><div class="box"><iframe class="frame" src="blank-c-centered.html"></iframe></div></div>
+    <div class="cell"><div class="cap">D · HEADER BLOCK</div><div class="box"><iframe class="frame" src="blank-d-band.html"></iframe></div></div>
+  </div>
+</body></html>

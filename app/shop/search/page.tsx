@@ -1,98 +1,39 @@
-"use client";
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { ShopCard } from "@/lib/shop-types";
-import { fetchSearch } from "@/lib/shop-api";
-import { useShop } from "@/components/shop/shop-context";
-import ProductCard from "@/components/shop/ProductCard";
-import ShopSidebar from "@/components/shop/ShopSidebar";
-import { SkeletonGrid } from "@/components/shop/ui/Skeleton";
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { getSearch } from "@/lib/shop-server";
+import { SITE_URL } from "@/lib/site";
+import SearchClient from "@/components/shop/SearchClient";
 
-const SORTS = ["sortDefault", "sortPriceAsc", "sortPriceDesc", "sortNew"] as const;
-const SORT_VAL: Record<string, string> = { sortDefault: "", sortPriceAsc: "price_asc", sortPriceDesc: "price_desc", sortNew: "new" };
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default function SearchPage() {
-  return (
-    <Suspense fallback={<div className="shop-wrap"><p className="shop-empty">…</p></div>}>
-      <SearchInner />
-    </Suspense>
-  );
+function toQuery(sp: Record<string, string | string[] | undefined>): string {
+  const next = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === "string") next.set(k, v);
+    else if (Array.isArray(v) && v[0] != null) next.set(k, v[0]);
+  }
+  return next.toString();
 }
 
-function SearchInner() {
-  const router = useRouter();
-  const sp = useSearchParams();
-  const { t } = useShop();
-  const [products, setProducts] = useState<ShopCard[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [more, setMore] = useState(false);
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q : "";
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: q ? `Поиск: ${q} — Магазин Kanagatly Mahabat` : "Поиск — Магазин Kanagatly Mahabat",
+    // every sort/offset permutation canonicalizes to the plain query URL
+    alternates: { canonical: q ? `/shop/search?q=${encodeURIComponent(q)}` : "/shop/search" },
+  };
+}
 
-  const query = sp.toString();
-  const q = sp.get("q") ?? "";
-
-  useEffect(() => {
-    let live = true;
-    setLoading(true);
-    fetchSearch(query)
-      .then((d) => { if (live) { setProducts(d.products); setTotal(d.total); } })
-      .catch(() => { if (live) { setProducts([]); setTotal(0); } })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, [query]);
-
-  const hasMore = products.length < total;
-
-  async function loadMore() {
-    setMore(true);
-    try {
-      const next = new URLSearchParams(query);
-      next.set("offset", String(products.length));
-      const d = await fetchSearch(next.toString());
-      setProducts((cur) => [...cur, ...d.products]);
-    } catch {}
-    finally { setMore(false); }
-  }
-
-  function setSort(value: string) {
-    const next = new URLSearchParams(query);
-    if (value) next.set("sort", value); else next.delete("sort");
-    router.replace(`/shop/search?${next.toString()}`, { scroll: false });
-  }
-
+/** First page of results is rendered on the server so search URLs are
+ * crawlable; SearchClient hydrates and handles sort/load-more from there. */
+export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
+  const query = toQuery(await searchParams);
+  const initial = await getSearch(query);
   return (
-    <div className="shop-wrap shop-list-layout">
-      <ShopSidebar />
-      <div className="shop-list-main">
-        <div className="shop-cat-top">
-          <h1 className="shop-h1">{t("searchTitle")}: {q}</h1>
-          <div className="shop-cat-controls">
-            {!loading && <span className="shop-count">{total} {t("found")}</span>}
-            <select className="shop-sort" value={sp.get("sort") ?? ""} onChange={(e) => setSort(e.target.value)}>
-              {SORTS.map((s) => <option key={s} value={SORT_VAL[s]}>{t(s)}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {loading ? (
-          <SkeletonGrid />
-        ) : products.length === 0 ? (
-          <p className="shop-empty">{t("nothingFound")}</p>
-        ) : (
-          <>
-            <div className="shop-grid">
-              {products.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
-            </div>
-            {hasMore && (
-              <div className="shop-more">
-                <button className="shop-btn ghost" onClick={loadMore} disabled={more}>
-                  {more ? "…" : `${t("showMore")} (${total - products.length})`}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    <Suspense fallback={<div className="shop-wrap"><p className="shop-empty">…</p></div>}>
+      <SearchClient initial={initial} initialQuery={query} />
+    </Suspense>
   );
 }

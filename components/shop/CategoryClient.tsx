@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CategoryView, ShopCard } from "@/lib/shop-types";
 import { fetchCategory } from "@/lib/shop-api";
@@ -24,16 +24,19 @@ export default function CategoryClient({ slug }: { slug: string }) {
   const [more, setMore] = useState(false);
 
   const query = sp.toString();
+  // bumped whenever slug/query changes; a loadMore whose token is stale (its
+  // page belongs to a filter/sort that has since changed) discards its result.
+  const reqId = useRef(0);
 
   useEffect(() => {
-    let live = true;
+    reqId.current += 1;
+    const my = reqId.current;
     setLoading(true);
     setExtra([]); // filters/sort changed — restart from the first page
     fetchCategory(slug, query)
-      .then((d) => { if (live) setData(d); })
-      .catch(() => { if (live) setData(null); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
+      .then((d) => { if (reqId.current === my) setData(d); })
+      .catch(() => { if (reqId.current === my) setData(null); })
+      .finally(() => { if (reqId.current === my) setLoading(false); });
   }, [slug, query]);
 
   const products = data ? [...data.products, ...extra] : [];
@@ -41,14 +44,15 @@ export default function CategoryClient({ slug }: { slug: string }) {
 
   async function loadMore() {
     if (!data) return;
+    const my = reqId.current;
     setMore(true);
     try {
       const next = new URLSearchParams(query);
       next.set("offset", String(products.length));
       const d = await fetchCategory(slug, next.toString());
-      setExtra((cur) => [...cur, ...d.products]);
+      if (reqId.current === my) setExtra((cur) => [...cur, ...d.products]);
     } catch {}
-    finally { setMore(false); }
+    finally { if (reqId.current === my) setMore(false); }
   }
 
   function apply(next: URLSearchParams) {

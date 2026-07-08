@@ -3,26 +3,21 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { CatalogCategory, I18n, Lang, ShopCard, ShopService, ShopSettings } from "@/lib/shop-types";
 import { T } from "@/lib/shop-i18n";
 import { DEFAULT_SETTINGS, waLink } from "@/lib/shop-config";
+import {
+  addItem,
+  cartCount,
+  cartTotal,
+  cartUid,
+  removeItem,
+  setItemQty,
+  type CartItem,
+  type CartKind,
+} from "@/lib/cart";
 
 const LANGS: Lang[] = ["ru", "tk", "en"];
 
-export type CartKind = "product" | "service";
-
-export interface CartItem {
-  id: number;
-  kind: CartKind;
-  slug: string;
-  titles: I18n;
-  price: number;
-  currency: string;
-  image: string | null;
-  qty: number;
-  category_id?: number | null; // for cart upsell matching
-}
-
-/** Stable cart key. Products and services have independent id spaces, so the
- *  kind must be part of the key to avoid a product and service colliding. */
-export const cartUid = (i: { id: number; kind?: CartKind }) => `${i.kind ?? "product"}:${i.id}`;
+// cart logic lives in lib/cart.ts (pure, unit-tested); re-export the public bits
+export { cartUid, type CartItem, type CartKind };
 
 interface ShopCtx {
   lang: Lang;
@@ -116,12 +111,7 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
 
   const add: ShopCtx["add"] = (item, qty = 1) => {
     const entry: CartItem = { ...item, kind: item.kind ?? "product", qty };
-    const uid = cartUid(entry);
-    setItems((prev) => {
-      const found = prev.find((x) => cartUid(x) === uid);
-      if (found) return prev.map((x) => (cartUid(x) === uid ? { ...x, qty: x.qty + qty } : x));
-      return [...prev, entry];
-    });
+    setItems((prev) => addItem(prev, entry));
     setToast({ id: Date.now(), message: pick(item.titles) });
   };
   const openCart = () => setCartOpen(true);
@@ -142,9 +132,8 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
   const clearCompare = () => { setCompareItems([]); setCompareOpen(false); };
   const openCompare = () => setCompareOpen(true);
   const closeCompare = () => setCompareOpen(false);
-  const setQty = (uid: string, qty: number) =>
-    setItems((prev) => prev.map((x) => (cartUid(x) === uid ? { ...x, qty: Math.max(1, qty) } : x)));
-  const remove = (uid: string) => setItems((prev) => prev.filter((x) => cartUid(x) !== uid));
+  const setQty = (uid: string, qty: number) => setItems((prev) => setItemQty(prev, uid, qty));
+  const remove = (uid: string) => setItems((prev) => removeItem(prev, uid));
   const clear = () => setItems([]);
 
   const t = (key: string) => T[lang][key] ?? key;
@@ -154,8 +143,8 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
   const toggleFav = (card: ShopCard) =>
     setFavs((prev) => (prev.some((f) => f.id === card.id) ? prev.filter((f) => f.id !== card.id) : [...prev, card]));
 
-  const count = items.reduce((n, x) => n + x.qty, 0);
-  const total = items.reduce((s, x) => s + x.price * x.qty, 0);
+  const count = cartCount(items);
+  const total = cartTotal(items);
 
   const value = useMemo<ShopCtx>(
     () => ({

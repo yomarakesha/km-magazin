@@ -24,11 +24,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const isLogin = pathname === "/admin/login";
   const [ready, setReady] = useState(isLogin);
+  const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (isLogin) { setReady(true); return; }
     api.me().then(() => setReady(true)).catch(() => router.replace("/admin/login"));
   }, [isLogin, pathname, router]);
+
+  // counters in the sidebar; refreshed on navigation so they stay current while working
+  useEffect(() => {
+    if (isLogin || !ready) return;
+    api.getShopStats().then((s) => setBadges((b) => ({
+      ...b, "/admin/shop/orders": s.orders_new, "/admin/shop/reviews": s.reviews_pending,
+    }))).catch(() => {});
+    api.getLeads().then((ls) => setBadges((b) => ({
+      ...b, "/admin/leads": ls.filter((l) => l.status === "new").length,
+    }))).catch(() => {});
+  }, [isLogin, ready, pathname]);
 
   async function logout() {
     await api.logout().catch(() => {});
@@ -45,8 +57,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav>
           {NAV.map((n) => {
             const active = n.href === "/admin" ? pathname === n.href : pathname.startsWith(n.href);
+            const count = badges[n.href] ?? 0;
             return (
-              <Link key={n.href} href={n.href} className={active ? "act" : ""}>{n.label}</Link>
+              <Link key={n.href} href={n.href} className={active ? "act" : ""}>
+                {n.label}
+                {count > 0 && <span className="adm-nav-badge">{count}</span>}
+              </Link>
             );
           })}
         </nav>

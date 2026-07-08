@@ -19,9 +19,27 @@ export default function FilterBar({ facets, t, pick, get, isSelected, toggleSele
   const inStock = !!get("in_stock");
   const hasPrice = !!(get("price_min") || get("price_max"));
 
+  // count applied filters so the label carries a badge (useful when the bar
+  // wraps/collapses on mobile and the active dropdowns aren't all visible)
+  let activeCount = 0;
+  if (inStock) activeCount += 1;
+  if (get("price_min")) activeCount += 1;
+  if (get("price_max")) activeCount += 1;
+  for (const f of facets) {
+    if (f.type === "number") {
+      if (get(`${f.key}_min`)) activeCount += 1;
+      if (get(`${f.key}_max`)) activeCount += 1;
+    } else {
+      activeCount += (f.options ?? []).filter((o) => isSelected(f.key, o.value)).length;
+    }
+  }
+
   return (
     <div className="shop-filterbar">
-      <span className="shop-fb-label"><Icon name="filter" size={16} /> {t("filters")}</span>
+      <span className="shop-fb-label">
+        <Icon name="filter" size={16} /> {t("filters")}
+        {activeCount > 0 && <span className="shop-fb-count">{activeCount}</span>}
+      </span>
 
       <button className={`shop-fb-toggle ${inStock ? "on" : ""}`} onClick={() => toggleBool("in_stock")}>
         {inStock && <Icon name="check" size={13} />} {t("onlyInStock")}
@@ -33,9 +51,9 @@ export default function FilterBar({ facets, t, pick, get, isSelected, toggleSele
         </summary>
         <div className="shop-fdd-panel">
           <div className="shop-range">
-            <input type="number" inputMode="numeric" placeholder={t("from")} defaultValue={get("price_min")}
+            <input key={`min-${get("price_min")}`} type="number" inputMode="numeric" placeholder={t("from")} defaultValue={get("price_min")}
               onBlur={(e) => setParam("price_min", e.target.value)} />
-            <input type="number" inputMode="numeric" placeholder={t("to")} defaultValue={get("price_max")}
+            <input key={`max-${get("price_max")}`} type="number" inputMode="numeric" placeholder={t("to")} defaultValue={get("price_max")}
               onBlur={(e) => setParam("price_max", e.target.value)} />
           </div>
         </div>
@@ -52,9 +70,9 @@ export default function FilterBar({ facets, t, pick, get, isSelected, toggleSele
               </summary>
               <div className="shop-fdd-panel">
                 <div className="shop-range">
-                  <input type="number" inputMode="numeric" placeholder={f.min != null ? String(f.min) : t("from")} defaultValue={a}
+                  <input key={`${f.key}min-${a}`} type="number" inputMode="numeric" placeholder={f.min != null ? String(f.min) : t("from")} defaultValue={a}
                     onBlur={(e) => setParam(`${f.key}_min`, e.target.value)} />
-                  <input type="number" inputMode="numeric" placeholder={f.max != null ? String(f.max) : t("to")} defaultValue={b}
+                  <input key={`${f.key}max-${b}`} type="number" inputMode="numeric" placeholder={f.max != null ? String(f.max) : t("to")} defaultValue={b}
                     onBlur={(e) => setParam(`${f.key}_max`, e.target.value)} />
                 </div>
               </div>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KANAGATLY MAHABAT — Blank B · Sidebar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --green:#00A650; --green-br:#22e07d; --green-d:#0a6e3b;
+    --ink:#0b110e; --tx2:#5b6a63; --tx3:#94a29a;
+    --line:rgba(14,21,18,.12);
+    --disp:"Unbounded",sans-serif; --body:"Manrope",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#e7ebe8}
+  body{font-family:var(--body);color:var(--ink);display:flex;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+  .sheet{position:relative;width:210mm;min-height:297mm;background:#fff;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.28);display:grid;grid-template-columns:52mm 1fr}
+
+  /* ── left band ── */
+  .band{position:relative;overflow:hidden;color:#eafff3;
+    background:linear-gradient(165deg,#0d3d26 0%,#0a6e3b 52%,#00A650 100%);
+    display:flex;flex-direction:column;padding:20mm 12mm}
+  .band::after{content:"";position:absolute;right:-40%;top:-10%;width:120%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.10),transparent 62%)}
+  .band .logo{width:60px;height:60px;border-radius:50%;background:#fff;display:grid;place-items:center;
+    box-shadow:0 10px 26px rgba(0,0,0,.25);position:relative;z-index:2}
+  .band .logo img{width:60px;height:60px;border-radius:50%}
+  .band .name{position:relative;z-index:2;font-family:var(--disp);font-weight:800;font-size:20px;line-height:1.15;letter-spacing:.04em;margin-top:22px}
+  .band .tag{position:relative;z-index:2;font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(234,255,243,.72);margin-top:10px}
+
+  .band .contacts{position:relative;z-index:2;margin-top:auto;display:flex;flex-direction:column;gap:15px}
+  .band .ct .lb{font-family:var(--mono);font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(234,255,243,.6)}
+  .band .ct .vl{font-size:11px;font-weight:600;margin-top:3px;line-height:1.4;word-break:break-word}
+  .band .divider{height:1px;background:rgba(255,255,255,.18);margin-bottom:4px}
+
+  /* ── main ── */
+  .main{position:relative;display:flex;flex-direction:column;padding:22mm 20mm 18mm}
+  .main .top{display:flex;justify-content:flex-end;
+    font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3)}
+  .main .top .accent{color:var(--green-d)}
+  .body{flex:1;padding-top:14mm}
+  .ph{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#c7cfca}
+  .foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);display:flex;justify-content:space-between;gap:16px}
+  .foot b{color:var(--green-d)}
+
+  @page{size:A4;margin:0}
+  @media print{html,body{background:#fff;padding:0}.sheet{box-shadow:none}
+    .band{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <aside class="band">
+      <div class="logo"><img src="km-logo.png" alt="KM" /></div>
+      <div class="name">KANAGATLY<br/>MAHABAT</div>
+      <div class="tag">Howpsuzlyk &amp; Tehnologiýa</div>
+      <div class="contacts">
+        <div class="divider"></div>
+        <div class="ct"><div class="lb">Salgy</div><div class="vl">ş. Aşgabat, 10 ýyl abadançylyk, jaý 142, 1-nji gat</div></div>
+        <div class="ct"><div class="lb">Tel</div><div class="vl">+993 65 55 55 68</div></div>
+        <div class="ct"><div class="lb">Email</div><div class="vl">kanagatlymahabat@gmail.com</div></div>
+      </div>
+    </aside>
+    <section class="main">
+      <div class="top"><span class="accent">·&nbsp;</span>Resmi hat</div>
+      <main class="body"><span class="ph">— letter body —</span></main>
+      <footer class="foot"><span><b>KANAGATLY MAHABAT</b> · Howpsuzlyk ulgamlary</span><span>km-site</span></footer>
+    </section>
+  </div>
+</body>
+</html>

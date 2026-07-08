@@ -1,2 +1,0 @@
-[   41992ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3000/shop/product/router-wifi6?_rsc=yW6gAzF6gxIza_Qz:0
-[   41993ms] [ERROR] Failed to fetch RSC payload for http://localhost:3000/shop/product/router-wifi6. Falling back to browser navigation. TypeError: network error @ http://localhost:3000/_next/static/chunks/11oof8oxnxiv9.js:0

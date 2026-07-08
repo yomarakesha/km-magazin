@@ -5,7 +5,7 @@ Texts are returned as per-language maps ({ru, tk, en}) so the SSR frontend can
 switch language client-side, mirroring how the landing handles i18n.
 """
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from ..config import PUBLIC_URL
@@ -24,8 +24,11 @@ from ..models import (
     ShopService,
     ShopSettings,
 )
+from ..logging import log
 from ..notify import order_message, telegram_notify
-from ..schemas import OrderIn, PromoCheckIn, ReviewIn
+from ..payments import get_provider
+from ..ratelimit import limiter
+from ..schemas import CartValidateIn, OrderIn, PromoCheckIn, ReviewIn
 
 router = APIRouter(prefix="/api/shop", tags=["shop"])
 
@@ -299,7 +302,7 @@ def _build_facets(cat: ShopCategory, filtered_ids: list[int], db: Session) -> li
     return facets
 
 
-@router.get("/search")
+@router.get("/search", dependencies=[Depends(limiter("search", 30))])
 def search(request: Request, db: Session = Depends(get_db)) -> dict:
     """Full-text-ish search over product title/short/sku across all categories."""
     params = request.query_params
@@ -323,10 +326,17 @@ def search(request: Request, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/sitemap")
 def sitemap(db: Session = Depends(get_db)) -> dict:
-    """Slugs for the frontend sitemap.xml."""
+    """Slugs (+ product lastmod) for the frontend sitemap.xml."""
     cats = db.scalars(select(ShopCategory.slug).where(ShopCategory.enabled == True)).all()  # noqa: E712
-    prods = db.scalars(select(Product.slug).where(Product.enabled == True)).all()  # noqa: E712
-    return {"categories": list(cats), "products": list(prods)}
+    prods = db.execute(
+        select(Product.slug, Product.updated_at).where(Product.enabled == True)  # noqa: E712
+    ).all()
+    return {
+        "categories": list(cats),
+        "products": [
+            {"slug": slug, "lastmod": upd.isoformat() if upd else None} for slug, upd in prods
+        ],
+    }
 
 
 @router.get("/products/{slug}")
@@ -361,6 +371,7 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
         "currency": p.currency,
         "in_stock": _in_stock(p),
         "stock_qty": p.stock_qty,
+        "sku": p.sku,
         "title": _imap(p.translations, "title"),
         "short": _imap(p.translations, "short"),
         "body": _imap(p.translations, "body"),
@@ -377,7 +388,7 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
     }
 
 
-@router.post("/products/{slug}/reviews", status_code=201)
+@router.post("/products/{slug}/reviews", status_code=201, dependencies=[Depends(limiter("reviews", 3))])
 def create_review(slug: str, payload: ReviewIn, db: Session = Depends(get_db)) -> dict:
     """Submit a review; it stays hidden until an admin approves it."""
     p = db.scalar(select(Product).where(Product.slug == slug))
@@ -392,8 +403,9 @@ def create_review(slug: str, payload: ReviewIn, db: Session = Depends(get_db)) -
 
 def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | None, int]:
     """Resolve a promo code against a subtotal. Returns (promo, discount) or
-    (None, 0) when the code is unknown, inactive, expired or below min_total."""
-    from datetime import datetime
+    (None, 0) when the code is unknown, inactive, expired, exhausted or below
+    min_total."""
+    from datetime import datetime, timezone
 
     code = code.strip()
     if not code:
@@ -401,7 +413,11 @@ def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | N
     promo = db.scalar(select(PromoCode).where(func.lower(PromoCode.code) == code.lower()))
     if not promo or not promo.active:
         return None, 0
-    if promo.expires_at and promo.expires_at < datetime.utcnow():
+    # expires_at is stored naive (end-of-day, see admin _parse_expiry) — compare
+    # against naive UTC now rather than deprecated utcnow().
+    if promo.expires_at and promo.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+        return None, 0
+    if promo.max_uses is not None and promo.used_count >= promo.max_uses:
         return None, 0
     if subtotal < promo.min_total:
         return None, 0
@@ -409,7 +425,7 @@ def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | N
     return promo, max(0, min(raw, subtotal))
 
 
-@router.post("/promo/check")
+@router.post("/promo/check", dependencies=[Depends(limiter("promo", 10))])
 def promo_check(payload: PromoCheckIn, db: Session = Depends(get_db)) -> dict:
     promo, discount = promo_discount(db, payload.code, payload.subtotal)
     if not promo:
@@ -427,7 +443,7 @@ def _digits(s: str) -> str:
     return "".join(ch for ch in s if ch.isdigit())
 
 
-@router.get("/orders/{order_id}")
+@router.get("/orders/{order_id}", dependencies=[Depends(limiter("order-lookup", 10))])
 def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) -> dict:
     """Customer-facing order lookup: the phone must match the one on the order
     (digits-only comparison) so order ids alone don't leak anything."""
@@ -438,6 +454,7 @@ def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) 
         "id": o.id,
         "status": o.status,
         "payment_method": o.payment_method,
+        "payment_status": o.payment_status,
         "total": o.total,
         "created_at": o.created_at,
         "items": [
@@ -446,16 +463,77 @@ def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) 
                 "price": it.price_snapshot,
                 "qty": it.qty,
                 "kind": "service" if it.service_id is not None else "product",
+                # slug lets the client rebuild the cart for a re-order; null if the
+                # product/service has since been deleted
+                "slug": _item_slug(db, it),
             }
             for it in o.items
         ],
     }
 
 
-@router.post("/orders", status_code=201)
+def _item_slug(db: Session, it: OrderItem) -> str | None:
+    if it.service_id is not None:
+        s = db.get(ShopService, it.service_id)
+        return s.slug if s else None
+    if it.product_id is not None:
+        p = db.get(Product, it.product_id)
+        return p.slug if p else None
+    return None
+
+
+def _enabled_product(db: Session, ref: int) -> bool:
+    p = db.get(Product, ref)
+    return bool(p and p.enabled)
+
+
+def _enabled_service(db: Session, ref: int) -> bool:
+    s = db.get(ShopService, ref)
+    return bool(s and s.enabled)
+
+
+@router.post("/cart/validate")
+def cart_validate(payload: CartValidateIn, db: Session = Depends(get_db)) -> dict:
+    """Re-check a client cart against the DB: per line — does the item still
+    exist/is enabled, its current price and effective availability. The client
+    uses this on the cart/checkout pages to flag removed items and price drift
+    before the order is submitted."""
+    out = []
+    for it in payload.items:
+        if it.kind == "service":
+            s = db.get(ShopService, it.id)
+            ok = bool(s and s.enabled)
+            out.append({
+                "kind": "service", "id": it.id, "ok": ok,
+                "price": s.price if ok else None,
+                "in_stock": True if ok else None,
+            })
+        else:
+            p = db.get(Product, it.id)
+            ok = bool(p and p.enabled)
+            out.append({
+                "kind": "product", "id": it.id, "ok": ok,
+                "price": p.price if ok else None,
+                "in_stock": _in_stock(p) if ok else None,
+            })
+    return {"items": out}
+
+
+@router.post("/orders", status_code=201, dependencies=[Depends(limiter("orders", 5))])
 def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     """Create an order. The total is recomputed server-side from DB prices;
-    item title/price are snapshotted so the order is stable over time."""
+    item title/price are snapshotted so the order is stable over time.
+    Unavailable items produce a structured 409 listing every problem line,
+    so the client can show exactly what to remove from the cart."""
+    problems = [
+        {"kind": it.kind, "id": it.ref_id(), "reason": "unavailable"}
+        for it in payload.items
+        if it.ref_id() is None
+        or (it.kind == "service" and not _enabled_service(db, it.ref_id()))
+        or (it.kind != "service" and not _enabled_product(db, it.ref_id()))
+    ]
+    if problems:
+        raise HTTPException(409, {"code": "cart_invalid", "problems": problems})
     order = Order(
         customer_name=payload.customer_name.strip(),
         phone=payload.phone.strip(),
@@ -497,18 +575,46 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
                     qty=it.qty,
                 )
             )
-            if p.stock_qty is not None:
-                p.stock_qty = max(0, p.stock_qty - it.qty)
+            # Atomic guarded decrement: NULL stock stays NULL (not tracked);
+            # tracked stock must cover the qty or the claim fails. The UPDATE
+            # itself is atomic, so two concurrent orders can never both take
+            # the last unit (no read-modify-write race).
+            res = db.execute(
+                update(Product)
+                .where(
+                    Product.id == p.id,
+                    or_(Product.stock_qty.is_(None), Product.stock_qty >= it.qty),
+                )
+                .values(stock_qty=Product.stock_qty - it.qty)
+            )
+            if res.rowcount == 0:
+                raise HTTPException(409, f"Product {ref} is out of stock")
             total += p.price * it.qty
     promo, discount = promo_discount(db, payload.promo_code, total)
     if promo:
+        # Atomic guarded claim of one use — mirrors the stock decrement so a
+        # capped promo can never exceed max_uses under concurrent checkouts.
+        res = db.execute(
+            update(PromoCode)
+            .where(
+                PromoCode.id == promo.id,
+                or_(PromoCode.max_uses.is_(None), PromoCode.used_count < PromoCode.max_uses),
+            )
+            .values(used_count=PromoCode.used_count + 1)
+        )
+        if res.rowcount == 0:
+            raise HTTPException(409, "Promo code is no longer valid")
         order.promo_code = promo.code
         order.discount = discount
-        promo.used_count += 1
         total -= discount
     order.total = total
     db.add(order)
     db.commit()
+    log.info(
+        "order created",
+        extra={"event": "order_created", "order_id": order.id, "total": total,
+               "items": len(order.items), "promo": promo.code if promo else ""},
+    )
     lines = [f"{it.title_snapshot} × {it.qty} = {it.price_snapshot * it.qty} TMT" for it in order.items]
     if promo:
         lines.append(f"Промокод {promo.code}: −{discount} TMT")
@@ -517,3 +623,17 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
         order_message(order.id, order.customer_name, order.phone, total, lines),
     )
     return {"ok": True, "id": order.id, "total": total, "discount": discount if promo else 0}
+
+
+@router.post("/payments/webhook", dependencies=[Depends(limiter("pay-webhook", 30))])
+async def payments_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
+    """Provider callback slot. The active provider verifies the signature and
+    parses the event; with ManualProvider (default) this answers 501 until a
+    real gateway is configured."""
+    event = get_provider().parse_webhook(await request.body(), request.headers)
+    order = db.scalar(select(Order).where(Order.payment_ref == event.ref))
+    if not order:
+        raise HTTPException(404, "Order not found for payment reference")
+    order.payment_status = event.status
+    db.commit()
+    return {"ok": True, "id": order.id, "payment_status": order.payment_status}

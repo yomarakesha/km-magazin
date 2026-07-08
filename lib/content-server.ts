@@ -9,14 +9,15 @@ const API_URL = process.env.API_URL ?? "http://localhost:8000";
 const LANGS: Lang[] = ["ru", "tk", "en"];
 
 /**
- * Loads all content for the public site from the FastAPI backend on every
- * request (uncached → always fresh). Falls back to the bundled static content
- * so the site still renders if the backend is unavailable.
+ * Loads all content for the public site from the FastAPI backend, cached for
+ * 60s under the "content" tag (invalidated via /api/revalidate on admin
+ * writes). Falls back to the bundled static content so the site still
+ * renders if the backend is unavailable.
  */
 export async function getSiteData(): Promise<SiteData> {
   try {
     const res = await fetch(`${API_URL}/api/content`, {
-      cache: "no-store",
+      next: { revalidate: 60, tags: ["content"] },
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) throw new Error(`content fetch failed: ${res.status}`);

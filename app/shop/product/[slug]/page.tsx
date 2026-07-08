@@ -35,9 +35,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const title = product.title.ru || product.slug;
   const path = `/shop/product/${product.slug}`;
-  const availability = product.in_stock
-    ? "https://schema.org/InStock"
-    : "https://schema.org/PreOrder";
+  // tracked stock at 0 = genuinely sold out; in_stock=false without tracking
+  // means the store orders it on demand (PreOrder)
+  const availability =
+    product.stock_qty === 0
+      ? "https://schema.org/OutOfStock"
+      : product.in_stock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/PreOrder";
+  // price is honored for 30 days — matches how the store quotes offers
+  // (server component: computed once per request, purity rule doesn't apply)
+  // eslint-disable-next-line react-hooks/purity
+  const priceValidUntil = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
+  const brandAttr = product.attributes.find((a) => a.key === "brand")?.value;
 
   const productLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -45,13 +55,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     name: title,
     description: product.short.ru || title,
     image: product.images.map((im) => `${product.mediaBase}/${im}`),
-    sku: String(product.id),
+    sku: product.sku || String(product.id),
+    ...(brandAttr ? { brand: { "@type": "Brand", name: brandAttr } } : {}),
     offers: {
       "@type": "Offer",
       priceCurrency: product.currency,
       price: product.price,
+      priceValidUntil,
       availability,
       url: abs(path),
+      seller: { "@type": "Organization", name: "Kanagatly Mahabat" },
     },
   };
   if (product.rating && product.rating_count) {

@@ -17,8 +17,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const j = await res.json();
       for (const slug of j.categories ?? [])
         urls.push({ url: `${SITE}/shop/category/${slug}`, changeFrequency: "daily", priority: 0.7 });
-      for (const slug of j.products ?? [])
-        urls.push({ url: `${SITE}/shop/product/${slug}`, changeFrequency: "weekly", priority: 0.6 });
+      for (const p of j.products ?? []) {
+        // backend sends {slug, lastmod}; tolerate the older bare-slug shape
+        const slug = typeof p === "string" ? p : p.slug;
+        const lastmod = typeof p === "object" && p.lastmod ? new Date(p.lastmod) : undefined;
+        urls.push({
+          url: `${SITE}/shop/product/${slug}`,
+          lastModified: lastmod,
+          changeFrequency: "weekly",
+          priority: 0.6,
+        });
+      }
     }
   } catch {
     // backend down at build/runtime — return the static urls only

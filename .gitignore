@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/.pytest_cache/
+.pytest_cache/
 
 # next.js
 /.next/
@@ -29,9 +33,25 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+
+# browser-automation artifacts (playwright / mcp session dumps)
+.playwright-mcp/
+
+# ad-hoc screenshots at repo root / scripts (dev artifacts, not site assets)
+/*.png
+/*.jpeg
+/*.jpg
+/scripts/*.png
+/backend/*.png
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!backend/.env.example
+
+# sqlite snapshots from scripts/backup-db.ps1
+/backup/
 
 # python backend
 __pycache__/

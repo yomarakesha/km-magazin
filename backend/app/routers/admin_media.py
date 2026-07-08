@@ -11,6 +11,7 @@ from ..config import MEDIA_DIR
 from ..db import get_db
 from ..models import Media, Service
 from ..schemas import MediaUpdateIn, ReorderIn
+from ..uploads import validate_upload
 
 router = APIRouter(
     prefix="/api/admin",
@@ -38,6 +39,9 @@ def _unique_path(subdir: str, name: str) -> Path:
 
 
 def _save(upload: UploadFile, subdir: str) -> str:
+    """Validate (type + size + magic bytes) and write the upload to MEDIA_DIR.
+    Single choke point for every admin file upload."""
+    validate_upload(upload, "video" if subdir == "video" else "img")
     path = _unique_path(subdir, _safe_name(upload.filename or "file"))
     with path.open("wb") as f:
         f.write(upload.file.read())

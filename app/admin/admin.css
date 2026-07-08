@@ -74,6 +74,39 @@ textarea.adm-in{min-height:64px}
 .adm-toast.ok{border-color:var(--green-br);color:var(--tx)}
 .adm-toast.err{border-color:rgba(255,120,120,.5);color:#ff9a9a}
 
+/* confirm modal */
+.adm-confirm-back{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px}
+.adm-confirm{width:100%;max-width:400px;border:1px solid var(--line2);border-radius:16px;background:var(--surf);padding:26px}
+.adm-confirm p{margin:0 0 20px;font-size:14.5px;line-height:1.5}
+.adm-confirm .btns{display:flex;gap:10px;justify-content:flex-end}
+
+/* nav counter badge */
+.adm-nav-badge{display:inline-block;min-width:18px;text-align:center;margin-left:8px;padding:1px 6px;
+  border-radius:20px;font-size:10px;font-weight:700;background:var(--green-br);color:#021008}
+
+/* inline editable cell */
+.adm-inline{font-family:var(--mono);font-size:11px;color:var(--tx2);cursor:pointer;border-bottom:1px dashed var(--tx3)}
+.adm-inline:hover{color:var(--tx);border-color:var(--green-br)}
+.adm-inline-in{width:80px;background:var(--bg);border:1px solid var(--green-br);border-radius:6px;
+  padding:2px 6px;font-family:var(--mono);font-size:11px;color:var(--tx)}
+
+/* translation status */
+.adm-tr-badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:1px 5px;border-radius:4px;
+  border:1px solid rgba(255,120,120,.45);color:#ff9a9a;margin-left:5px}
+
+/* drag reorder */
+.adm-row.dragging{opacity:.4}
+.adm-row.drag-over{border-color:var(--green-br);box-shadow:0 0 0 2px rgba(34,224,125,.25)}
+.adm-drag-handle{cursor:grab;color:var(--tx3);font-size:15px;user-select:none;padding:0 2px}
+.adm-drag-handle:active{cursor:grabbing}
+
+/* pagination */
+.adm-pager{display:flex;gap:8px;align-items:center;margin-top:16px;font-family:var(--mono);font-size:12px;color:var(--tx2)}
+.adm-pager button{background:none;border:1px solid var(--line2);color:var(--tx2);width:32px;height:32px;
+  border-radius:8px;cursor:pointer}
+.adm-pager button:disabled{opacity:.4;cursor:default}
+.adm-pager button:not(:disabled):hover{border-color:var(--green-br);color:var(--tx)}
+
 /* media grid */
 .adm-media{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:18px}
 .adm-media figure{border:1px solid var(--line2);border-radius:13px;overflow:hidden;background:var(--surf)}

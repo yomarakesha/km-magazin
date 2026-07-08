@@ -4,7 +4,7 @@ type IconName =
   | "search" | "cart" | "eye" | "check" | "close" | "minus" | "plus"
   | "phone" | "truck" | "filter" | "chevron" | "arrow" | "whatsapp"
   | "box" | "grid" | "shield" | "trash" | "compare"
-  | "wrench" | "settings" | "refresh" | "heart" | "star";
+  | "wrench" | "settings" | "refresh" | "heart" | "star" | "share";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
@@ -30,6 +30,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
   refresh: <><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 4v4h-4" /></>,
   heart: <path d="M12 20.5s-7.5-4.6-9.3-9A5 5 0 0 1 12 6.5 5 5 0 0 1 21.3 11.5c-1.8 4.4-9.3 9-9.3 9Z" />,
   star: <path d="m12 3 2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-2.9-5.4 2.9 1.1-6L3.2 9.4l6.1-.8Z" />,
+  share: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1" /></>,
 };
 
 export default function Icon({

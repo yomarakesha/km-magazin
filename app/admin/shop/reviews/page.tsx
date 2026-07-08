@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, type AdminReview } from "@/lib/admin-api";
 import { useToast } from "../../_components/useToast";
+import { useConfirm } from "../../_components/useConfirm";
 
 const ST_LABEL: Record<string, string> = { pending: "На модерации", approved: "Одобрен", rejected: "Отклонён" };
 const FILTERS = [
@@ -13,6 +14,7 @@ const FILTERS = [
 
 export default function ReviewsPage() {
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminReview[]>([]);
   const [filter, setFilter] = useState("pending");
 
@@ -24,7 +26,7 @@ export default function ReviewsPage() {
     load();
   }
   async function remove(r: AdminReview) {
-    if (!confirm(`Удалить отзыв от «${r.name}»?`)) return;
+    if (!(await ask(`Удалить отзыв от «${r.name}»?`))) return;
     await api.deleteReview(r.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -62,6 +64,7 @@ export default function ReviewsPage() {
         ))
       )}
       {node}
+      {confirmNode}
     </>
   );
 }

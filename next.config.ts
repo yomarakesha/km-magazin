@@ -7,6 +7,7 @@ const media = new URL(mediaOrigin);
 
 const nextConfig: NextConfig = {
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: media.protocol.replace(":", "") as "http" | "https",

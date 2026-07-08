@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, type AdminService } from "@/lib/admin-api";
 import { useToast } from "../_components/useToast";
+import { useConfirm } from "../_components/useConfirm";
 
 export default function ServicesPage() {
   const router = useRouter();
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminService[]>([]);
 
   const load = () => api.getServices().then(setList).catch((e) => show(String(e), "err"));
@@ -42,7 +44,7 @@ export default function ServicesPage() {
   }
 
   async function remove(s: AdminService) {
-    if (!confirm(`Удалить услугу «${title(s)}»? Медиа также будут удалены.`)) return;
+    if (!(await ask(`Удалить услугу «${title(s)}»? Медиа также будут удалены.`))) return;
     await api.deleteService(s.id).catch((e) => show(String(e), "err"));
     load();
     show("Удалено");
@@ -76,6 +78,7 @@ export default function ServicesPage() {
         <button className="adm-btn" onClick={create}>+ Добавить услугу</button>
       </div>
       {node}
+      {confirmNode}
     </>
   );
 }

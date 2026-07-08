@@ -99,9 +99,10 @@ export const api = {
   getShopSettings: () => req<AdminShopSettings>("/api/admin/shop/settings"),
   updateShopSettings: (body: unknown) => req<AdminShopSettings>("/api/admin/shop/settings", { method: "PUT", body: JSON.stringify(body) }),
   // shop: orders
-  getOrders: (opts?: { status?: string; q?: string }) => {
+  getOrders: (opts?: { status?: string; payment?: string; q?: string }) => {
     const p = new URLSearchParams();
     if (opts?.status) p.set("status", opts.status);
+    if (opts?.payment) p.set("payment", opts.payment);
     if (opts?.q) p.set("q", opts.q);
     const qs = p.toString();
     return req<AdminOrder[]>(`/api/admin/shop/orders${qs ? `?${qs}` : ""}`);
@@ -113,6 +114,7 @@ export const api = {
   updatePromo: (id: number, body: unknown) => req<AdminPromo>(`/api/admin/shop/promos/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deletePromo: (id: number) => req(`/api/admin/shop/promos/${id}`, { method: "DELETE" }),
   setOrderStatus: (id: number, status: string) => req<AdminOrder>(`/api/admin/shop/orders/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  setOrderPayment: (id: number, payment_status: string) => req<AdminOrder>(`/api/admin/shop/orders/${id}/payment`, { method: "PATCH", body: JSON.stringify({ payment_status }) }),
   deleteOrder: (id: number) => req(`/api/admin/shop/orders/${id}`, { method: "DELETE" }),
 };
 
@@ -152,13 +154,15 @@ export interface AdminOrderItem { product_id: number | null; service_id?: number
 export interface AdminOrder {
   id: number; customer_name: string; phone: string; address: string;
   payment_method: string; comment: string; status: string; total: number;
+  payment_status: "unpaid" | "pending" | "paid" | "refunded";
+  payment_provider: string | null; payment_ref: string | null;
   promo_code?: string; discount?: number;
   created_at: string; items: AdminOrderItem[];
 }
 export interface AdminPromo {
   id: number; code: string; kind: "percent" | "fixed"; value: number;
   min_total: number; active: boolean; expires_at: string | null;
-  used_count: number; created_at: string;
+  used_count: number; max_uses: number | null; created_at: string;
 }
 export interface AdminShopStats {
   orders_new: number; orders_today: number; orders_week: number; revenue_week: number;

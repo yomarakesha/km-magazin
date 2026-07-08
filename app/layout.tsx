@@ -1,11 +1,28 @@
 import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Manrope, Unbounded } from "next/font/google";
 import "./globals.css";
 
-// Fonts are loaded via <link> (browser-side) rather than next/font to avoid a
-// build-time dependency on fonts.gstatic.com. globals.css references the same
-// family names (Unbounded / Manrope / JetBrains Mono) as fallbacks.
-const GOOGLE_FONTS =
-  "https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Manrope:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap";
+// Self-hosted via next/font (downloaded at build time, served same-origin):
+// no render-blocking Google Fonts CSS, no CLS. globals.css consumes the
+// variables with the original family names as fallbacks.
+const disp = Unbounded({
+  subsets: ["latin", "cyrillic"],
+  weight: ["600", "800"],
+  variable: "--font-disp",
+  display: "swap",
+});
+const body = Manrope({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "700", "800"],
+  variable: "--font-body",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "700"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "KM · Kanagatly Mahabat — Системы безопасности и автоматизации",
@@ -22,12 +39,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href={GOOGLE_FONTS} />
-      </head>
+    <html lang="ru" className={`${disp.variable} ${body.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

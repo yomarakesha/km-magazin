@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type AdminProductImage } from "@/lib/admin-api";
 import { useToast } from "../../../../_components/useToast";
+import { useConfirm } from "../../../../_components/useConfirm";
 
 export default function ProductImagesPage() {
   const { id } = useParams<{ id: string }>();
   const productId = Number(id);
   const router = useRouter();
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminProductImage[]>([]);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -34,7 +36,7 @@ export default function ProductImagesPage() {
   }
 
   async function remove(im: AdminProductImage) {
-    if (!confirm("Удалить фото?")) return;
+    if (!(await ask("Удалить фото?"))) return;
     await api.deleteProductImage(im.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -84,6 +86,7 @@ export default function ProductImagesPage() {
         ))}
       </div>
       {node}
+      {confirmNode}
     </>
   );
 }

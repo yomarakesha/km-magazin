@@ -89,9 +89,10 @@ export interface OrderStatusView {
   id: number;
   status: string;
   payment_method: string;
+  payment_status: "unpaid" | "pending" | "paid" | "refunded";
   total: number;
   created_at: string;
-  items: { title: string; price: number; qty: number; kind: "product" | "service" }[];
+  items: { title: string; price: number; qty: number; kind: "product" | "service"; slug: string | null }[];
 }
 
 /** Client: customer order lookup — the phone must match the order's phone. */
@@ -99,6 +100,25 @@ export async function fetchOrderStatus(id: number, phone: string): Promise<Order
   const res = await fetch(`${API}/api/shop/orders/${id}?phone=${encodeURIComponent(phone)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`order lookup failed: ${res.status}`);
   return (await res.json()) as OrderStatusView;
+}
+
+export interface CartLineCheck {
+  kind: "product" | "service";
+  id: number;
+  ok: boolean;
+  price: number | null;
+  in_stock: boolean | null;
+}
+
+/** Client: re-check cart lines against the DB (existence, price, stock). */
+export async function validateCart(items: { kind: "product" | "service"; id: number; qty: number }[]): Promise<{ items: CartLineCheck[] }> {
+  const res = await fetch(`${API}/api/shop/cart/validate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) throw new Error(`cart validate failed: ${res.status}`);
+  return res.json();
 }
 
 /** Client: submit an order. The backend recomputes the total from DB prices. */

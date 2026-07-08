@@ -1,12 +1,13 @@
 """Admin CRUD for the tech shop: categories, filter attributes, products,
 product images and customer orders. Mirrors the services/media/leads routers."""
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..auth import require_admin
 from ..config import MEDIA_DIR
 from ..db import get_db
+from ..notify import email_notify, status_message, telegram_notify
 from ..models import (
     CategoryAttribute,
     CategoryAttributeTranslation,
@@ -30,6 +31,7 @@ from ..schemas import (
     CategoryAttributeUpdateIn,
     CategoryIn,
     CategoryUpdateIn,
+    OrderPaymentIn,
     OrderStatusIn,
     ProductIn,
     ProductUpdateIn,
@@ -140,6 +142,9 @@ def _order(o: Order) -> dict:
         "payment_method": o.payment_method,
         "comment": o.comment,
         "status": o.status,
+        "payment_status": o.payment_status,
+        "payment_provider": o.payment_provider,
+        "payment_ref": o.payment_ref,
         "total": o.total,
         "promo_code": o.promo_code,
         "discount": o.discount,
@@ -758,6 +763,7 @@ def _promo(p: PromoCode) -> dict:
         "active": p.active,
         "expires_at": p.expires_at.strftime("%Y-%m-%d") if p.expires_at else None,
         "used_count": p.used_count,
+        "max_uses": p.max_uses,
         "created_at": p.created_at,
     }
 
@@ -780,6 +786,7 @@ def create_promo(payload: PromoCodeIn, db: Session = Depends(get_db)) -> dict:
         min_total=payload.min_total,
         active=payload.active,
         expires_at=_parse_expiry(payload.expires_at),
+        max_uses=payload.max_uses,
     )
     db.add(p)
     db.commit()
@@ -809,6 +816,9 @@ def update_promo(promo_id: int, payload: PromoCodeUpdateIn, db: Session = Depend
     if "expires_at" in payload.model_fields_set:
         # present-with-null clears the expiry; missing key = no change
         p.expires_at = _parse_expiry(payload.expires_at)
+    if "max_uses" in payload.model_fields_set:
+        # present-with-null clears the cap; missing key = no change
+        p.max_uses = payload.max_uses
     db.commit()
     return _promo(p)
 
@@ -829,12 +839,15 @@ def delete_promo(promo_id: int, db: Session = Depends(get_db)) -> dict:
 @router.get("/orders")
 def list_orders(
     status: str | None = None,
+    payment: str | None = None,
     q: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
     stmt = select(Order).order_by(Order.created_at.desc())
     if status:
         stmt = stmt.where(Order.status == status)
+    if payment:
+        stmt = stmt.where(Order.payment_status == payment)
     if q:
         needle = f"%{q.strip()}%"
         stmt = stmt.where(Order.phone.like(needle) | Order.customer_name.like(needle))
@@ -843,9 +856,10 @@ def list_orders(
 
 @router.get("/stats")
 def shop_stats(db: Session = Depends(get_db)) -> dict:
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
-    now = datetime.utcnow()
+    # Orders store aware-UTC created_at (models._now); compare in the same frame.
+    now = datetime.now(timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
@@ -916,11 +930,33 @@ def shop_stats(db: Session = Depends(get_db)) -> dict:
 
 
 @router.patch("/orders/{order_id}")
-def set_order_status(order_id: int, payload: OrderStatusIn, db: Session = Depends(get_db)) -> dict:
+def set_order_status(
+    order_id: int,
+    payload: OrderStatusIn,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> dict:
     o = db.get(Order, order_id)
     if not o:
         raise HTTPException(404, "Order not found")
+    changed = o.status != payload.status
     o.status = payload.status
+    db.commit()
+    if changed:
+        msg = status_message(o.id, o.customer_name, o.phone, o.status)
+        background.add_task(telegram_notify, msg)
+        background.add_task(email_notify, f"Заказ #{o.id}: {o.status}", msg)
+    return _order(o)
+
+
+@router.patch("/orders/{order_id}/payment")
+def set_order_payment(order_id: int, payload: OrderPaymentIn, db: Session = Depends(get_db)) -> dict:
+    o = db.get(Order, order_id)
+    if not o:
+        raise HTTPException(404, "Order not found")
+    o.payment_status = payload.payment_status
+    if payload.payment_status == "paid" and not o.payment_provider:
+        o.payment_provider = "manual"  # paid by hand, no gateway involved
     db.commit()
     return _order(o)
 

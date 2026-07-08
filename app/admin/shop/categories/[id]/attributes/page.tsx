@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api, type AdminAttribute, type AdminAttributeTr } from "@/lib/admin-api";
 import { slugify } from "@/lib/slug";
 import { useToast } from "../../../../_components/useToast";
+import { useConfirm } from "../../../../_components/useConfirm";
 
 const LANGS = ["ru", "tk", "en"] as const;
 const LANG_LABEL: Record<string, string> = { ru: "RU", tk: "TK", en: "EN" };
@@ -16,6 +17,7 @@ export default function AttributesPage() {
   const catId = Number(id);
   const router = useRouter();
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminAttribute[]>([]);
   const [nw, setNw] = useState<NewAttr>(emptyNew);
 
@@ -61,7 +63,7 @@ export default function AttributesPage() {
   }
 
   async function remove(a: AdminAttribute) {
-    if (!confirm(`Удалить характеристику «${a.key}»?`)) return;
+    if (!(await ask(`Удалить характеристику «${a.key}»?`))) return;
     await api.deleteAttribute(a.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -155,6 +157,7 @@ export default function AttributesPage() {
         </div>
       </div>
       {node}
+      {confirmNode}
     </>
   );
 }

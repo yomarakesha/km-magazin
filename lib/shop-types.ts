@@ -109,6 +109,7 @@ export interface ProductDetail {
   currency: string;
   in_stock: boolean;
   stock_qty?: number | null;
+  sku?: string | null;
   title: I18n;
   short: I18n;
   body: I18n;

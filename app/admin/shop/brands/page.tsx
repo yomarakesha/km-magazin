@@ -2,9 +2,11 @@
 import { useEffect, useState } from "react";
 import { api, type AdminBrand } from "@/lib/admin-api";
 import { useToast } from "../../_components/useToast";
+import { useConfirm } from "../../_components/useConfirm";
 
 export default function BrandsPage() {
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminBrand[]>([]);
   const [name, setName] = useState("");
 
@@ -31,7 +33,7 @@ export default function BrandsPage() {
     load();
   }
   async function remove(b: AdminBrand) {
-    if (!confirm(`Удалить бренд «${b.name}»?`)) return;
+    if (!(await ask(`Удалить бренд «${b.name}»?`))) return;
     await api.deleteBrand(b.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -77,6 +79,7 @@ export default function BrandsPage() {
         </div>
       ))}
       {node}
+      {confirmNode}
     </>
   );
 }

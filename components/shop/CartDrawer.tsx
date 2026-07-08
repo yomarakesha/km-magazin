@@ -9,6 +9,8 @@ export default function CartDrawer() {
   const { t, pick, mediaBase, items, setQty, remove, total, count, cartOpen, closeCart, services, add } = useShop();
   if (!cartOpen) return null;
 
+  const cur = items[0]?.currency ?? "TMT";
+
   // upsell: services matching the categories of products in the cart,
   // excluding services already added
   const catIds = new Set(items.filter((i) => i.kind === "product").map((i) => i.category_id).filter(Boolean));
@@ -19,7 +21,7 @@ export default function CartDrawer() {
 
   const foot = items.length > 0 ? (
     <>
-      <div className="shop-order-row total"><span>{t("total")}</span><b>{total.toLocaleString("ru-RU")} TMT</b></div>
+      <div className="shop-order-row total"><span>{t("total")}</span><b>{total.toLocaleString("ru-RU")} {cur}</b></div>
       <Link href="/shop/checkout" className="shop-btn block" onClick={closeCart}>{t("checkout")}</Link>
       <button className="shop-btn ghost block" onClick={closeCart}>{t("continueShopping")}</button>
     </>

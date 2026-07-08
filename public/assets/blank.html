@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KANAGATLY MAHABAT — Blank / Letterhead</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --green:#00A650; --green-br:#22e07d; --green-d:#0a6e3b;
+    --ink:#0f1713; --tx2:#5f6f68; --tx3:#8a998f;
+    --line:rgba(10,110,59,.18); --line2:rgba(10,110,59,.30);
+    --disp:"Unbounded",sans-serif;
+    --body:"Manrope",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#e7ebe8}
+  body{font-family:var(--body);color:var(--ink);display:flex;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+
+  /* ── A4 sheet ── */
+  .sheet{
+    position:relative;width:210mm;min-height:297mm;background:#fff;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.28);
+    display:flex;flex-direction:column;
+  }
+  /* top brand accent bar */
+  .sheet::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:6px;z-index:5;
+    background:linear-gradient(90deg,var(--green-d),var(--green),var(--green-br));
+  }
+
+  /* ── header ── */
+  .head{
+    position:relative;z-index:4;display:flex;justify-content:space-between;align-items:flex-start;
+    gap:24px;padding:26mm 20mm 0;
+  }
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand .logo{
+    width:74px;height:74px;border-radius:50%;flex:none;
+    box-shadow:0 10px 30px rgba(0,166,80,.30);
+  }
+  .brand .wm{display:flex;flex-direction:column;gap:5px}
+  .brand .name{
+    font-family:var(--disp);font-weight:800;font-size:21px;line-height:1;letter-spacing:.08em;
+    color:var(--ink);white-space:nowrap;
+  }
+  .brand .sub{
+    display:flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:var(--green-d);
+  }
+  .brand .sub::before,.brand .sub::after{content:"";height:1px;width:22px;background:var(--line2)}
+
+  /* contacts */
+  .contacts{display:flex;flex-direction:column;gap:13px;padding-top:4px;width:225px;flex:none}
+  .ct{display:flex;align-items:flex-start;gap:11px}
+  .ct .ic{
+    width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+    background:linear-gradient(150deg,var(--green),var(--green-d));color:#fff;
+    box-shadow:0 6px 16px rgba(0,166,80,.28);
+  }
+  .ct .ic svg{width:15px;height:15px}
+  .ct .txt{display:flex;flex-direction:column;line-height:1.35}
+  .ct .lb{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--green-d);margin-bottom:2px}
+  .ct .vl{font-size:12px;font-weight:600;color:var(--ink);word-break:break-word}
+  .ct .vl.sm{font-weight:500;color:var(--tx2);font-size:11.5px;line-height:1.4}
+
+  /* divider under header */
+  .rule{
+    position:relative;z-index:4;margin:18px 20mm 0;height:1px;
+    background:linear-gradient(90deg,var(--green),rgba(10,110,59,.05));
+  }
+
+  /* body area (where letter text goes) */
+  .body{position:relative;z-index:3;flex:1;padding:14mm 20mm}
+  .placeholder{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#c3ccc6;
+  }
+
+  /* watermark skyline */
+  .watermark{
+    position:absolute;right:0;bottom:22mm;width:150mm;z-index:1;pointer-events:none;opacity:.9;
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 55%);
+            mask-image:linear-gradient(180deg,transparent,#000 55%);
+  }
+  .watermark svg{width:100%;height:auto;display:block}
+
+  /* big faint KM */
+  .ghost{
+    position:absolute;right:14mm;bottom:34mm;z-index:1;pointer-events:none;
+    font-family:var(--disp);font-weight:800;font-size:120px;letter-spacing:.04em;
+    color:rgba(10,110,59,.06);
+  }
+
+  /* footer */
+  .foot{
+    position:relative;z-index:4;margin-top:auto;padding:0 20mm 16mm;
+  }
+  .foot .bar{height:1px;background:var(--line);margin-bottom:12px}
+  .foot .row{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);
+  }
+  .foot .row b{color:var(--green-d)}
+  .foot .dots{display:flex;align-items:center;gap:6px}
+  .foot .dots i{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;opacity:.5}
+  .foot .dots i:nth-child(2){opacity:.75}
+  .foot .dots i:nth-child(3){opacity:1}
+
+  /* ── print ── */
+  @page{size:A4;margin:0}
+  @media print{
+    html,body{background:#fff;padding:0}
+    .sheet{box-shadow:none;width:210mm;min-height:297mm}
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+
+    <!-- HEADER -->
+    <header class="head">
+      <div class="brand">
+        <img class="logo" src="km-logo.png" alt="KM" />
+        <div class="wm">
+          <div class="name">KANAGATLY&nbsp;MAHABAT</div>
+          <div class="sub">Howpsuzlyk &amp; Tehnologiýa</div>
+        </div>
+      </div>
+
+      <div class="contacts">
+        <div class="ct">
+          <span class="ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </span>
+          <div class="txt">
+            <span class="lb">Salgy</span>
+            <span class="vl sm">ş. Aşgabat, 10 ýyl abadançylyk, jaý 142, 1-nji gat</span>
+          </div>
+        </div>
+
+        <div class="ct">
+          <span class="ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.8 2Z"/></svg>
+          </span>
+          <div class="txt">
+            <span class="lb">Tel</span>
+            <span class="vl">+993 65 55 55 68</span>
+          </div>
+        </div>
+
+        <div class="ct">
+          <span class="ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+          </span>
+          <div class="txt">
+            <span class="lb">Email</span>
+            <span class="vl">kanagatlymahabat@gmail.com</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="rule"></div>
+
+    <!-- LETTER BODY (empty working area) -->
+    <main class="body">
+      <span class="placeholder">— Hat ýazmak üçin ýer / letter body —</span>
+    </main>
+
+    <!-- WATERMARK -->
+    <div class="ghost">KM</div>
+    <div class="watermark" aria-hidden="true">
+      <svg viewBox="0 0 600 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="rgba(10,110,59,.16)" stroke-width="1.4" fill="rgba(0,166,80,.04)">
+          <rect x="40"  y="150" width="34" height="110"/>
+          <rect x="82"  y="110" width="40" height="150"/>
+          <rect x="130" y="170" width="28" height="90"/>
+          <rect x="166" y="70"  width="46" height="190"/>
+          <rect x="220" y="130" width="30" height="130"/>
+          <rect x="258" y="40"  width="54" height="220"/>
+          <rect x="320" y="100" width="34" height="160"/>
+          <rect x="362" y="160" width="26" height="100"/>
+          <rect x="396" y="88"  width="48" height="172"/>
+          <rect x="452" y="140" width="30" height="120"/>
+          <rect x="490" y="60"  width="52" height="200"/>
+          <rect x="550" y="118" width="34" height="142"/>
+        </g>
+        <g stroke="rgba(10,110,59,.20)" stroke-width="1.4">
+          <path d="M258 40 L285 18 L312 40"/>
+          <path d="M490 60 L516 36 L542 60"/>
+          <path d="M166 70 L189 52 L212 70"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="foot">
+      <div class="bar"></div>
+      <div class="row">
+        <span><b>KANAGATLY MAHABAT</b> · Howpsuzlyk ulgamlary</span>
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span>+993 65 55 55 68 · kanagatlymahabat@gmail.com</span>
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>

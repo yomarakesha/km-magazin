@@ -20,9 +20,25 @@ export default function ProductView({ p }: { p: ProductDetail }) {
   const [added, setAdded] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [showBar, setShowBar] = useState(false);
+  const [shared, setShared] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
 
   const title = pick(p.title);
+
+  // native share sheet where available (mobile), else copy the link to clipboard
+  async function share() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const data = { title, text: `${title} — ${p.price} ${p.currency}`, url };
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share(data);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShared(true);
+      setTimeout(() => setShared(false), 1800);
+    } catch { /* user cancelled the share sheet — nothing to do */ }
+  }
   const images = p.images.map((src) => `${mediaBase}/${src}`);
   const hasImg = images.length > 0;
   const mainSrc = hasImg ? images[active] : null;
@@ -111,6 +127,9 @@ export default function ProductView({ p }: { p: ProductDetail }) {
                 <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
               </a>
             )}
+            <button className="shop-btn ghost" onClick={share} title={t("share")}>
+              <Icon name="share" size={16} /> {shared ? t("shareCopied") : t("share")}
+            </button>
           </div>
           <div className="shop-pdp-trust">
             <span><Icon name="truck" size={16} /> {t("fastDelivery")}</span>

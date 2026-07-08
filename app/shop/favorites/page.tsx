@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useShop } from "@/components/shop/shop-context";
 import ProductCard from "@/components/shop/ProductCard";
+import PopularProducts from "@/components/shop/PopularProducts";
 
 /** Favorites are stored client-side (localStorage snapshots, like the cart). */
 export default function FavoritesPage() {
@@ -14,6 +15,7 @@ export default function FavoritesPage() {
         <>
           <p className="shop-empty">{t("favoritesEmpty")}</p>
           <Link href="/shop" className="shop-btn ghost">{t("continueShopping")}</Link>
+          <PopularProducts />
         </>
       ) : (
         <div className="shop-grid">

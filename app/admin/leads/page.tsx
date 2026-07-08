@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { api, type Lead } from "@/lib/admin-api";
 import { useToast } from "../_components/useToast";
+import { useConfirm } from "../_components/useConfirm";
 
 const NEXT: Record<string, string> = { new: "read", read: "done", done: "new" };
 const ST_LABEL: Record<string, string> = { new: "Новая", read: "Прочитана", done: "Готово" };
 
 export default function LeadsPage() {
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [leads, setLeads] = useState<Lead[]>([]);
 
   const load = () => api.getLeads().then(setLeads).catch((e) => show(String(e), "err"));
@@ -18,7 +20,7 @@ export default function LeadsPage() {
     load();
   }
   async function del(l: Lead) {
-    if (!confirm("Удалить заявку?")) return;
+    if (!(await ask("Удалить заявку?"))) return;
     await api.deleteLead(l.id).catch((e) => show(String(e), "err"));
     load();
   }
@@ -58,6 +60,7 @@ export default function LeadsPage() {
         </div>
       )}
       {node}
+      {confirmNode}
     </>
   );
 }

@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type AdminCategory } from "@/lib/admin-api";
 import { useToast } from "../../_components/useToast";
+import { useConfirm } from "../../_components/useConfirm";
 
 export default function CategoriesPage() {
   const { show, node } = useToast();
+  const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminCategory[]>([]);
 
   const load = () => api.getCategories().then(setList).catch((e) => show(String(e), "err"));
@@ -28,7 +30,7 @@ export default function CategoriesPage() {
   }
 
   async function remove(c: AdminCategory) {
-    if (!confirm(`Удалить категорию «${name(c)}»? Все её товары будут удалены.`)) return;
+    if (!(await ask(`Удалить категорию «${name(c)}»? Все её товары будут удалены.`))) return;
     await api.deleteCategory(c.id).catch((e) => show(String(e), "err"));
     load();
     show("Удалено");
@@ -64,6 +66,7 @@ export default function CategoriesPage() {
       ))}
 
       {node}
+      {confirmNode}
     </>
   );
 }
