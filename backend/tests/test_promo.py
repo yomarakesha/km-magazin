@@ -21,10 +21,13 @@ def test_promo_check_unknown_code_404(client):
     assert client.post("/api/shop/promo/check", json={"code": "NOPE", "subtotal": 100}).status_code == 404
 
 
-def test_promo_below_min_total_404(client, make_promo):
+def test_promo_below_min_total_422(client, make_promo):
+    # A valid code the cart is too small for returns 422 with the threshold so
+    # the client can prompt "add X more", distinct from a 404 unknown code.
     promo = make_promo(value=10, min_total=500)
     r = client.post("/api/shop/promo/check", json={"code": promo["code"], "subtotal": 100})
-    assert r.status_code == 404
+    assert r.status_code == 422
+    assert r.json()["detail"] == {"code": "below_min", "min_total": 500}
 
 
 def test_fixed_discount_capped_at_subtotal(client, make_promo):

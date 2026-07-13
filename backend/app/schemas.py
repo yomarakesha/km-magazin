@@ -2,14 +2,32 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Lang = Literal["ru", "tk", "en"]
 
 
 # ---- Auth ----
 class LoginIn(BaseModel):
+    # username defaults to the seeded root account so the old
+    # {"password": "..."} body keeps working.
+    username: str = Field(default="admin", min_length=1, max_length=32)
     password: str
+
+
+AdminRole = Literal["owner", "warehouse", "sales", "content"]
+
+
+class AdminUserIn(BaseModel):
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=8, max_length=128)
+    role: AdminRole = "content"
+
+
+class AdminUserUpdateIn(BaseModel):
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    role: AdminRole | None = None
+    active: bool | None = None
 
 
 # ---- Leads ----
@@ -270,6 +288,12 @@ class PromoCodeIn(BaseModel):
     expires_at: str | None = None  # "YYYY-MM-DD" or null = no expiry
     max_uses: int | None = Field(default=None, ge=1)  # None = unlimited
 
+    @model_validator(mode="after")
+    def _percent_cap(self):
+        if self.kind == "percent" and self.value > 100:
+            raise ValueError("percent discount cannot exceed 100")
+        return self
+
 
 class PromoCodeUpdateIn(BaseModel):
     code: str | None = Field(default=None, min_length=2, max_length=32)
@@ -281,7 +305,64 @@ class PromoCodeUpdateIn(BaseModel):
     # present-with-null clears the cap; missing key = no change
     max_uses: int | None = Field(default=None, ge=1)
 
+    @model_validator(mode="after")
+    def _percent_cap(self):
+        # Only enforce when both are supplied in the same patch; a partial
+        # update that changes just one is validated against the stored row
+        # in the router.
+        if self.kind == "percent" and self.value is not None and self.value > 100:
+            raise ValueError("percent discount cannot exceed 100")
+        return self
+
 
 class PromoCheckIn(BaseModel):
     code: str = Field(min_length=1, max_length=32)
     subtotal: int = Field(ge=0)
+
+
+# ---- Warehouse ----
+class SupplierIn(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    phone: str = Field(default="", max_length=64)
+    note: str = Field(default="", max_length=2000)
+
+
+class SupplierUpdateIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    phone: str | None = Field(default=None, max_length=64)
+    note: str | None = Field(default=None, max_length=2000)
+    active: bool | None = None
+
+
+class MovementIn(BaseModel):
+    """Manual stock operation. receipt/writeoff take a positive qty;
+    adjust takes the absolute new_qty (инвентаризация)."""
+
+    product_id: int
+    kind: Literal["receipt", "writeoff", "adjust"]
+    qty: int | None = Field(default=None, ge=1)        # receipt | writeoff
+    new_qty: int | None = Field(default=None, ge=0)    # adjust
+    note: str = Field(default="", max_length=256)
+    unit_cost: int | None = Field(default=None, ge=0)  # receipt only
+    supplier_id: int | None = None
+
+    @model_validator(mode="after")
+    def _qty_matches_kind(self) -> "MovementIn":
+        if self.kind == "adjust":
+            if self.new_qty is None:
+                raise ValueError("adjust requires new_qty")
+        elif self.qty is None:
+            raise ValueError(f"{self.kind} requires qty")
+        return self
+
+
+class PurchaseItemIn(BaseModel):
+    product_id: int
+    qty: int = Field(ge=1)
+    unit_cost: int = Field(ge=0)
+
+
+class PurchaseIn(BaseModel):
+    supplier_id: int | None = None
+    note: str = Field(default="", max_length=256)
+    items: list[PurchaseItemIn] = Field(min_length=1)

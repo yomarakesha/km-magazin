@@ -4,6 +4,8 @@ dynamic attribute filters (facets), product detail and order creation.
 Texts are returned as per-language maps ({ru, tk, en}) so the SSR frontend can
 switch language client-side, mirroring how the landing handles i18n.
 """
+import hmac
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
@@ -29,6 +31,7 @@ from ..notify import order_message, telegram_notify
 from ..payments import get_provider
 from ..ratelimit import limiter
 from ..schemas import CartValidateIn, OrderIn, PromoCheckIn, ReviewIn
+from ..stock import log_movement
 
 router = APIRouter(prefix="/api/shop", tags=["shop"])
 
@@ -50,6 +53,20 @@ def _page_params(params) -> tuple[int, int]:
     except ValueError:
         offset = 0
     return limit, offset
+
+
+def _num(val, cast):
+    """Parse a query-string number, ignoring a missing/malformed value instead
+    of raising (a crafted ?price_min=abc must not 500 the endpoint)."""
+    try:
+        return cast(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _like_escape(s: str) -> str:
+    """Neutralise LIKE wildcards so user text matches literally under ilike()."""
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _apply_sort(stmt, sort: str | None):
@@ -200,10 +217,12 @@ def category(slug: str, request: Request, db: Session = Depends(get_db)) -> dict
     stmt = select(Product).where(Product.category_id == cat.id, Product.enabled == True)  # noqa: E712
 
     # price range
-    if params.get("price_min"):
-        stmt = stmt.where(Product.price >= int(params["price_min"]))
-    if params.get("price_max"):
-        stmt = stmt.where(Product.price <= int(params["price_max"]))
+    price_min = _num(params.get("price_min"), int)
+    if price_min is not None:
+        stmt = stmt.where(Product.price >= price_min)
+    price_max = _num(params.get("price_max"), int)
+    if price_max is not None:
+        stmt = stmt.where(Product.price <= price_max)
     if params.get("in_stock"):
         stmt = stmt.where(Product.in_stock == True)  # noqa: E712
 
@@ -218,15 +237,16 @@ def category(slug: str, request: Request, db: Session = Depends(get_db)) -> dict
                 )
                 stmt = stmt.where(Product.id.in_(sub))
         else:  # number range
-            nmin, nmax = params.get(f"{key}_min"), params.get(f"{key}_max")
-            if nmin or nmax:
+            nmin = _num(params.get(f"{key}_min"), float)
+            nmax = _num(params.get(f"{key}_max"), float)
+            if nmin is not None or nmax is not None:
                 sub = select(ProductAttribute.product_id).where(
                     ProductAttribute.attribute_id == a.id
                 )
-                if nmin:
-                    sub = sub.where(ProductAttribute.num_value >= float(nmin))
-                if nmax:
-                    sub = sub.where(ProductAttribute.num_value <= float(nmax))
+                if nmin is not None:
+                    sub = sub.where(ProductAttribute.num_value >= nmin)
+                if nmax is not None:
+                    sub = sub.where(ProductAttribute.num_value <= nmax)
                 stmt = stmt.where(Product.id.in_(sub))
 
     prods = db.scalars(_apply_sort(stmt, params.get("sort"))).all()
@@ -309,11 +329,14 @@ def search(request: Request, db: Session = Depends(get_db)) -> dict:
     q = (params.get("q") or "").strip()
     stmt = select(Product).where(Product.enabled == True)  # noqa: E712
     if q:
-        like = f"%{q}%"
+        like = f"%{_like_escape(q)}%"
         text_match = select(ProductTranslation.product_id).where(
-            or_(ProductTranslation.title.ilike(like), ProductTranslation.short.ilike(like))
+            or_(
+                ProductTranslation.title.ilike(like, escape="\\"),
+                ProductTranslation.short.ilike(like, escape="\\"),
+            )
         )
-        stmt = stmt.where(or_(Product.id.in_(text_match), Product.sku.ilike(like)))
+        stmt = stmt.where(or_(Product.id.in_(text_match), Product.sku.ilike(like, escape="\\")))
     prods = db.scalars(_apply_sort(stmt, params.get("sort"))).all()
     limit, offset = _page_params(params)
     return {
@@ -401,25 +424,33 @@ def create_review(slug: str, payload: ReviewIn, db: Session = Depends(get_db)) -
     return {"ok": True}
 
 
+def _promo_expired(promo: PromoCode) -> bool:
+    # expires_at is stored naive (end-of-day, see admin _parse_expiry) — compare
+    # against naive UTC now rather than deprecated utcnow().
+    from datetime import datetime, timezone
+
+    return bool(promo.expires_at and promo.expires_at < datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+def _promo_usable(promo: PromoCode | None) -> bool:
+    """Code exists, active, not expired, not exhausted — ignoring min_total."""
+    return bool(
+        promo
+        and promo.active
+        and not _promo_expired(promo)
+        and (promo.max_uses is None or promo.used_count < promo.max_uses)
+    )
+
+
 def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | None, int]:
     """Resolve a promo code against a subtotal. Returns (promo, discount) or
     (None, 0) when the code is unknown, inactive, expired, exhausted or below
     min_total."""
-    from datetime import datetime, timezone
-
     code = code.strip()
     if not code:
         return None, 0
     promo = db.scalar(select(PromoCode).where(func.lower(PromoCode.code) == code.lower()))
-    if not promo or not promo.active:
-        return None, 0
-    # expires_at is stored naive (end-of-day, see admin _parse_expiry) — compare
-    # against naive UTC now rather than deprecated utcnow().
-    if promo.expires_at and promo.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
-        return None, 0
-    if promo.max_uses is not None and promo.used_count >= promo.max_uses:
-        return None, 0
-    if subtotal < promo.min_total:
+    if not _promo_usable(promo) or subtotal < promo.min_total:
         return None, 0
     raw = subtotal * promo.value // 100 if promo.kind == "percent" else promo.value
     return promo, max(0, min(raw, subtotal))
@@ -429,6 +460,12 @@ def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | N
 def promo_check(payload: PromoCheckIn, db: Session = Depends(get_db)) -> dict:
     promo, discount = promo_discount(db, payload.code, payload.subtotal)
     if not promo:
+        # Distinguish an otherwise-valid code that just needs a bigger cart from
+        # a genuinely invalid one, so the client can prompt "add X more".
+        code = payload.code.strip()
+        existing = db.scalar(select(PromoCode).where(func.lower(PromoCode.code) == code.lower())) if code else None
+        if _promo_usable(existing) and payload.subtotal < existing.min_total:
+            raise HTTPException(422, {"code": "below_min", "min_total": existing.min_total})
         raise HTTPException(404, "Promo code is not valid")
     return {
         "code": promo.code,
@@ -448,7 +485,10 @@ def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) 
     """Customer-facing order lookup: the phone must match the one on the order
     (digits-only comparison) so order ids alone don't leak anything."""
     o = db.get(Order, order_id)
-    if not o or not phone or _digits(phone) != _digits(o.phone) or not _digits(phone):
+    supplied = _digits(phone)
+    # Constant-time compare so the digits can't be recovered one at a time via
+    # response timing; the phone is the only secret gating this lookup.
+    if not o or not supplied or not hmac.compare_digest(supplied, _digits(o.phone)):
         raise HTTPException(404, "Order not found")
     return {
         "id": o.id,
@@ -544,6 +584,7 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
         total=0,
     )
     total = 0
+    sold_tracked: list[tuple[int, int]] = []  # (product_id, qty) with tracked stock
     for it in payload.items:
         ref = it.ref_id()
         if ref is None:
@@ -572,6 +613,7 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
                     product_id=p.id,
                     title_snapshot=title,
                     price_snapshot=p.price,
+                    cost_snapshot=p.cost_price,
                     qty=it.qty,
                 )
             )
@@ -589,6 +631,8 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
             )
             if res.rowcount == 0:
                 raise HTTPException(409, f"Product {ref} is out of stock")
+            if p.stock_qty is not None:  # tracked → ledger row (same transaction)
+                sold_tracked.append((p.id, it.qty))
             total += p.price * it.qty
     promo, discount = promo_discount(db, payload.promo_code, total)
     if promo:
@@ -609,6 +653,9 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
         total -= discount
     order.total = total
     db.add(order)
+    db.flush()  # order.id for the ledger rows
+    for pid, qty in sold_tracked:
+        log_movement(db, product_id=pid, qty_delta=-qty, kind="sale", order_id=order.id)
     db.commit()
     log.info(
         "order created",

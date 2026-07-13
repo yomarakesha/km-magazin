@@ -32,13 +32,13 @@ export default function Gallery({ section }: { section: Section }) {
   const quad = !isProg && items.length <= 4;
   const cls = isProg ? "gal gal-prog" : quad ? "gal gal-quad" : "gal";
 
-  const renderCard = (it: MediaItem, i: number) => {
+  const renderCard = (it: MediaItem) => {
     if (it.kind === "video") {
       const src = url(it.src);
       const poster = it.poster ? url(it.poster) : undefined;
       return (
-        <figure key={i} className="card" onClick={() => open({ kind: "video", src })}>
-          {it.still ? (
+        <figure key={it.src} className="card" onClick={() => open({ kind: "video", src })}>
+          {it.still && poster ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={poster} alt="" loading="lazy" />
           ) : (
@@ -51,7 +51,7 @@ export default function Gallery({ section }: { section: Section }) {
     }
     const src = url(it.src);
     return (
-      <figure key={i} className="card" onClick={() => open({ kind: "img", src })}>
+      <figure key={it.src} className="card" onClick={() => open({ kind: "img", src })}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" loading="lazy" />
         <figcaption><span className="dot" />{imgCaption(it, c)}</figcaption>

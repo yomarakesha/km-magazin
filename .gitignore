@@ -38,6 +38,9 @@ yarn-error.log*
 # browser-automation artifacts (playwright / mcp session dumps)
 .playwright-mcp/
 
+# local dev artifacts (screenshots, scratch) — kept out of repo
+/dev-artifacts/
+
 # ad-hoc screenshots at repo root / scripts (dev artifacts, not site assets)
 /*.png
 /*.jpeg

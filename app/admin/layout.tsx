@@ -2,34 +2,54 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/admin-api";
+import { api, type AdminRole } from "@/lib/admin-api";
 import "./admin.css";
 
-const NAV = [
+// roles: undefined = everyone; owner always sees everything
+const NAV: { href: string; label: string; roles?: AdminRole[] }[] = [
   { href: "/admin", label: "Дашборд" },
-  { href: "/admin/content", label: "Тексты" },
-  { href: "/admin/services", label: "Услуги" },
-  { href: "/admin/leads", label: "Заявки" },
-  { href: "/admin/shop/categories", label: "Категории" },
-  { href: "/admin/shop/products", label: "Товары" },
-  { href: "/admin/shop/brands", label: "Бренды" },
-  { href: "/admin/shop/reviews", label: "Отзывы" },
-  { href: "/admin/shop/promos", label: "Промокоды" },
-  { href: "/admin/shop/orders", label: "Заказы" },
-  { href: "/admin/shop/settings", label: "Контакты" },
+  { href: "/admin/content", label: "Тексты", roles: ["content"] },
+  { href: "/admin/services", label: "Услуги", roles: ["content"] },
+  { href: "/admin/leads", label: "Заявки", roles: ["sales"] },
+  { href: "/admin/shop/categories", label: "Категории", roles: ["content"] },
+  { href: "/admin/shop/products", label: "Товары", roles: ["content", "warehouse"] },
+  { href: "/admin/shop/brands", label: "Бренды", roles: ["content"] },
+  { href: "/admin/shop/reviews", label: "Отзывы", roles: ["content"] },
+  { href: "/admin/shop/promos", label: "Промокоды", roles: ["sales"] },
+  { href: "/admin/shop/orders", label: "Заказы", roles: ["sales", "warehouse"] },
+  { href: "/admin/warehouse", label: "Склад", roles: ["warehouse", "sales"] },
+  { href: "/admin/warehouse/movements", label: "Журнал склада", roles: ["warehouse", "sales"] },
+  { href: "/admin/warehouse/purchases", label: "Закупки", roles: ["warehouse"] },
+  { href: "/admin/warehouse/suppliers", label: "Поставщики", roles: ["warehouse"] },
+  { href: "/admin/reports", label: "Отчёты", roles: ["sales", "warehouse"] },
+  { href: "/admin/shop/settings", label: "Контакты", roles: ["content"] },
+  { href: "/admin/users", label: "Пользователи", roles: [] }, // owner only
 ];
+
+const ROLE_LABEL: Record<AdminRole, string> = {
+  owner: "владелец",
+  warehouse: "склад",
+  sales: "продажи",
+  content: "контент",
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isLogin = pathname === "/admin/login";
   const [ready, setReady] = useState(isLogin);
+  const [me, setMe] = useState<{ username: string; role: AdminRole } | null>(null);
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (isLogin) { setReady(true); return; }
-    api.me().then(() => setReady(true)).catch(() => router.replace("/admin/login"));
+    api.me()
+      .then((m) => { setMe({ username: m.username, role: m.role }); setReady(true); })
+      .catch(() => router.replace("/admin/login"));
   }, [isLogin, pathname, router]);
+
+  const role = me?.role ?? "owner";
+  const nav = NAV.filter((n) => role === "owner" || !n.roles || n.roles.includes(role));
 
   // counters in the sidebar; refreshed on navigation so they stay current while working
   useEffect(() => {
@@ -55,8 +75,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="adm-side">
         <div className="adm-brand">KM<span>admin</span></div>
         <nav>
-          {NAV.map((n) => {
-            const active = n.href === "/admin" ? pathname === n.href : pathname.startsWith(n.href);
+          {nav.map((n) => {
+            // exact match for hrefs that are prefixes of other nav items
+            const exact = n.href === "/admin" || n.href === "/admin/warehouse";
+            const active = exact ? pathname === n.href : pathname.startsWith(n.href);
             const count = badges[n.href] ?? 0;
             return (
               <Link key={n.href} href={n.href} className={active ? "act" : ""}>
@@ -67,6 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
         <div className="adm-side-foot">
+          {me && <span className="adm-side-user">{me.username} · {ROLE_LABEL[me.role]}</span>}
           <a href="/" target="_blank" rel="noreferrer">Открыть сайт ↗</a>
           <button onClick={logout}>Выйти</button>
         </div>

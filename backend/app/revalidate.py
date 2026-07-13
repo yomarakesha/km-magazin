@@ -1,9 +1,10 @@
 """Fire-and-forget cache invalidation ping to the Next.js frontend.
 
 The frontend caches SSR fetches under the "shop"/"content" tags (60s window);
-after any successful admin write we POST /api/revalidate so edits are visible
-immediately. Best-effort: a down frontend must never break the admin API —
-the 60s revalidate window covers the miss."""
+after any successful admin write we POST /api/revalidate to mark those tags
+stale so the next request rebuilds from fresh data instead of waiting out the
+window. Best-effort: a down frontend must never break the admin API — the 60s
+revalidate window covers the miss."""
 import json
 import logging
 import threading

@@ -30,13 +30,27 @@ if not ADMIN_PASSWORD or not SECRET_KEY:
 JWT_ALG = "HS256"
 SESSION_HOURS = int(os.getenv("SESSION_HOURS", "168"))  # 7 days
 COOKIE_NAME = "km_admin"
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
 # CORS
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 
 # Public base URL of this backend (for building media URLs in API responses)
 PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
+
+# Session cookie Secure flag. Fail safe: default to the transport implied by
+# PUBLIC_URL (https → Secure) so a production HTTPS deploy never ships the admin
+# JWT without Secure just because the env var was forgotten. Explicit
+# COOKIE_SECURE=true/false always wins (set false for local http).
+_cookie_secure_env = os.getenv("COOKIE_SECURE")
+COOKIE_SECURE = (
+    _cookie_secure_env.strip().lower() == "true"
+    if _cookie_secure_env is not None
+    else PUBLIC_URL.startswith("https://")
+)
+
+# Trust X-Forwarded-For for the client IP (rate limiting). Enable ONLY when the
+# app sits behind a reverse proxy you control, otherwise the header is spoofable.
+TRUST_PROXY = os.getenv("TRUST_PROXY", "false").strip().lower() == "true"
 
 # Shared secret for pinging the frontend's POST /api/revalidate after admin
 # writes (cache tag invalidation). Empty = pings disabled; the frontend's

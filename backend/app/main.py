@@ -13,8 +13,11 @@ from .routers import (
     admin_content,
     admin_leads,
     admin_media,
+    admin_reports,
     admin_services,
     admin_shop,
+    admin_users,
+    admin_warehouse,
     auth,
     public,
     shop_public,
@@ -67,7 +70,8 @@ async def _invalidate_frontend_cache(request: Request, call_next):
         and path.startswith("/api/admin/")
         and response.status_code < 400
     ):
-        revalidate_frontend(["shop"] if path.startswith("/api/admin/shop/") else ["content"])
+        is_shop = path.startswith("/api/admin/shop/") or path.startswith("/api/admin/warehouse/")
+        revalidate_frontend(["shop"] if is_shop else ["content"])
     return response
 
 
@@ -80,6 +84,9 @@ app.include_router(admin_services.router)
 app.include_router(admin_media.router)
 app.include_router(admin_leads.router)
 app.include_router(admin_shop.router)
+app.include_router(admin_users.router)
+app.include_router(admin_warehouse.router)
+app.include_router(admin_reports.router)
 app.include_router(shop_public.router)
 
 

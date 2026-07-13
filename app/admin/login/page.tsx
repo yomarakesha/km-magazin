@@ -6,6 +6,7 @@ import { api } from "@/lib/admin-api";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -15,7 +16,7 @@ export default function LoginPage() {
     setBusy(true);
     setErr(false);
     try {
-      await api.login(password);
+      await api.login(username.trim(), password);
       router.replace("/admin");
     } catch {
       setErr(true);
@@ -30,13 +31,22 @@ export default function LoginPage() {
       <form onSubmit={submit}>
         <input
           className="adm-in"
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Логин"
+          autoComplete="username"
+        />
+        <input
+          className="adm-in"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Пароль"
+          autoComplete="current-password"
           autoFocus
         />
-        {err && <div className="err">Неверный пароль</div>}
+        {err && <div className="err">Неверный логин или пароль</div>}
         <button className="adm-btn" type="submit" disabled={busy}>
           {busy ? "Вход…" : "Войти"}
         </button>

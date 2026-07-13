@@ -61,6 +61,13 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN stock_qty INTEGER"))
             if "updated_at" not in cols:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN updated_at DATETIME"))
+            if "cost_price" not in cols:
+                conn.execute(text("ALTER TABLE shop_products ADD COLUMN cost_price INTEGER"))
+    if "shop_order_items" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_order_items")}
+        if "cost_snapshot" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE shop_order_items ADD COLUMN cost_snapshot INTEGER"))
     if "shop_orders" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_orders")}
         with engine.begin() as conn:
@@ -88,8 +95,41 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_promo_codes ADD COLUMN max_uses INTEGER"))
 
 
+def _seed_owner() -> None:
+    """First start after the users table appears: create the root `admin`
+    account from ADMIN_PASSWORD so the existing login keeps working."""
+    from .config import ADMIN_PASSWORD
+    from .models import AdminUser
+    from .security import hash_password
+
+    with SessionLocal() as db:
+        if db.query(AdminUser).count() == 0:
+            db.add(AdminUser(username="admin", password_hash=hash_password(ADMIN_PASSWORD), role="owner"))
+            db.commit()
+
+
+def _seed_ledger_opening() -> None:
+    """First start with the ledger table: write an opening-balance row per
+    tracked product so SUM(movements) == stock_qty holds from day one."""
+    from .models import Product, StockMovement
+
+    with SessionLocal() as db:
+        if db.query(StockMovement).count() > 0:
+            return
+        tracked = db.query(Product).filter(Product.stock_qty.is_not(None)).all()
+        for p in tracked:
+            db.add(StockMovement(
+                product_id=p.id, qty_delta=p.stock_qty, stock_after=p.stock_qty,
+                kind="adjust", note="начальный остаток", username="system",
+            ))
+        if tracked:
+            db.commit()
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  (register models)
 
     Base.metadata.create_all(bind=engine)
     _migrate()
+    _seed_owner()
+    _seed_ledger_opening()

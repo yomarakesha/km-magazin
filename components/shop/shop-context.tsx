@@ -9,6 +9,7 @@ import {
   cartTotal,
   cartUid,
   removeItem,
+  repriceItems,
   setItemQty,
   type CartItem,
   type CartKind,
@@ -37,6 +38,7 @@ interface ShopCtx {
   add: (item: Omit<CartItem, "qty" | "kind"> & { kind?: CartKind }, qty?: number) => void;
   setQty: (uid: string, qty: number) => void;
   remove: (uid: string) => void;
+  reprice: (priceByUid: Map<string, number>) => void;
   clear: () => void;
   count: number;
   total: number;
@@ -134,6 +136,7 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
   const closeCompare = () => setCompareOpen(false);
   const setQty = (uid: string, qty: number) => setItems((prev) => setItemQty(prev, uid, qty));
   const remove = (uid: string) => setItems((prev) => removeItem(prev, uid));
+  const reprice = (priceByUid: Map<string, number>) => setItems((prev) => repriceItems(prev, priceByUid));
   const clear = () => setItems([]);
 
   const t = (key: string) => T[lang][key] ?? key;
@@ -148,7 +151,7 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
 
   const value = useMemo<ShopCtx>(
     () => ({
-      lang, setLang, t, pick, mediaBase, categories, settings, services, wa, favs, toggleFav, isFav, items, add, setQty, remove, clear, count, total,
+      lang, setLang, t, pick, mediaBase, categories, settings, services, wa, favs, toggleFav, isFav, items, add, setQty, remove, reprice, clear, count, total,
       cartOpen, openCart, closeCart, quickView, openQuickView, closeQuickView, toast,
       compareItems, toggleCompare, inCompare, clearCompare, compareMax: COMPARE_MAX, compareOpen, openCompare, closeCompare,
     }),

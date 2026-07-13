@@ -12,6 +12,7 @@
 .adm-side nav a:hover{background:var(--surf2);color:var(--tx)}
 .adm-side nav a.act{background:linear-gradient(120deg,rgba(34,224,125,.16),rgba(0,166,80,.08));color:var(--tx);border:1px solid var(--line2)}
 .adm-side-foot{margin-top:auto;display:grid;gap:10px;font-family:var(--mono);font-size:12px}
+.adm-side-user{color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .adm-side-foot a{color:var(--tx3)}
 .adm-side-foot a:hover{color:var(--green-br)}
 .adm-side-foot button{background:none;border:1px solid var(--line2);color:var(--tx2);

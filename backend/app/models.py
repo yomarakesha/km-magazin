@@ -193,6 +193,7 @@ class Product(Base):
     currency: Mapped[str] = mapped_column(String(8), default="TMT")
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)  # in stock vs. to order
     stock_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = not tracked
+    cost_price: Mapped[int | None] = mapped_column(Integer, nullable=True)  # last purchase cost, TMT
     sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -390,9 +391,112 @@ class OrderItem(Base):
     )
     title_snapshot: Mapped[str] = mapped_column(String(256), default="")
     price_snapshot: Mapped[int] = mapped_column(Integer, default=0)
+    # purchase cost at sale time — feeds exact margin reports
+    cost_snapshot: Mapped[int | None] = mapped_column(Integer, nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
 
     order: Mapped["Order"] = relationship(back_populates="items")
+
+
+# --------------------------------------------------------------------------
+# Warehouse: suppliers, purchase documents and the stock-movement ledger.
+# Product.stock_qty stays the authoritative counter (orders update it with
+# atomic guarded UPDATEs); every change also appends a StockMovement row in
+# the same transaction, so the ledger is a full audit trail.
+# --------------------------------------------------------------------------
+
+
+class Supplier(Base):
+    __tablename__ = "shop_suppliers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(128))
+    phone: Mapped[str] = mapped_column(String(64), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class PurchaseDoc(Base):
+    """A posted incoming-goods document (приходная накладная). Immutable once
+    created — corrections go through adjust/writeoff movements."""
+
+    __tablename__ = "shop_purchases"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_suppliers.id", ondelete="SET NULL"), nullable=True
+    )
+    note: Mapped[str] = mapped_column(String(256), default="")
+    total_cost: Mapped[int] = mapped_column(Integer, default=0)
+    username: Mapped[str] = mapped_column(String(32), default="")  # who posted it
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    supplier: Mapped["Supplier | None"] = relationship("Supplier")
+    items: Mapped[list["PurchaseItem"]] = relationship(
+        back_populates="purchase", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class PurchaseItem(Base):
+    __tablename__ = "shop_purchase_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("shop_purchases.id", ondelete="CASCADE"))
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_products.id", ondelete="SET NULL"), nullable=True
+    )
+    title_snapshot: Mapped[str] = mapped_column(String(256), default="")
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    unit_cost: Mapped[int] = mapped_column(Integer, default=0)
+
+    purchase: Mapped["PurchaseDoc"] = relationship(back_populates="items")
+
+
+class StockMovement(Base):
+    """One ledger row per stock change: who, when, how much, and why.
+    kind: receipt (закупка/приход) | sale | return (отмена заказа) |
+    writeoff (списание) | adjust (корректировка/инвентаризация)."""
+
+    __tablename__ = "shop_stock_movements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("shop_products.id", ondelete="CASCADE"), index=True
+    )
+    qty_delta: Mapped[int] = mapped_column(Integer)  # signed: + приход / − расход
+    stock_after: Mapped[int | None] = mapped_column(Integer, nullable=True)  # counter after the change
+    kind: Mapped[str] = mapped_column(String(16), index=True)
+    note: Mapped[str] = mapped_column(String(256), default="")
+    unit_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)  # receipts only
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_suppliers.id", ondelete="SET NULL"), nullable=True
+    )
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_orders.id", ondelete="SET NULL"), nullable=True
+    )
+    purchase_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_purchases.id", ondelete="SET NULL"), nullable=True
+    )
+    username: Mapped[str] = mapped_column(String(32), default="")  # "" = storefront
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+
+    product: Mapped["Product"] = relationship("Product")
+
+
+class AdminUser(Base):
+    """An admin-panel account. `role` gates what the user can do:
+    owner (everything, incl. user management), warehouse (stock),
+    sales (orders/promos), content (products/texts/media, no prices)."""
+
+    __tablename__ = "admin_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256))
+    role: Mapped[str] = mapped_column(String(16), default="content")  # owner|warehouse|sales|content
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
 class Lead(Base):

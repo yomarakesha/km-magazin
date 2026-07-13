@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useShop, cartUid } from "@/components/shop/shop-context";
-import { checkPromo, createOrder, validateCart, type CartLineCheck, type PromoCheckResult } from "@/lib/shop-api";
+import { checkPromo, createOrder, validateCart, PromoError, type CartLineCheck, type PromoCheckResult } from "@/lib/shop-api";
 import { rememberOrder } from "@/lib/my-orders";
 import { effectiveDiscount } from "@/lib/cart";
 import { formatPhone, canonicalPhone, isValidPhone } from "@/lib/phone";
@@ -10,7 +10,7 @@ import { loadCustomer, saveCustomer } from "@/lib/customer";
 import Icon from "@/components/shop/ui/Icon";
 
 export default function CheckoutPage() {
-  const { t, pick, items, total, clear, settings, wa, remove } = useShop();
+  const { t, pick, items, total, clear, settings, wa, remove, reprice } = useShop();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -74,9 +74,13 @@ export default function CheckoutPage() {
     try {
       setPromo(await checkPromo(promoInput.trim(), total));
       appliedTotal.current = total;
-    } catch {
+    } catch (e) {
       setPromo(null);
-      setPromoErr(t("promoInvalid"));
+      if (e instanceof PromoError && e.code === "below_min" && e.minTotal != null) {
+        setPromoErr(`${t("promoMin")} ${e.minTotal.toLocaleString("ru-RU")} TMT`);
+      } else {
+        setPromoErr(t("promoInvalid"));
+      }
     } finally {
       setPromoBusy(false);
     }
@@ -94,6 +98,14 @@ export default function CheckoutPage() {
     if (!name.trim() || !phone.trim()) { setErr(`${t("name")} / ${t("phone")}`); return; }
     if (!isValidPhone(phone)) { setErr(t("phone")); return; }
     if (deadLines.length > 0) { setErr(t("itemUnavailable")); return; }
+    // Price drifted since these lines were added: sync the cart to the server
+    // prices and stop, so the customer confirms the corrected total before we
+    // place an order that would be charged at the new price.
+    if (driftLines.length > 0) {
+      reprice(new Map(driftLines.map((it) => [cartUid(it), checks.get(cartUid(it))!.price!])));
+      setErr(t("cartUpdated"));
+      return;
+    }
     const canonPhone = canonicalPhone(phone);
     setBusy(true);
     try {

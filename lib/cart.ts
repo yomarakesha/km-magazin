@@ -35,6 +35,15 @@ export function removeItem(prev: CartItem[], uid: string): CartItem[] {
   return prev.filter((x) => cartUid(x) !== uid);
 }
 
+/** Overwrite line prices from a server re-check (uid → current price), so a
+ *  drifted cart shows and charges the real price. Untouched lines keep ref. */
+export function repriceItems(prev: CartItem[], priceByUid: Map<string, number>): CartItem[] {
+  return prev.map((x) => {
+    const p = priceByUid.get(cartUid(x));
+    return p != null && p !== x.price ? { ...x, price: p } : x;
+  });
+}
+
 export function cartCount(items: CartItem[]): number {
   return items.reduce((n, x) => n + x.qty, 0);
 }

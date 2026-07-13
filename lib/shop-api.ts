@@ -47,6 +47,15 @@ export interface PromoCheckResult {
   discount: number;
 }
 
+/** Thrown by checkPromo. `code` distinguishes a valid code the cart is too
+ *  small for ("below_min", with min_total) from a plain invalid/expired one. */
+export class PromoError extends Error {
+  constructor(public code: "below_min" | "invalid", public minTotal?: number) {
+    super(code);
+    this.name = "PromoError";
+  }
+}
+
 /** Client: validate a promo code against the current cart subtotal. */
 export async function checkPromo(code: string, subtotal: number): Promise<PromoCheckResult> {
   const res = await fetch(`${API}/api/shop/promo/check`, {
@@ -54,7 +63,14 @@ export async function checkPromo(code: string, subtotal: number): Promise<PromoC
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, subtotal }),
   });
-  if (!res.ok) throw new Error(`promo check failed: ${res.status}`);
+  if (!res.ok) {
+    // 422 → valid code but subtotal < min_total; detail carries the threshold.
+    const detail = await res.json().then((b) => b?.detail).catch(() => null);
+    if (detail && typeof detail === "object" && detail.code === "below_min") {
+      throw new PromoError("below_min", Number(detail.min_total));
+    }
+    throw new PromoError("invalid");
+  }
   return (await res.json()) as PromoCheckResult;
 }
 

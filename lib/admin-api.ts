@@ -24,12 +24,61 @@ export class ApiError extends Error {
   }
 }
 
+function rangeQs(from?: string, to?: string): string {
+  const qs = new URLSearchParams();
+  if (from) qs.set("date_from", from);
+  if (to) qs.set("date_to", to);
+  return qs.toString();
+}
+
 export const api = {
   base: API,
   // auth
-  login: (password: string) => req("/api/auth/login", { method: "POST", body: JSON.stringify({ password }) }),
+  login: (username: string, password: string) =>
+    req<{ ok: boolean; username: string; role: AdminRole }>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => req("/api/auth/logout", { method: "POST" }),
-  me: () => req<{ authenticated: boolean }>("/api/auth/me"),
+  me: () => req<{ authenticated: boolean; username: string; role: AdminRole }>("/api/auth/me"),
+  // admin users (owner only)
+  getUsers: () => req<AdminUserRow[]>("/api/admin/users"),
+  createUser: (body: { username: string; password: string; role: AdminRole }) =>
+    req<AdminUserRow>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }),
+  updateUser: (id: number, body: { password?: string; role?: AdminRole; active?: boolean }) =>
+    req<AdminUserRow>(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteUser: (id: number) => req(`/api/admin/users/${id}`, { method: "DELETE" }),
+  // warehouse
+  getStock: (q = "", low = false) =>
+    req<StockRow[]>(`/api/admin/warehouse/stock?q=${encodeURIComponent(q)}${low ? "&low=1" : ""}`),
+  getMovements: (params: { product_id?: number; kind?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.product_id != null) qs.set("product_id", String(params.product_id));
+    if (params.kind) qs.set("kind", params.kind);
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.offset != null) qs.set("offset", String(params.offset));
+    return req<{ total: number; items: MovementRow[] }>(`/api/admin/warehouse/movements?${qs}`);
+  },
+  createMovement: (body: {
+    product_id: number; kind: "receipt" | "writeoff" | "adjust";
+    qty?: number; new_qty?: number; note?: string; unit_cost?: number; supplier_id?: number;
+  }) => req<{ ok: boolean; product_id: number; stock_qty: number | null; cost_price: number | null }>(
+    "/api/admin/warehouse/movements", { method: "POST", body: JSON.stringify(body) }),
+  getSuppliers: () => req<SupplierRow[]>("/api/admin/warehouse/suppliers"),
+  createSupplier: (body: { name: string; phone?: string; note?: string }) =>
+    req<SupplierRow>("/api/admin/warehouse/suppliers", { method: "POST", body: JSON.stringify(body) }),
+  updateSupplier: (id: number, body: { name?: string; phone?: string; note?: string; active?: boolean }) =>
+    req<SupplierRow>(`/api/admin/warehouse/suppliers/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteSupplier: (id: number) => req(`/api/admin/warehouse/suppliers/${id}`, { method: "DELETE" }),
+  getPurchases: (limit = 50, offset = 0) =>
+    req<{ total: number; items: PurchaseRow[] }>(`/api/admin/warehouse/purchases?limit=${limit}&offset=${offset}`),
+  createPurchase: (body: { supplier_id?: number | null; note?: string; items: { product_id: number; qty: number; unit_cost: number }[] }) =>
+    req<PurchaseRow>("/api/admin/warehouse/purchases", { method: "POST", body: JSON.stringify(body) }),
+  // reports
+  getSalesReport: (from?: string, to?: string) =>
+    req<SalesReport>(`/api/admin/reports/sales?${rangeQs(from, to)}`),
+  getStockReport: () => req<StockReport>("/api/admin/reports/stock"),
+  getServicesReport: (from?: string, to?: string) =>
+    req<ServicesReport>(`/api/admin/reports/services?${rangeQs(from, to)}`),
+  reportCsvUrl: (kind: "sales" | "stock" | "services", from?: string, to?: string) =>
+    `${API}/api/admin/reports/${kind}?format=csv${kind === "stock" ? "" : `&${rangeQs(from, to)}`}`,
   // content blocks
   getBlocks: () => req<{ keys: string[]; langs: string[]; blocks: Record<string, Record<string, Record<string, unknown>>> }>("/api/admin/content"),
   putBlock: (lang: string, key: string, data: Record<string, unknown>) =>
@@ -169,6 +218,51 @@ export interface AdminShopStats {
   reviews_pending: number;
   top_products: { id: number; title: string; sold: number }[];
   low_stock: { id: number; title: string; stock_qty: number }[];
+}
+
+export type AdminRole = "owner" | "warehouse" | "sales" | "content";
+
+export interface StockRow {
+  id: number; title: string; sku: string | null; stock_qty: number | null;
+  cost_price: number | null; price: number; in_stock: boolean; enabled: boolean; low: boolean;
+}
+export type MovementKind = "receipt" | "sale" | "return" | "writeoff" | "adjust";
+export interface MovementRow {
+  id: number; product_id: number; product_title: string; qty_delta: number;
+  stock_after: number | null; kind: MovementKind; note: string; unit_cost: number | null;
+  supplier_id: number | null; order_id: number | null; purchase_id: number | null;
+  username: string; created_at: string | null;
+}
+export interface SupplierRow {
+  id: number; name: string; phone: string; note: string; active: boolean; created_at: string | null;
+}
+export interface PurchaseRow {
+  id: number; supplier_id: number | null; supplier_name: string; note: string;
+  total_cost: number; username: string; created_at: string | null;
+  items: { product_id: number | null; title: string; qty: number; unit_cost: number }[];
+}
+
+export interface SalesReport {
+  from: string; to: string; orders: number; revenue: number; discounts: number;
+  cogs: number; gross_profit: number; avg_check: number; cost_coverage: number | null;
+  daily: { day: string; orders: number; revenue: number }[];
+  top_products: { id: number; title: string; qty: number; revenue: number; profit: number }[];
+}
+export interface StockReportRow {
+  id: number; title: string; sku: string | null; stock_qty: number | null;
+  cost_price: number | null; price: number; value_cost: number;
+}
+export interface StockReport {
+  value_cost: number; value_retail: number; units: number; tracked_count: number;
+  dead_days: number;
+  low_stock: StockReportRow[]; dead_stock: StockReportRow[]; items: StockReportRow[];
+}
+export interface ServicesReport {
+  from: string; to: string; total_count: number; total_revenue: number;
+  services: { id: number; title: string; count: number; revenue: number }[];
+}
+export interface AdminUserRow {
+  id: number; username: string; role: AdminRole; active: boolean; created_at: string | null;
 }
 
 export interface AdminTranslation {

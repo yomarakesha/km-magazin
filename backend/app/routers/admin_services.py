@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..auth import require_admin
+from ..auth import require_role
 from ..db import get_db
 from ..models import Service, ServiceTranslation
 from ..schemas import ReorderIn, ServiceIn, ServiceUpdateIn
@@ -11,7 +11,7 @@ from ..schemas import ReorderIn, ServiceIn, ServiceUpdateIn
 router = APIRouter(
     prefix="/api/admin/services",
     tags=["admin-services"],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_role("content"))],
 )
 
 

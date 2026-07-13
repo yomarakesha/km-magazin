@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..auth import require_admin
+from ..auth import require_role
 from ..db import get_db
 from ..models import Lead
 from ..schemas import LeadOut, LeadStatusIn
@@ -11,7 +11,7 @@ from ..schemas import LeadOut, LeadStatusIn
 router = APIRouter(
     prefix="/api/admin/leads",
     tags=["admin-leads"],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_role("sales"))],
 )
 
 

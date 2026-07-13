@@ -21,12 +21,18 @@ def _magic_ok(head: bytes, kind: str) -> bool:
     """Cheap signature check on the first bytes — catches files whose content
     doesn't match the claimed extension (e.g. an .exe renamed to .jpg)."""
     if kind == "img":
+        # An ISO-BMFF container (ftyp) is only an image if its brand says so —
+        # otherwise an .mp4 renamed to .jpg would slip through and get served.
+        _IMG_BRANDS = {
+            b"avif", b"avis", b"heic", b"heix", b"heim", b"heis",
+            b"hevc", b"hevx", b"mif1", b"msf1",
+        }
         return (
             head.startswith(b"\xff\xd8\xff")  # jpeg
             or head.startswith(b"\x89PNG")  # png
             or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")  # webp
             or head.startswith(b"GIF8")  # gif
-            or head[4:8] == b"ftyp"  # avif/heif container
+            or (head[4:8] == b"ftyp" and head[8:12] in _IMG_BRANDS)  # avif/heif
         )
     return (
         head[4:8] == b"ftyp"  # mp4/mov

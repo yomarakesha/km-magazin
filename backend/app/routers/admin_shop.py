@@ -1,13 +1,14 @@
 """Admin CRUD for the tech shop: categories, filter attributes, products,
 product images and customer orders. Mirrors the services/media/leads routers."""
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
-from ..auth import require_admin
+from ..auth import require_admin, require_role
 from ..config import MEDIA_DIR
 from ..db import get_db
 from ..notify import email_notify, status_message, telegram_notify
+from ..stock import log_movement
 from ..models import (
     CategoryAttribute,
     CategoryAttributeTranslation,
@@ -52,6 +53,13 @@ router = APIRouter(
     tags=["admin-shop"],
     dependencies=[Depends(require_admin)],
 )
+
+# Role gates (owner always passes): catalog/content writes, order/promo
+# management, order lists (sales + warehouse picking), owner-only actions.
+CONTENT = Depends(require_role("content"))
+SALES = Depends(require_role("sales"))
+ORDER_VIEW = Depends(require_role("sales", "warehouse"))
+OWNER = Depends(require_role())
 
 PRODUCTS_SUBDIR = "products"
 
@@ -180,7 +188,7 @@ def get_category(cat_id: int, db: Session = Depends(get_db)) -> dict:
     return _cat(c)
 
 
-@router.post("/categories", status_code=201)
+@router.post("/categories", status_code=201, dependencies=[CONTENT])
 def create_category(payload: CategoryIn, db: Session = Depends(get_db)) -> dict:
     if db.scalar(select(ShopCategory).where(ShopCategory.slug == payload.slug)):
         raise HTTPException(409, "Slug already exists")
@@ -198,7 +206,7 @@ def create_category(payload: CategoryIn, db: Session = Depends(get_db)) -> dict:
     return _cat(c)
 
 
-@router.put("/categories/{cat_id}")
+@router.put("/categories/{cat_id}", dependencies=[CONTENT])
 def update_category(cat_id: int, payload: CategoryUpdateIn, db: Session = Depends(get_db)) -> dict:
     c = db.get(ShopCategory, cat_id)
     if not c:
@@ -223,7 +231,7 @@ def update_category(cat_id: int, payload: CategoryUpdateIn, db: Session = Depend
     return _cat(c)
 
 
-@router.delete("/categories/{cat_id}")
+@router.delete("/categories/{cat_id}", dependencies=[CONTENT])
 def delete_category(cat_id: int, db: Session = Depends(get_db)) -> dict:
     c = db.get(ShopCategory, cat_id)
     if not c:
@@ -233,7 +241,7 @@ def delete_category(cat_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
-@router.post("/categories/reorder")
+@router.post("/categories/reorder", dependencies=[CONTENT])
 def reorder_categories(payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
     for order, cid in enumerate(payload.ids):
         c = db.get(ShopCategory, cid)
@@ -256,7 +264,7 @@ def list_attributes(cat_id: int, db: Session = Depends(get_db)) -> list[dict]:
     return [_attr(a) for a in rows]
 
 
-@router.post("/categories/{cat_id}/attributes", status_code=201)
+@router.post("/categories/{cat_id}/attributes", status_code=201, dependencies=[CONTENT])
 def create_attribute(cat_id: int, payload: CategoryAttributeIn, db: Session = Depends(get_db)) -> dict:
     if not db.get(ShopCategory, cat_id):
         raise HTTPException(404, "Category not found")
@@ -280,7 +288,7 @@ def create_attribute(cat_id: int, payload: CategoryAttributeIn, db: Session = De
     return _attr(a)
 
 
-@router.put("/attributes/{attr_id}")
+@router.put("/attributes/{attr_id}", dependencies=[CONTENT])
 def update_attribute(
     attr_id: int, payload: CategoryAttributeUpdateIn, db: Session = Depends(get_db)
 ) -> dict:
@@ -307,7 +315,7 @@ def update_attribute(
     return _attr(a)
 
 
-@router.delete("/attributes/{attr_id}")
+@router.delete("/attributes/{attr_id}", dependencies=[CONTENT])
 def delete_attribute(attr_id: int, db: Session = Depends(get_db)) -> dict:
     a = db.get(CategoryAttribute, attr_id)
     if not a:
@@ -317,7 +325,7 @@ def delete_attribute(attr_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
-@router.post("/categories/{cat_id}/attributes/reorder")
+@router.post("/categories/{cat_id}/attributes/reorder", dependencies=[CONTENT])
 def reorder_attributes(cat_id: int, payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
     for order, aid in enumerate(payload.ids):
         a = db.get(CategoryAttribute, aid)
@@ -340,7 +348,7 @@ def list_services(cat_id: int, db: Session = Depends(get_db)) -> list[dict]:
     return [_service(s) for s in rows]
 
 
-@router.post("/categories/{cat_id}/services", status_code=201)
+@router.post("/categories/{cat_id}/services", status_code=201, dependencies=[CONTENT])
 def create_service(cat_id: int, payload: ShopServiceIn, db: Session = Depends(get_db)) -> dict:
     if not db.get(ShopCategory, cat_id):
         raise HTTPException(404, "Category not found")
@@ -365,7 +373,7 @@ def create_service(cat_id: int, payload: ShopServiceIn, db: Session = Depends(ge
     return _service(s)
 
 
-@router.put("/services/{service_id}")
+@router.put("/services/{service_id}", dependencies=[CONTENT])
 def update_service(service_id: int, payload: ShopServiceUpdateIn, db: Session = Depends(get_db)) -> dict:
     s = db.get(ShopService, service_id)
     if not s:
@@ -394,7 +402,7 @@ def update_service(service_id: int, payload: ShopServiceUpdateIn, db: Session = 
     return _service(s)
 
 
-@router.delete("/services/{service_id}")
+@router.delete("/services/{service_id}", dependencies=[CONTENT])
 def delete_service(service_id: int, db: Session = Depends(get_db)) -> dict:
     s = db.get(ShopService, service_id)
     if not s:
@@ -404,7 +412,7 @@ def delete_service(service_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
-@router.post("/categories/{cat_id}/services/reorder")
+@router.post("/categories/{cat_id}/services/reorder", dependencies=[CONTENT])
 def reorder_services(cat_id: int, payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
     for order, sid in enumerate(payload.ids):
         s = db.get(ShopService, sid)
@@ -427,7 +435,7 @@ def list_brands(db: Session = Depends(get_db)) -> list[dict]:
     return [_brand(b) for b in rows]
 
 
-@router.post("/brands", status_code=201)
+@router.post("/brands", status_code=201, dependencies=[CONTENT])
 def create_brand(payload: ShopBrandIn, db: Session = Depends(get_db)) -> dict:
     max_order = db.scalar(select(func.max(ShopBrand.sort_order)))
     b = ShopBrand(
@@ -439,7 +447,7 @@ def create_brand(payload: ShopBrandIn, db: Session = Depends(get_db)) -> dict:
     return _brand(b)
 
 
-@router.put("/brands/{brand_id}")
+@router.put("/brands/{brand_id}", dependencies=[CONTENT])
 def update_brand(brand_id: int, payload: ShopBrandUpdateIn, db: Session = Depends(get_db)) -> dict:
     b = db.get(ShopBrand, brand_id)
     if not b:
@@ -452,7 +460,7 @@ def update_brand(brand_id: int, payload: ShopBrandUpdateIn, db: Session = Depend
     return _brand(b)
 
 
-@router.delete("/brands/{brand_id}")
+@router.delete("/brands/{brand_id}", dependencies=[CONTENT])
 def delete_brand(brand_id: int, db: Session = Depends(get_db)) -> dict:
     b = db.get(ShopBrand, brand_id)
     if not b:
@@ -462,7 +470,7 @@ def delete_brand(brand_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
-@router.post("/brands/reorder")
+@router.post("/brands/reorder", dependencies=[CONTENT])
 def reorder_brands(payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
     for order, bid in enumerate(payload.ids):
         b = db.get(ShopBrand, bid)
@@ -498,7 +506,7 @@ def list_reviews(status: str | None = None, db: Session = Depends(get_db)) -> li
     return [_review(r) for r in db.scalars(stmt).all()]
 
 
-@router.patch("/reviews/{review_id}")
+@router.patch("/reviews/{review_id}", dependencies=[CONTENT])
 def set_review_status(review_id: int, payload: ReviewStatusIn, db: Session = Depends(get_db)) -> dict:
     r = db.get(ProductReview, review_id)
     if not r:
@@ -508,7 +516,7 @@ def set_review_status(review_id: int, payload: ReviewStatusIn, db: Session = Dep
     return _review(r)
 
 
-@router.delete("/reviews/{review_id}")
+@router.delete("/reviews/{review_id}", dependencies=[CONTENT])
 def delete_review(review_id: int, db: Session = Depends(get_db)) -> dict:
     r = db.get(ProductReview, review_id)
     if not r:
@@ -542,7 +550,7 @@ def get_settings(db: Session = Depends(get_db)) -> dict:
     return _settings(_get_or_create_settings(db))
 
 
-@router.put("/settings")
+@router.put("/settings", dependencies=[CONTENT])
 def update_settings(payload: ShopSettingsIn, db: Session = Depends(get_db)) -> dict:
     s = _get_or_create_settings(db)
     s.phone = payload.phone
@@ -583,8 +591,8 @@ def get_product(product_id: int, db: Session = Depends(get_db)) -> dict:
     return _product(p)
 
 
-@router.post("/products", status_code=201)
-def create_product(payload: ProductIn, db: Session = Depends(get_db)) -> dict:
+@router.post("/products", status_code=201, dependencies=[CONTENT])
+def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
     if db.scalar(select(Product).where(Product.slug == payload.slug)):
         raise HTTPException(409, "Slug already exists")
     if not db.get(ShopCategory, payload.category_id):
@@ -613,15 +621,33 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db)) -> dict:
             ProductAttribute(attribute_id=a.attribute_id, value=a.value, num_value=a.num_value)
         )
     db.add(p)
+    if payload.stock_qty is not None:
+        db.flush()  # p.id for the ledger row
+        log_movement(
+            db, product_id=p.id, qty_delta=payload.stock_qty, kind="adjust",
+            username=user["username"], note="начальный остаток",
+        )
     db.commit()
     return _product(p)
 
 
 @router.put("/products/{product_id}")
-def update_product(product_id: int, payload: ProductUpdateIn, db: Session = Depends(get_db)) -> dict:
+def update_product(
+    product_id: int,
+    payload: ProductUpdateIn,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_role("content")),
+) -> dict:
     p = db.get(Product, product_id)
     if not p:
         raise HTTPException(404, "Product not found")
+    # Price changes on an existing product are owner-only; content edits
+    # texts/photos/attributes but cannot reprice.
+    price_touched = (payload.price is not None and payload.price != p.price) or (
+        "old_price" in payload.model_fields_set and payload.old_price != p.old_price
+    )
+    if price_touched and user["role"] != "owner":
+        raise HTTPException(403, "price changes are owner-only")
     if payload.slug is not None:
         p.slug = payload.slug
     if payload.category_id is not None:
@@ -631,9 +657,17 @@ def update_product(product_id: int, payload: ProductUpdateIn, db: Session = Depe
     if "old_price" in payload.model_fields_set:
         # present-with-null clears the discount; missing key = no change
         p.old_price = payload.old_price
-    if "stock_qty" in payload.model_fields_set:
-        # present-with-null disables stock tracking
+    if "stock_qty" in payload.model_fields_set and payload.stock_qty != p.stock_qty:
+        # present-with-null disables stock tracking; any manual change goes
+        # to the ledger as a correction so the audit trail stays complete
+        old = p.stock_qty
         p.stock_qty = payload.stock_qty
+        db.flush()  # session has autoflush=False; ledger reads stock_after via SELECT
+        log_movement(
+            db, product_id=p.id, qty_delta=(payload.stock_qty or 0) - (old or 0), kind="adjust",
+            username=user["username"],
+            note="правка в карточке товара" if payload.stock_qty is not None else "учёт остатка отключён",
+        )
     if payload.currency is not None:
         p.currency = payload.currency
     if payload.in_stock is not None:
@@ -660,7 +694,7 @@ def update_product(product_id: int, payload: ProductUpdateIn, db: Session = Depe
     return _product(p)
 
 
-@router.delete("/products/{product_id}")
+@router.delete("/products/{product_id}", dependencies=[CONTENT])
 def delete_product(product_id: int, db: Session = Depends(get_db)) -> dict:
     p = db.get(Product, product_id)
     if not p:
@@ -672,7 +706,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
-@router.post("/products/reorder")
+@router.post("/products/reorder", dependencies=[CONTENT])
 def reorder_products(payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
     for order, pid in enumerate(payload.ids):
         p = db.get(Product, pid)
@@ -695,7 +729,7 @@ def list_images(product_id: int, db: Session = Depends(get_db)) -> list[dict]:
     return [_image(im) for im in rows]
 
 
-@router.post("/products/{product_id}/images", status_code=201)
+@router.post("/products/{product_id}/images", status_code=201, dependencies=[CONTENT])
 def upload_image(
     product_id: int,
     file: UploadFile = File(...),
@@ -717,7 +751,7 @@ def upload_image(
     return _image(im)
 
 
-@router.delete("/images/{image_id}")
+@router.delete("/images/{image_id}", dependencies=[CONTENT])
 def delete_image(image_id: int, db: Session = Depends(get_db)) -> dict:
     im = db.get(ProductImage, image_id)
     if not im:
@@ -728,7 +762,7 @@ def delete_image(image_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
-@router.post("/products/{product_id}/images/reorder")
+@router.post("/products/{product_id}/images/reorder", dependencies=[CONTENT])
 def reorder_images(product_id: int, payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
     for order, iid in enumerate(payload.ids):
         im = db.get(ProductImage, iid)
@@ -768,13 +802,13 @@ def _promo(p: PromoCode) -> dict:
     }
 
 
-@router.get("/promos")
+@router.get("/promos", dependencies=[SALES])
 def list_promos(db: Session = Depends(get_db)) -> list[dict]:
     rows = db.scalars(select(PromoCode).order_by(PromoCode.created_at.desc())).all()
     return [_promo(p) for p in rows]
 
 
-@router.post("/promos", status_code=201)
+@router.post("/promos", status_code=201, dependencies=[SALES])
 def create_promo(payload: PromoCodeIn, db: Session = Depends(get_db)) -> dict:
     code = payload.code.strip().upper()
     if db.scalar(select(PromoCode).where(func.lower(PromoCode.code) == code.lower())):
@@ -793,7 +827,7 @@ def create_promo(payload: PromoCodeIn, db: Session = Depends(get_db)) -> dict:
     return _promo(p)
 
 
-@router.put("/promos/{promo_id}")
+@router.put("/promos/{promo_id}", dependencies=[SALES])
 def update_promo(promo_id: int, payload: PromoCodeUpdateIn, db: Session = Depends(get_db)) -> dict:
     p = db.get(PromoCode, promo_id)
     if not p:
@@ -819,11 +853,15 @@ def update_promo(promo_id: int, payload: PromoCodeUpdateIn, db: Session = Depend
     if "max_uses" in payload.model_fields_set:
         # present-with-null clears the cap; missing key = no change
         p.max_uses = payload.max_uses
+    # Guard the merged result: a partial patch (e.g. value only) could push an
+    # existing percent code past 100 without the schema validator seeing both.
+    if p.kind == "percent" and p.value > 100:
+        raise HTTPException(422, "percent discount cannot exceed 100")
     db.commit()
     return _promo(p)
 
 
-@router.delete("/promos/{promo_id}")
+@router.delete("/promos/{promo_id}", dependencies=[SALES])
 def delete_promo(promo_id: int, db: Session = Depends(get_db)) -> dict:
     p = db.get(PromoCode, promo_id)
     if not p:
@@ -836,7 +874,7 @@ def delete_promo(promo_id: int, db: Session = Depends(get_db)) -> dict:
 # --------------------------------------------------------------------------
 # Orders
 # --------------------------------------------------------------------------
-@router.get("/orders")
+@router.get("/orders", dependencies=[ORDER_VIEW])
 def list_orders(
     status: str | None = None,
     payment: str | None = None,
@@ -929,17 +967,79 @@ def shop_stats(db: Session = Depends(get_db)) -> dict:
     }
 
 
-@router.patch("/orders/{order_id}")
+def _restore_stock_and_promo(db: Session, order: Order, username: str = "") -> None:
+    """Give back the stock decremented and the promo use claimed at
+    create_order. Called when an order is cancelled or deleted so the
+    reservation doesn't leak. Tracked stock only (NULL = not tracked)."""
+    for it in order.items:
+        if it.product_id is not None:
+            res = db.execute(
+                update(Product)
+                .where(Product.id == it.product_id, Product.stock_qty.is_not(None))
+                .values(stock_qty=Product.stock_qty + it.qty)
+            )
+            if res.rowcount:  # tracked → ledger row
+                log_movement(
+                    db, product_id=it.product_id, qty_delta=it.qty, kind="return",
+                    order_id=order.id, username=username, note=f"отмена заказа #{order.id}",
+                )
+    if order.promo_code:
+        db.execute(
+            update(PromoCode)
+            .where(func.lower(PromoCode.code) == order.promo_code.lower(), PromoCode.used_count > 0)
+            .values(used_count=PromoCode.used_count - 1)
+        )
+
+
+def _reserve_stock_and_promo(db: Session, order: Order, username: str = "") -> None:
+    """Re-apply the stock/promo reservation when an order leaves the
+    cancelled state (mirror of _restore_stock_and_promo). Best-effort:
+    an out-of-stock product still un-cancels but its stock stays as-is."""
+    for it in order.items:
+        if it.product_id is not None:
+            res = db.execute(
+                update(Product)
+                .where(
+                    Product.id == it.product_id,
+                    Product.stock_qty.is_not(None),
+                    Product.stock_qty >= it.qty,
+                )
+                .values(stock_qty=Product.stock_qty - it.qty)
+            )
+            if res.rowcount:  # tracked and covered → ledger row
+                log_movement(
+                    db, product_id=it.product_id, qty_delta=-it.qty, kind="sale",
+                    order_id=order.id, username=username, note=f"восстановление заказа #{order.id}",
+                )
+    if order.promo_code:
+        db.execute(
+            update(PromoCode)
+            .where(
+                func.lower(PromoCode.code) == order.promo_code.lower(),
+                or_(PromoCode.max_uses.is_(None), PromoCode.used_count < PromoCode.max_uses),
+            )
+            .values(used_count=PromoCode.used_count + 1)
+        )
+
+
+@router.patch("/orders/{order_id}", dependencies=[SALES])
 def set_order_status(
     order_id: int,
     payload: OrderStatusIn,
     background: BackgroundTasks,
     db: Session = Depends(get_db),
+    user: dict = Depends(require_admin),
 ) -> dict:
     o = db.get(Order, order_id)
     if not o:
         raise HTTPException(404, "Order not found")
     changed = o.status != payload.status
+    if changed:
+        if payload.status == "cancelled":
+            _restore_stock_and_promo(db, o, user["username"])
+        elif o.status == "cancelled":
+            # leaving cancelled → re-reserve what was given back
+            _reserve_stock_and_promo(db, o, user["username"])
     o.status = payload.status
     db.commit()
     if changed:
@@ -949,7 +1049,7 @@ def set_order_status(
     return _order(o)
 
 
-@router.patch("/orders/{order_id}/payment")
+@router.patch("/orders/{order_id}/payment", dependencies=[SALES])
 def set_order_payment(order_id: int, payload: OrderPaymentIn, db: Session = Depends(get_db)) -> dict:
     o = db.get(Order, order_id)
     if not o:
@@ -961,11 +1061,15 @@ def set_order_payment(order_id: int, payload: OrderPaymentIn, db: Session = Depe
     return _order(o)
 
 
-@router.delete("/orders/{order_id}")
-def delete_order(order_id: int, db: Session = Depends(get_db)) -> dict:
+@router.delete("/orders/{order_id}", dependencies=[OWNER])
+def delete_order(order_id: int, db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
     o = db.get(Order, order_id)
     if not o:
         raise HTTPException(404, "Order not found")
+    # A cancelled order already gave its reservation back; anything else still
+    # holds stock/promo, so restore before the row (and its items) disappear.
+    if o.status != "cancelled":
+        _restore_stock_and_promo(db, o, user["username"])
     db.delete(o)
     db.commit()
     return {"ok": True}

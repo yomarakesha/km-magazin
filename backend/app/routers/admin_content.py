@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..auth import require_admin
+from ..auth import require_role
 from ..content_builder import BLOCK_KEYS, LANGS
 from ..db import get_db
 from ..models import ContentBlock
@@ -12,7 +12,7 @@ from ..schemas import ContentBlockIn
 router = APIRouter(
     prefix="/api/admin/content",
     tags=["admin-content"],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_role("content"))],
 )
 
 

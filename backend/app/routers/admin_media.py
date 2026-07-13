@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..auth import require_admin
+from ..auth import require_role
 from ..config import MEDIA_DIR
 from ..db import get_db
 from ..models import Media, Service
@@ -16,7 +16,7 @@ from ..uploads import validate_upload
 router = APIRouter(
     prefix="/api/admin",
     tags=["admin-media"],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_role("content"))],
 )
 
 _SAFE = re.compile(r"[^a-zA-Z0-9._-]+")

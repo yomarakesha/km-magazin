@@ -6,19 +6,19 @@ import "./globals.css";
 // no render-blocking Google Fonts CSS, no CLS. globals.css consumes the
 // variables with the original family names as fallbacks.
 const disp = Unbounded({
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin", "latin-ext", "cyrillic"],
   weight: ["600", "800"],
   variable: "--font-disp",
   display: "swap",
 });
 const body = Manrope({
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin", "latin-ext", "cyrillic"],
   weight: ["400", "500", "700", "800"],
   variable: "--font-body",
   display: "swap",
 });
 const mono = JetBrains_Mono({
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin", "latin-ext", "cyrillic"],
   weight: ["400", "500", "700"],
   variable: "--font-mono",
   display: "swap",
