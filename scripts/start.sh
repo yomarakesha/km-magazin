@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# KM Site — полный запуск с нуля (Linux / macOS)
+# Использование: bash scripts/start.sh
+#
+# Что делает:
+#   1. Создаёт backend/.env с случайными ключами (если нет)
+#   2. Создаёт Python venv и ставит зависимости (если нет)
+#   3. Ставит npm пакеты (если нет)
+#   4. Заполняет БД демо-данными (если нет km.db)
+#   5. Запускает backend :8000 и frontend :3000 параллельно
+
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BACKEND="$ROOT/backend"
+VENV="$BACKEND/.venv"
+PY="$VENV/bin/python"
+ENV_FILE="$BACKEND/.env"
+DB="$BACKEND/data/km.db"
+
+echo ""
+echo "========================================"
+echo "  KM Site — запуск"
+echo "========================================"
+echo ""
+
+# ── 1. backend/.env ───────────────────────────────────────────────────────────
+if [ ! -f "$ENV_FILE" ]; then
+    echo "[1/5] Создаём backend/.env..."
+
+    ADMIN_PWD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)
+    SECRET_KEY=$(LC_ALL=C tr -dc 'A-Za-z0-9+/' </dev/urandom | head -c 64)
+
+    cat > "$ENV_FILE" <<EOF
+ADMIN_PASSWORD=$ADMIN_PWD
+SECRET_KEY=$SECRET_KEY
+FRONTEND_ORIGIN=http://localhost:3000
+PUBLIC_URL=http://localhost:8000
+COOKIE_SECURE=false
+REVALIDATE_SECRET=
+EOF
+
+    echo ""
+    echo "  *** ПАРОЛЬ АДМИНИСТРАТОРА: $ADMIN_PWD ***"
+    echo "  Логин: admin / $ADMIN_PWD"
+    echo "  (сохранён в backend/.env)"
+    echo ""
+else
+    echo "[1/5] backend/.env уже есть — пропускаем"
+    ADMIN_PWD=$(grep '^ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
+    [ -n "$ADMIN_PWD" ] && echo "  Текущий пароль admin: $ADMIN_PWD"
+fi
+
+# ── 2. Python venv + зависимости ─────────────────────────────────────────────
+if [ ! -f "$PY" ]; then
+    echo "[2/5] Создаём Python venv..."
+
+    # Ищем python3
+    PY_CMD=""
+    for candidate in python3 python3.12 python3.11 python3.10 python; do
+        if command -v "$candidate" &>/dev/null && "$candidate" -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" 2>/dev/null; then
+            PY_CMD="$candidate"
+            break
+        fi
+    done
+
+    if [ -z "$PY_CMD" ]; then
+        echo "Python 3.10+ не найден. Установите: sudo apt install python3 (Ubuntu) или brew install python (Mac)"
+        exit 1
+    fi
+
+    "$PY_CMD" -m venv "$VENV"
+    "$PY" -m pip install --upgrade pip -q
+    "$PY" -m pip install -r "$BACKEND/requirements.txt"
+    echo "[2/5] Python зависимости установлены."
+else
+    echo "[2/5] Python venv уже есть — проверяем зависимости..."
+    "$PY" -m pip install -q -r "$BACKEND/requirements.txt"
+fi
+
+# ── 3. npm зависимости ────────────────────────────────────────────────────────
+if [ ! -d "$ROOT/node_modules" ]; then
+    echo "[3/5] Устанавливаем npm пакеты..."
+    cd "$ROOT" && npm install
+    echo "[3/5] npm пакеты установлены."
+else
+    echo "[3/5] node_modules уже есть — пропускаем"
+fi
+
+# ── 4. Seed демо-данных ───────────────────────────────────────────────────────
+if [ ! -f "$DB" ]; then
+    echo "[4/5] Заполняем БД демо-данными..."
+    mkdir -p "$BACKEND/data"
+    cd "$BACKEND" && "$PY" -m app.seed_demo
+    echo "[4/5] БД создана с демо-данными."
+else
+    echo "[4/5] БД уже существует — пропускаем seed"
+fi
+
+# ── 5. Запуск серверов ────────────────────────────────────────────────────────
+echo "[5/5] Запускаем серверы..."
+echo ""
+
+# Запуск в фоне с выводом в консоль
+cd "$BACKEND" && "$PY" -m uvicorn app.main:app --reload --port 8000 &
+BACKEND_PID=$!
+
+sleep 2  # дать backend стартовать раньше frontend
+
+cd "$ROOT" && npm run dev &
+FRONTEND_PID=$!
+
+echo ""
+echo "========================================"
+echo "  Сайт:   http://localhost:3000"
+echo "  Админ:  http://localhost:3000/admin"
+echo "  API:    http://localhost:8000/docs"
+echo "========================================"
+echo ""
+echo "Нажмите Ctrl+C чтобы остановить оба сервера."
+echo ""
+
+# Ждём Ctrl+C и убиваем оба процесса
+trap "echo ''; echo 'Остановка серверов...'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" INT TERM
+wait $BACKEND_PID $FRONTEND_PID

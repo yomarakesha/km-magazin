@@ -1,77 +1,143 @@
-# KM Site — Kanagatly Mahabat
+# KM Site
 
-Security & automation company site (RU / TK / EN). Now **dynamic**: content lives
-in a database and is edited through an admin panel.
+Полнофункциональный сайт с CMS-панелью администратора.
 
-- **Frontend** — Next.js 16 (this folder). Public page server-renders content
-  fetched from the backend on every request; admin UI lives at `/admin`.
-- **Backend** — Python FastAPI + SQLite (`backend/`). Stores content, services,
-  media and leads; serves media files. See [`backend/README.md`](backend/README.md).
+- **Frontend** — Next.js + React (папка корневая)
+- **Backend** — Python FastAPI + SQLite (`backend/`)
+- **Админ** — `/admin` (RBAC: owner / warehouse / sales / content)
+- **Касса (POS)** — `/admin/pos` (продажа, скидки, долги, чек A4)
 
-## Quick start (Windows)
+---
+
+## Быстрый старт
+
+### Windows
 
 ```powershell
-# 1. Set the admin password (writes backend\.env)
-powershell -ExecutionPolicy Bypass -File scripts\create-admin.ps1
-
-# 2. Launch backend + frontend (installs deps & seeds DB on first run)
 powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 ```
 
-`start.ps1` opens two windows (backend :8000, frontend :3000). Close them to stop.
-Then open http://localhost:3000 (site) / http://localhost:3000/admin (panel).
+### Linux / macOS
 
-The manual steps below are equivalent if you prefer running each part yourself.
+```bash
+bash scripts/start.sh
+```
 
-## Run locally (two processes)
+Скрипт делает всё автоматически:
+1. Создаёт `backend/.env` с случайным паролем (выведет его в консоли)
+2. Ставит Python-зависимости в venv
+3. Ставит npm-пакеты
+4. Заполняет БД демо-данными (каталог, заказы, склад, POS-продажи)
+5. Запускает оба сервера
 
-### 1. Backend (FastAPI)
+**Требования:** Python 3.10+, Node.js 18+
+
+---
+
+## Адреса после запуска
+
+| Что | URL |
+|-----|-----|
+| Сайт (витрина) | http://localhost:3000 |
+| Админ-панель | http://localhost:3000/admin |
+| API (документация) | http://localhost:8000/docs |
+
+---
+
+## Тестовые аккаунты (после seed)
+
+| Логин | Пароль | Роль |
+|-------|--------|------|
+| admin | *из консоли / backend/.env* | Владелец (полный доступ) |
+| sklad | sklad12345 | Склад |
+| operator | operator12345 | Продавец (касса) |
+| kontent | kontent12345 | Контент |
+
+---
+
+## Структура проекта
+
+```
+km-site/
+├── app/                  # Next.js страницы (App Router)
+│   ├── admin/            # Админ-панель
+│   │   ├── pos/          # Касса, продажи, чеки
+│   │   ├── shop/         # Каталог товаров
+│   │   ├── warehouse/    # Склад, закупки
+│   │   └── reports/      # Отчёты
+│   └── [slug]/           # Публичные страницы
+├── backend/
+│   ├── app/              # FastAPI приложение
+│   │   ├── routers/      # API эндпоинты
+│   │   ├── models.py     # SQLAlchemy модели
+│   │   ├── seed_demo.py  # Демо-данные
+│   │   └── ...
+│   ├── data/             # SQLite БД (не в git)
+│   ├── media/            # Загруженные файлы (не в git)
+│   ├── requirements.txt
+│   └── .env              # Секреты (не в git, создаётся скриптом)
+├── lib/                  # Общие утилиты (TypeScript)
+├── scripts/
+│   ├── start.ps1         # Запуск (Windows)
+│   ├── start.sh          # Запуск (Linux/macOS)
+│   └── create-admin.ps1  # Смена пароля admin
+└── tests/                # E2E тесты (Playwright)
+```
+
+---
+
+## Ручной запуск (по частям)
+
+### Backend
 
 ```bash
 cd backend
-py -m venv .venv
-./.venv/Scripts/python.exe -m pip install -r requirements.txt
-# set ADMIN_PASSWORD and SECRET_KEY in backend/.env
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Заполнить БД демо-данными (первый раз):
+python -m app.seed_demo
+
+# Запустить:
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Seed initial content (one time):
+### Frontend
 
 ```bash
-npm run dump:seed                              # from project root → writes backend/app/seed_data.json
-cd backend && ./.venv/Scripts/python.exe -m app.seed
-```
-
-Start it:
-
-```bash
-cd backend && ./.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
-```
-
-### 2. Frontend (Next.js)
-
-```bash
-npm install        # first time
+npm install
 npm run dev
 ```
 
-- Site: http://localhost:3000
-- Admin: http://localhost:3000/admin  (password = `ADMIN_PASSWORD` from `backend/.env`)
+---
 
-`.env.local` points the frontend at the backend (`API_URL` / `NEXT_PUBLIC_API_URL`,
-default `http://localhost:8000`). Keep `FRONTEND_ORIGIN` in `backend/.env` matching the
-frontend origin (default `http://localhost:3000`) for CORS + login cookies.
+## Переменные окружения
 
-## Admin panel
+### backend/.env (создаётся автоматически)
 
-`/admin` lets you edit, with no code changes:
-- **Тексты** — all site texts per language (ru/tk/en)
-- **Услуги** — add/edit/reorder/hide services, icons, features
-- **Медиа** — upload photos/videos per service, posters, ordering
-- **Заявки** — leads submitted via the contact form
+| Переменная | Описание |
+|-----------|---------|
+| `ADMIN_PASSWORD` | Пароль владельца (обязательно) |
+| `SECRET_KEY` | JWT-секрет (обязательно) |
+| `FRONTEND_ORIGIN` | CORS origin фронтенда (default: http://localhost:3000) |
+| `PUBLIC_URL` | Публичный URL backend (default: http://localhost:8000) |
 
-## Notes
-- Content is fetched uncached (per-request SSR) so admin edits show on the site
-  immediately. If the backend is down, the site falls back to bundled static content.
-- Fonts load via Google Fonts `<link>` (not `next/font`) to avoid a build-time
-  dependency on `fonts.gstatic.com`.
-- The single source for the initial seed is `lib/content.ts`.
+Полный список см. в `backend/.env.example`.
+
+---
+
+## Тесты
+
+```bash
+# Backend (pytest)
+cd backend
+.venv/Scripts/python.exe -m pytest          # Windows
+source .venv/bin/activate && pytest         # Linux/Mac
+
+# Frontend (vitest)
+npm test
+
+# E2E (Playwright)
+npm run test:e2e
+```
