@@ -157,3 +157,25 @@ select.adm-in{appearance:none}
   .leads-table{min-width:560px}
   .icon-pick button{width:38px;height:38px}
 }
+
+/* ---- POS receipt (товарный чек, A4) ---- */
+.pos-receipt{max-width:720px;background:#fff;color:#111;border-radius:10px;padding:36px 42px;
+  font-family:Georgia,'Times New Roman',serif;font-size:14px}
+.pos-receipt h1{font-size:20px;margin:0 0 12px;color:#111}
+.pos-receipt-meta{display:grid;gap:2px;margin-bottom:20px;color:#333;font-size:13px}
+.pos-receipt table{width:100%;border-collapse:collapse;margin-bottom:18px}
+.pos-receipt th,.pos-receipt td{border:1px solid #999;padding:7px 10px;text-align:left;color:#111}
+.pos-receipt th{font-size:12px;background:#f2f2f2}
+.pos-receipt-totals{display:grid;gap:4px;justify-content:end;margin-bottom:18px}
+.pos-receipt-totals div{display:flex;gap:24px;justify-content:space-between;min-width:260px}
+.pos-receipt-grand{font-weight:700;font-size:17px;border-top:1px solid #999;padding-top:6px}
+.pos-receipt-debt{border:1px dashed #999;padding:10px 14px;margin-bottom:18px;color:#111}
+.pos-receipt footer{display:flex;gap:40px;justify-content:space-between;margin-top:30px;color:#333;font-size:13px}
+
+@media print{
+  .adm-side,.pos-no-print,.adm-h1{display:none !important}
+  .adm{display:block}
+  .adm-main{padding:0}
+  body{background:#fff}
+  .pos-receipt{max-width:none;border-radius:0;padding:0}
+}

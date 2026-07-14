@@ -71,6 +71,18 @@ export const api = {
     req<{ total: number; items: PurchaseRow[] }>(`/api/admin/warehouse/purchases?limit=${limit}&offset=${offset}`),
   createPurchase: (body: { supplier_id?: number | null; note?: string; items: { product_id: number; qty: number; unit_cost: number }[] }) =>
     req<PurchaseRow>("/api/admin/warehouse/purchases", { method: "POST", body: JSON.stringify(body) }),
+  // POS (касса)
+  posLookup: (code: string) => req<PosLookup>(`/api/admin/pos/lookup?code=${encodeURIComponent(code)}`),
+  createSale: (body: SaleIn) => req<SaleRow>("/api/admin/pos/sales", { method: "POST", body: JSON.stringify(body) }),
+  getSales: (opts?: { from?: string; to?: string; debt?: boolean }) => {
+    const qs = new URLSearchParams(rangeQs(opts?.from, opts?.to));
+    if (opts?.debt) qs.set("debt", "true");
+    const s = qs.toString();
+    return req<SaleRow[]>(`/api/admin/pos/sales${s ? `?${s}` : ""}`);
+  },
+  getSale: (id: number) => req<SaleRow>(`/api/admin/pos/sales/${id}`),
+  settleSale: (id: number) => req<SaleRow>(`/api/admin/pos/sales/${id}/settle`, { method: "POST" }),
+  voidSale: (id: number) => req(`/api/admin/pos/sales/${id}/void`, { method: "POST" }),
   // reports
   getSalesReport: (from?: string, to?: string) =>
     req<SalesReport>(`/api/admin/reports/sales?${rangeQs(from, to)}`),
@@ -245,8 +257,33 @@ export interface PurchaseRow {
 export interface SalesReport {
   from: string; to: string; orders: number; revenue: number; discounts: number;
   cogs: number; gross_profit: number; avg_check: number; cost_coverage: number | null;
+  channels: {
+    online: { orders: number; revenue: number; profit: number };
+    pos: { orders: number; revenue: number; profit: number };
+  };
+  debts_outstanding: number;
   daily: { day: string; orders: number; revenue: number }[];
   top_products: { id: number; title: string; qty: number; revenue: number; profit: number }[];
+}
+
+// ---- POS (касса) ----
+export interface PosLookup {
+  id: number; title: string; price: number; currency: string;
+  stock_qty: number | null; barcode: string | null; sku: string | null;
+}
+export interface SaleItemRow { product_id: number | null; title: string; price: number; qty: number }
+export interface SaleRow {
+  id: number; seller: string; subtotal: number; sold_total: number; discount: number;
+  cost_total: number; status: "paid" | "debt"; payment_method: "cash" | "terminal" | "debt";
+  debtor_name: string | null; debtor_phone: string | null;
+  settled_at: string | null; created_at: string | null; items: SaleItemRow[];
+}
+export interface SaleIn {
+  items: { product_id: number; qty: number }[];
+  sold_total?: number | null;
+  payment_method: "cash" | "terminal" | "debt";
+  debtor_name?: string | null;
+  debtor_phone?: string | null;
 }
 export interface StockReportRow {
   id: number; title: string; sku: string | null; stock_qty: number | null;

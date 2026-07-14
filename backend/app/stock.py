@@ -22,6 +22,7 @@ def log_movement(
     supplier_id: int | None = None,
     order_id: int | None = None,
     purchase_id: int | None = None,
+    sale_id: int | None = None,
 ) -> None:
     """Append one ledger row. Call AFTER the stock counter was updated within
     the current transaction — stock_after reads the post-update value."""
@@ -36,5 +37,6 @@ def log_movement(
         supplier_id=supplier_id,
         order_id=order_id,
         purchase_id=purchase_id,
+        sale_id=sale_id,
         username=username,
     ))

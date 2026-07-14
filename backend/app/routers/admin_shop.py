@@ -56,7 +56,16 @@ router = APIRouter(
 
 # Role gates (owner always passes): catalog/content writes, order/promo
 # management, order lists (sales + warehouse picking), owner-only actions.
+#
+# Product ownership is split by field, not by "who created it" (Model B —
+# goods originate at the warehouse, content dresses up the card):
+#   • warehouse  → stock_qty, cost (receipts/write-offs), and creating the SKU
+#   • owner      → price / old_price (money decisions)
+#   • content    → texts, photos, category, slug, attributes, publish flag
+# CATALOG gates the product shell (create + edit), then update_product
+# enforces the per-field split inside.
 CONTENT = Depends(require_role("content"))
+CATALOG = Depends(require_role("content", "warehouse"))
 SALES = Depends(require_role("sales"))
 ORDER_VIEW = Depends(require_role("sales", "warehouse"))
 OWNER = Depends(require_role())
@@ -591,7 +600,7 @@ def get_product(product_id: int, db: Session = Depends(get_db)) -> dict:
     return _product(p)
 
 
-@router.post("/products", status_code=201, dependencies=[CONTENT])
+@router.post("/products", status_code=201, dependencies=[CATALOG])
 def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
     if db.scalar(select(Product).where(Product.slug == payload.slug)):
         raise HTTPException(409, "Slug already exists")
@@ -636,18 +645,39 @@ def update_product(
     product_id: int,
     payload: ProductUpdateIn,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_role("content")),
+    user: dict = Depends(require_role("content", "warehouse")),
 ) -> dict:
     p = db.get(Product, product_id)
     if not p:
         raise HTTPException(404, "Product not found")
-    # Price changes on an existing product are owner-only; content edits
-    # texts/photos/attributes but cannot reprice.
+    # Per-field ownership (owner passes all). Each edited domain is checked
+    # against the role that owns it so no role can reach outside its lane:
+    #   price/old_price → owner · stock_qty → warehouse · everything else → content
+    role = user["role"]
+
+    def owns(*roles: str) -> bool:
+        return role == "owner" or role in roles
+
     price_touched = (payload.price is not None and payload.price != p.price) or (
         "old_price" in payload.model_fields_set and payload.old_price != p.old_price
     )
-    if price_touched and user["role"] != "owner":
+    stock_touched = "stock_qty" in payload.model_fields_set and payload.stock_qty != p.stock_qty
+    catalog_touched = any((
+        payload.slug is not None,
+        payload.category_id is not None,
+        payload.currency is not None,
+        payload.in_stock is not None,
+        payload.sku is not None,
+        payload.enabled is not None,
+        payload.translations is not None,
+        payload.attributes is not None,
+    ))
+    if price_touched and not owns():
         raise HTTPException(403, "price changes are owner-only")
+    if stock_touched and not owns("warehouse"):
+        raise HTTPException(403, "stock changes are warehouse-only")
+    if catalog_touched and not owns("content"):
+        raise HTTPException(403, "catalog fields are content-only")
     if payload.slug is not None:
         p.slug = payload.slug
     if payload.category_id is not None:

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { api, type AdminCategory, type AdminProduct } from "@/lib/admin-api";
+import { api, type AdminCategory, type AdminProduct, type AdminRole } from "@/lib/admin-api";
 import { useToast } from "../../_components/useToast";
 import { useConfirm } from "../../_components/useConfirm";
 
@@ -20,8 +20,15 @@ export default function ProductsPage() {
   const [edit, setEdit] = useState<{ id: number; field: "price" | "stock_qty"; value: string } | null>(null);
   const dragFrom = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [role, setRole] = useState<AdminRole>("owner");
+
+  // field ownership (owner does everything): price=owner, stock=warehouse, rest=content
+  const canPrice = role === "owner";
+  const canStock = role === "owner" || role === "warehouse";
+  const canCatalog = role === "owner" || role === "content";
 
   const load = () => api.getProducts(filterCat || undefined).then(setList).catch((e) => show(String(e), "err"));
+  useEffect(() => { api.me().then((m) => setRole(m.role)).catch(() => {}); }, []);
   useEffect(() => { api.getCategories().then(setCats).catch((e) => show(String(e), "err")); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load(); setPage(1); }, [filterCat]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -44,7 +51,7 @@ export default function ProductsPage() {
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pages);
   const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const canDrag = !q; // поиск ломает соответствие индексов — сортировка только без него
+  const canDrag = !q && canCatalog; // поиск ломает индексы; порядок — каталожное поле (content)
 
   async function reorder(fromId: number, toId: number) {
     if (fromId === toId) return;
@@ -164,10 +171,12 @@ export default function ProductsPage() {
                   onChange={(e) => setEdit({ ...edit, value: e.target.value })}
                   onBlur={saveEdit}
                   onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEdit(null); }} />
-              ) : (
-                <span className="adm-inline" title="Изменить цену" onClick={() => startEdit(p, "price")}>
+              ) : canPrice ? (
+                <span className="adm-inline" title="Изменить цену (только владелец)" onClick={() => startEdit(p, "price")}>
                   {p.price} {p.currency}
                 </span>
+              ) : (
+                <span>{p.price} {p.currency}</span>
               )}
               {" · "}
               {edit?.id === p.id && edit.field === "stock_qty" ? (
@@ -175,20 +184,22 @@ export default function ProductsPage() {
                   onChange={(e) => setEdit({ ...edit, value: e.target.value })}
                   onBlur={saveEdit}
                   onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEdit(null); }} />
-              ) : (
-                <span className="adm-inline" title="Изменить остаток (пусто = не отслеживается)" onClick={() => startEdit(p, "stock_qty")}>
+              ) : canStock ? (
+                <span className="adm-inline" title="Изменить остаток (склад; пусто = не отслеживается)" onClick={() => startEdit(p, "stock_qty")}>
                   {p.stock_qty == null ? "остаток: —" : `остаток: ${p.stock_qty}`}
                 </span>
+              ) : (
+                <span>{p.stock_qty == null ? "остаток: —" : `остаток: ${p.stock_qty}`}</span>
               )}
               {" · "}{p.in_stock ? "в наличии" : "под заказ"} · {p.image_count} фото
             </div>
           </div>
           <div className="adm-actions" style={{ margin: 0 }}>
-            <button className="adm-btn ghost sm" onClick={() => toggle(p)}>{p.enabled ? "Скрыть" : "Показать"}</button>
-            <button className="adm-btn ghost sm" onClick={() => duplicate(p)} title="Создать копию товара">Копия</button>
-            <Link className="adm-btn ghost sm" href={`/admin/shop/products/${p.id}/images`}>Фото</Link>
-            <Link className="adm-btn sm" href={`/admin/shop/products/${p.id}`}>Изменить</Link>
-            <button className="adm-btn danger sm" onClick={() => remove(p)}>Удалить</button>
+            {canCatalog && <button className="adm-btn ghost sm" onClick={() => toggle(p)}>{p.enabled ? "Скрыть" : "Показать"}</button>}
+            {canCatalog && <button className="adm-btn ghost sm" onClick={() => duplicate(p)} title="Создать копию товара">Копия</button>}
+            {canCatalog && <Link className="adm-btn ghost sm" href={`/admin/shop/products/${p.id}/images`}>Фото</Link>}
+            {canCatalog && <Link className="adm-btn sm" href={`/admin/shop/products/${p.id}`}>Изменить</Link>}
+            {canCatalog && <button className="adm-btn danger sm" onClick={() => remove(p)}>Удалить</button>}
           </div>
         </div>
       ))}

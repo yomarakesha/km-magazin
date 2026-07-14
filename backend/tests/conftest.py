@@ -64,13 +64,15 @@ def make_product(db):
     """Create a product (with its own category) and return it detached-safe:
     (id, slug, price)."""
 
-    def factory(price: int = 100, stock_qty: int | None = None, enabled: bool = True):
+    def factory(price: int = 100, stock_qty: int | None = None, enabled: bool = True,
+                cost_price: int | None = None, barcode: str | None = None):
         cat = ShopCategory(slug=_slug("cat"))
         db.add(cat)
         db.flush()
         p = Product(
             slug=_slug("prod"), category_id=cat.id, price=price,
             stock_qty=stock_qty, enabled=enabled,
+            cost_price=cost_price, barcode=barcode,
         )
         p.translations.append(ProductTranslation(lang="ru", title="Тестовый товар"))
         db.add(p)

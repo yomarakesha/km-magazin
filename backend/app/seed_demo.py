@@ -19,6 +19,8 @@ from .models import (
     PromoCode,
     PurchaseDoc,
     PurchaseItem,
+    Sale,
+    SaleItem,
     ShopService,
     StockMovement,
     Supplier,
@@ -65,6 +67,8 @@ def _wipe_demo(db) -> None:
     """Clear everything this script owns; keep catalog (seed_shop rebuilds it)
     and the root owner account."""
     db.query(StockMovement).delete()
+    db.query(SaleItem).delete()
+    db.query(Sale).delete()
     db.query(OrderItem).delete()
     db.query(Order).delete()
     db.query(PurchaseItem).delete()
@@ -225,7 +229,44 @@ def seed_demo() -> None:
                 m.order_id = order.id
                 db.add(m)
 
-        # persist final counters (orders consumed some stock)
+        # ---- POS (касса): a few counter sales, one still a debt ----
+        # (product_index_in_tracked, qty, sold_total_override|None, payment, days_ago, debtor)
+        pos_recipes = [
+            (0, 1, None, "cash", 7, None),                      # обычная продажа
+            (2, 2, "disc", "terminal", 4, None),                # со скидкой 10%
+            (1, 1, None, "debt", 2, ("Гурбан Атаев", "+993 64 707070")),
+        ]
+        pos_count = 0
+        for ti, qty, kind_price, payment, days, debtor in pos_recipes:
+            if ti >= len(tracked) or stock[tracked[ti].id] < qty:
+                continue
+            p = tracked[ti]
+            when = _days_ago(days)
+            subtotal = p.price * qty
+            sold_total = round(subtotal * 0.9) if kind_price == "disc" else subtotal
+            sale = Sale(
+                seller="operator", subtotal=subtotal, sold_total=sold_total,
+                discount=subtotal - sold_total, cost_total=cost[p.id] * qty,
+                status="debt" if payment == "debt" else "paid", payment_method=payment,
+                debtor_name=debtor[0] if debtor else None,
+                debtor_phone=debtor[1] if debtor else None,
+                created_at=when,
+            )
+            sale.items.append(SaleItem(
+                product_id=p.id, title_snapshot=_title(p), price_snapshot=p.price,
+                cost_snapshot=cost[p.id], qty=qty,
+            ))
+            db.add(sale)
+            db.flush()
+            stock[p.id] -= qty
+            db.add(StockMovement(
+                product_id=p.id, qty_delta=-qty, stock_after=stock[p.id], kind="sale",
+                sale_id=sale.id, note=f"касса, чек #{sale.id}", username="operator",
+                created_at=when,
+            ))
+            pos_count += 1
+
+        # persist final counters (orders + POS consumed some stock)
         for p in tracked:
             p.stock_qty = stock[p.id]
 
@@ -239,6 +280,7 @@ def seed_demo() -> None:
         print(f"  tracked:    {len(tracked)} products with stock+cost, "
               f"{len(products) - len(tracked)} 'под заказ'")
         print(f"  orders:     {len(recipes)} (delivered/confirmed/new/cancelled), promo SALE10")
+        print(f"  pos sales:  {pos_count} (наличные/терминал/1 долг)")
         print(f"  movements:  {db.query(StockMovement).count()} ledger rows")
         print("\n  Staff logins (username / password):")
         for u, pw, role in STAFF:

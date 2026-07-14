@@ -10,7 +10,16 @@ from sqlalchemy.orm import Session
 
 from ..auth import require_role
 from ..db import get_db
-from ..models import Order, OrderItem, Product, ProductTranslation, ShopService, ShopServiceTranslation, StockMovement
+from ..models import (
+    Order,
+    OrderItem,
+    Product,
+    ProductTranslation,
+    Sale,
+    ShopService,
+    ShopServiceTranslation,
+    StockMovement,
+)
 from ..reports import csv_response, parse_period
 
 router = APIRouter(prefix="/api/admin/reports", tags=["admin-reports"])
@@ -68,6 +77,28 @@ def sales_report(
         .where(*in_range, OrderItem.product_id.is_not(None), OrderItem.cost_snapshot.is_not(None))
     ) or 0
 
+    # POS (касса) channel over the same period; online + pos feed the totals
+    pos_range = (Sale.created_at >= start, Sale.created_at <= end)
+    pos_count = db.scalar(select(func.count(Sale.id)).where(*pos_range)) or 0
+    pos_revenue = db.scalar(
+        select(func.coalesce(func.sum(Sale.sold_total), 0)).where(*pos_range)
+    ) or 0
+    pos_cogs = db.scalar(
+        select(func.coalesce(func.sum(Sale.cost_total), 0)).where(*pos_range)
+    ) or 0
+    pos_discounts = db.scalar(
+        select(func.coalesce(func.sum(Sale.discount), 0)).where(*pos_range)
+    ) or 0
+    # unsettled debts — global, not period-bound
+    debts_outstanding = db.scalar(
+        select(func.coalesce(func.sum(Sale.sold_total), 0)).where(Sale.status == "debt")
+    ) or 0
+
+    online_revenue, online_cogs = int(revenue), int(cogs)
+    revenue = online_revenue + int(pos_revenue)
+    cogs = online_cogs + int(pos_cogs)
+    discounts = int(discounts) + int(pos_discounts)
+    orders_count = int(orders_count) + int(pos_count)
     gross_profit = revenue - cogs
     avg_check = round(revenue / orders_count) if orders_count else 0
 
@@ -119,12 +150,28 @@ def sales_report(
         "gross_profit": int(gross_profit),
         "avg_check": avg_check,
         "cost_coverage": round(lines_costed / lines_total, 2) if lines_total else None,
+        "channels": {
+            "online": {
+                "orders": int(orders_count) - int(pos_count),
+                "revenue": online_revenue,
+                "profit": online_revenue - online_cogs,
+            },
+            "pos": {
+                "orders": int(pos_count),
+                "revenue": int(pos_revenue),
+                "profit": int(pos_revenue) - int(pos_cogs),
+            },
+        },
+        "debts_outstanding": int(debts_outstanding),
         "daily": [{"day": str(d), "orders": int(c), "revenue": int(r)} for d, c, r in daily],
         "top_products": top_products,
     }
 
     if format == "csv":
         rows = [[p["title"], p["qty"], p["revenue"], p["profit"]] for p in top_products]
+        ch = summary["channels"]
+        rows.append(["— Канал: онлайн", ch["online"]["orders"], ch["online"]["revenue"], ch["online"]["profit"]])
+        rows.append(["— Канал: касса", ch["pos"]["orders"], ch["pos"]["revenue"], ch["pos"]["profit"]])
         return csv_response(
             f"sales_{summary['from']}_{summary['to']}.csv",
             ["Товар", "Продано", "Выручка", "Прибыль"],

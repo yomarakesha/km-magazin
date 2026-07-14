@@ -103,7 +103,8 @@ def test_role_read_access(client, role, path, ok):
     assert (r.status_code == 200) == ok, f"{role} GET {path} -> {r.status_code}"
 
 
-def test_warehouse_cannot_create_product(client, db):
+def test_warehouse_can_create_product(client):
+    # Model B: goods originate at the warehouse — складчик заводит SKU.
     username, password = _make_user(client, "warehouse")
     client.post("/api/auth/logout")
     _login(client, username, password)
@@ -111,6 +112,29 @@ def test_warehouse_cannot_create_product(client, db):
         "/api/admin/shop/products",
         json={"slug": f"p-{uuid.uuid4().hex[:8]}", "category_id": 1, "price": 10},
     )
+    assert r.status_code == 201, r.text
+
+
+def test_warehouse_owns_stock_not_catalog(client, make_product):
+    p = make_product(price=100)
+    username, password = _make_user(client, "warehouse")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    # stock_qty is the warehouse's field
+    ok = client.put(f"/api/admin/shop/products/{p['id']}", json={"stock_qty": 7})
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["stock_qty"] == 7
+    # catalog fields belong to content
+    r = client.put(f"/api/admin/shop/products/{p['id']}", json={"sku": "WH-1"})
+    assert r.status_code == 403
+
+
+def test_content_cannot_change_stock(client, make_product):
+    p = make_product(price=100)
+    username, password = _make_user(client, "content")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    r = client.put(f"/api/admin/shop/products/{p['id']}", json={"stock_qty": 5})
     assert r.status_code == 403
 
 

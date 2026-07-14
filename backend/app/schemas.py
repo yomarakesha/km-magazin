@@ -366,3 +366,29 @@ class PurchaseIn(BaseModel):
     supplier_id: int | None = None
     note: str = Field(default="", max_length=256)
     items: list[PurchaseItemIn] = Field(min_length=1)
+
+
+# ---- POS (касса) ----
+class SaleItemIn(BaseModel):
+    product_id: int
+    qty: int = Field(default=1, ge=1, le=999)
+
+
+class SaleIn(BaseModel):
+    """A counter sale. `sold_total` is the amount actually taken (defaults to
+    the catalog subtotal); the discount lives at the receipt level. A sale on
+    credit requires the debtor's name and phone."""
+
+    items: list[SaleItemIn] = Field(min_length=1, max_length=100)
+    sold_total: int | None = Field(default=None, ge=0)
+    payment_method: Literal["cash", "terminal", "debt"] = "cash"
+    debtor_name: str | None = Field(default=None, max_length=128)
+    debtor_phone: str | None = Field(default=None, max_length=64)
+
+    @model_validator(mode="after")
+    def _debt_needs_debtor(self) -> "SaleIn":
+        if self.payment_method == "debt" and not (
+            (self.debtor_name or "").strip() and (self.debtor_phone or "").strip()
+        ):
+            raise ValueError("debtor_name and debtor_phone are required for a debt sale")
+        return self

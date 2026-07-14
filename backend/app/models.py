@@ -195,6 +195,7 @@ class Product(Base):
     stock_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = not tracked
     cost_price: Mapped[int | None] = mapped_column(Integer, nullable=True)  # last purchase cost, TMT
     sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    barcode: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # EAN/UPC for POS scan
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # feeds sitemap <lastmod>; NULL for rows predating the column
@@ -478,10 +479,56 @@ class StockMovement(Base):
     purchase_id: Mapped[int | None] = mapped_column(
         ForeignKey("shop_purchases.id", ondelete="SET NULL"), nullable=True
     )
+    sale_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_sales.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     username: Mapped[str] = mapped_column(String(32), default="")  # "" = storefront
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
 
     product: Mapped["Product"] = relationship("Product")
+
+
+class Sale(Base):
+    """A POS (counter) sale rung up by a seller. Separate from online Orders;
+    both write `sale`/`return` rows into the StockMovement ledger. Line items
+    keep catalog prices; the real amount taken is `sold_total` (discounts and
+    markups live at the receipt level). A sale on credit (в долг) carries the
+    debtor's name/phone until settled."""
+
+    __tablename__ = "shop_sales"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    seller: Mapped[str] = mapped_column(String(32), default="")  # admin username
+    subtotal: Mapped[int] = mapped_column(Integer, default=0)  # Σ catalog price·qty
+    sold_total: Mapped[int] = mapped_column(Integer, default=0)  # what was actually taken
+    discount: Mapped[int] = mapped_column(Integer, default=0)  # subtotal − sold_total (may be < 0)
+    cost_total: Mapped[int] = mapped_column(Integer, default=0)  # Σ cost_snapshot·qty
+    status: Mapped[str] = mapped_column(String(8), default="paid", index=True)  # paid|debt
+    payment_method: Mapped[str] = mapped_column(String(16), default="cash")  # cash|terminal|debt
+    debtor_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    debtor_phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+
+    items: Mapped[list["SaleItem"]] = relationship(
+        back_populates="sale", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class SaleItem(Base):
+    __tablename__ = "shop_sale_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sale_id: Mapped[int] = mapped_column(ForeignKey("shop_sales.id", ondelete="CASCADE"))
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_products.id", ondelete="SET NULL"), nullable=True
+    )
+    title_snapshot: Mapped[str] = mapped_column(String(256), default="")
+    price_snapshot: Mapped[int] = mapped_column(Integer, default=0)  # catalog price at sale time
+    cost_snapshot: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+
+    sale: Mapped["Sale"] = relationship(back_populates="items")
 
 
 class AdminUser(Base):

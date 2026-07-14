@@ -45,6 +45,27 @@ def test_sales_report_profit_uses_cost_snapshot(client, make_product):
     assert (row["qty"], row["revenue"], row["profit"]) == (2, 200, 80)
 
 
+def test_sales_report_includes_pos_and_debts(client, make_product):
+    _login(client)
+    base = client.get("/api/admin/reports/sales").json()
+    p = make_product(price=100, stock_qty=10, cost_price=50)
+    r = client.post("/api/admin/pos/sales", json={
+        "items": [{"product_id": p["id"], "qty": 1}], "payment_method": "debt",
+        "debtor_name": "A", "debtor_phone": "+1"})
+    assert r.status_code == 201, r.text
+
+    body = client.get("/api/admin/reports/sales").json()
+    assert body["debts_outstanding"] - base["debts_outstanding"] == 100
+    assert body["channels"]["pos"]["revenue"] - base["channels"]["pos"]["revenue"] == 100
+    assert body["channels"]["pos"]["profit"] - base["channels"]["pos"]["profit"] == 50
+    # POS flows into the combined totals too
+    assert body["revenue"] - base["revenue"] == 100
+    assert body["cogs"] - base["cogs"] == 50
+    assert body["gross_profit"] - base["gross_profit"] == 50
+    # online channel untouched
+    assert body["channels"]["online"]["revenue"] == base["channels"]["online"]["revenue"]
+
+
 def test_sales_report_excludes_cancelled(client, make_product):
     _login(client)
     base = client.get("/api/admin/reports/sales").json()

@@ -17,6 +17,8 @@ const NAV: { href: string; label: string; roles?: AdminRole[] }[] = [
   { href: "/admin/shop/reviews", label: "Отзывы", roles: ["content"] },
   { href: "/admin/shop/promos", label: "Промокоды", roles: ["sales"] },
   { href: "/admin/shop/orders", label: "Заказы", roles: ["sales", "warehouse"] },
+  { href: "/admin/pos", label: "Касса", roles: ["sales"] },
+  { href: "/admin/pos/sales", label: "Продажи · Долги", roles: ["sales"] },
   { href: "/admin/warehouse", label: "Склад", roles: ["warehouse", "sales"] },
   { href: "/admin/warehouse/movements", label: "Журнал склада", roles: ["warehouse", "sales"] },
   { href: "/admin/warehouse/purchases", label: "Закупки", roles: ["warehouse"] },
@@ -77,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav>
           {nav.map((n) => {
             // exact match for hrefs that are prefixes of other nav items
-            const exact = n.href === "/admin" || n.href === "/admin/warehouse";
+            const exact = n.href === "/admin" || n.href === "/admin/warehouse" || n.href === "/admin/pos";
             const active = exact ? pathname === n.href : pathname.startsWith(n.href);
             const count = badges[n.href] ?? 0;
             return (

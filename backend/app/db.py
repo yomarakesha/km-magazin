@@ -63,6 +63,8 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN updated_at DATETIME"))
             if "cost_price" not in cols:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN cost_price INTEGER"))
+            if "barcode" not in cols:
+                conn.execute(text("ALTER TABLE shop_products ADD COLUMN barcode VARCHAR(64)"))
     if "shop_order_items" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_order_items")}
         if "cost_snapshot" not in cols:
@@ -93,6 +95,14 @@ def _migrate() -> None:
         if "max_uses" not in cols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE shop_promo_codes ADD COLUMN max_uses INTEGER"))
+    if "shop_stock_movements" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_stock_movements")}
+        if "sale_id" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE shop_stock_movements ADD COLUMN sale_id INTEGER "
+                    "REFERENCES shop_sales(id)"
+                ))
 
 
 def _seed_owner() -> None:
