@@ -64,6 +64,15 @@ if (-not (Test-Path $envFile)) {
     }
 }
 
+# Proveryaem obyazatelnye klyuchi (zashchita ot chastichnogo .env)
+$envText = Get-Content $envFile
+foreach ($key in @("ADMIN_PASSWORD", "SECRET_KEY")) {
+    if (-not ($envText | Where-Object { $_ -match "^$key=.+" })) {
+        Write-Host "OSHIBKA: v backend\.env net $key (ili pustoj). Udalite .env i perezapustite." -ForegroundColor Red
+        exit 1
+    }
+}
+
 # ── 2. Python venv + zavisimosti ─────────────────────────────────────────────
 if (-not (Test-Path $py)) {
     Write-Host "[2/5] Sozdaem Python venv..." -ForegroundColor Cyan
@@ -87,10 +96,16 @@ if (-not (Test-Path $py)) {
     & $pyCmd -m venv $venv
     & $py -m pip install --upgrade pip -q
     & $py -m pip install -r (Join-Path $backend "requirements.txt")
+    # pip - native exe: oshibka ne brosaet isklyuchenie, proveryaem kod vyhoda.
+    # Esli deps ne stali (net seti) - udalyaem nepolnyj venv, chtoby sleduyushij zapusk povtoril.
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Oshibka ustanovki Python-zavisimostej. Udalyayu nepolnyj venv." -ForegroundColor Red
+        Remove-Item -Recurse -Force $venv -ErrorAction SilentlyContinue
+        exit 1
+    }
     Write-Host "[2/5] Python zavisimosti ustanovleny." -ForegroundColor Green
 } else {
-    Write-Host "[2/5] Python venv uzhe est - proveryaem zavisimosti..." -ForegroundColor DarkGray
-    & $py -m pip install -q -r (Join-Path $backend "requirements.txt")
+    Write-Host "[2/5] Python venv uzhe est - propuskaem" -ForegroundColor DarkGray
 }
 
 # ── 3. npm zavisimosti ────────────────────────────────────────────────────────

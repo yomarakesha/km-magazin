@@ -50,6 +50,14 @@ else
     [ -n "$ADMIN_PWD" ] && echo "  Текущий пароль admin: $ADMIN_PWD"
 fi
 
+# Проверяем, что обязательные ключи есть и непустые (защита от частичного .env)
+for _key in ADMIN_PASSWORD SECRET_KEY; do
+    if ! grep -q "^$_key=." "$ENV_FILE"; then
+        echo "ОШИБКА: в $ENV_FILE нет $_key (или пустой). Удалите .env и перезапустите."
+        exit 1
+    fi
+done
+
 # ── 2. Python venv + зависимости ─────────────────────────────────────────────
 if [ ! -f "$PY" ]; then
     echo "[2/5] Создаём Python venv..."
@@ -69,12 +77,17 @@ if [ ! -f "$PY" ]; then
     fi
 
     "$PY_CMD" -m venv "$VENV"
-    "$PY" -m pip install --upgrade pip -q
-    "$PY" -m pip install -r "$BACKEND/requirements.txt"
+    # Если установка зависимостей упала (нет сети и т.п.) — удаляем venv,
+    # чтобы следующий запуск попробовал заново, а не думал что venv готов.
+    if ! "$PY" -m pip install --upgrade pip -q \
+        || ! "$PY" -m pip install -r "$BACKEND/requirements.txt"; then
+        echo "Ошибка установки Python-зависимостей. Удаляю неполный venv."
+        rm -rf "$VENV"
+        exit 1
+    fi
     echo "[2/5] Python зависимости установлены."
 else
-    echo "[2/5] Python venv уже есть — проверяем зависимости..."
-    "$PY" -m pip install -q -r "$BACKEND/requirements.txt"
+    echo "[2/5] Python venv уже есть — пропускаем"
 fi
 
 # ── 3. npm зависимости ────────────────────────────────────────────────────────
@@ -119,6 +132,19 @@ echo ""
 echo "Нажмите Ctrl+C чтобы остановить оба сервера."
 echo ""
 
-# Ждём Ctrl+C и убиваем оба процесса
-trap "echo ''; echo 'Остановка серверов...'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" INT TERM
-wait $BACKEND_PID $FRONTEND_PID
+# Гасим оба сервера при Ctrl+C, завершении или падении одного из них
+cleanup() {
+    trap - INT TERM EXIT
+    echo ''
+    echo 'Остановка серверов...'
+    kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null
+    exit 0
+}
+trap cleanup INT TERM EXIT
+
+# Ждём, пока живы оба; как только один упал — cleanup гасит второй (не оставляем сироту).
+# Опрос вместо `wait -n` ради совместимости с bash 3.2 (macOS).
+while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$FRONTEND_PID" 2>/dev/null; do
+    sleep 1
+done
+cleanup
