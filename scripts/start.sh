@@ -16,6 +16,16 @@ VENV="$BACKEND/.venv"
 PY="$VENV/bin/python"
 ENV_FILE="$BACKEND/.env"
 DB="$BACKEND/data/km.db"
+REQ="$BACKEND/requirements.txt"
+REQ_STAMP="$VENV/.requirements.sha"
+
+# Hash of requirements.txt, so a venv built before a dependency was added gets
+# topped up instead of silently running against stale packages.
+req_hash() {
+    if command -v sha256sum &>/dev/null; then sha256sum "$REQ" | cut -d' ' -f1
+    else shasum -a 256 "$REQ" | cut -d' ' -f1
+    fi
+}
 
 echo ""
 echo "========================================"
@@ -80,14 +90,24 @@ if [ ! -f "$PY" ]; then
     # Если установка зависимостей упала (нет сети и т.п.) — удаляем venv,
     # чтобы следующий запуск попробовал заново, а не думал что venv готов.
     if ! "$PY" -m pip install --upgrade pip -q \
-        || ! "$PY" -m pip install -r "$BACKEND/requirements.txt"; then
+        || ! "$PY" -m pip install -r "$REQ"; then
         echo "Ошибка установки Python-зависимостей. Удаляю неполный venv."
         rm -rf "$VENV"
         exit 1
     fi
+    req_hash > "$REQ_STAMP"
     echo "[2/5] Python зависимости установлены."
+elif [ ! -f "$REQ_STAMP" ] || [ "$(cat "$REQ_STAMP")" != "$(req_hash)" ]; then
+    echo "[2/5] requirements.txt изменился — доставляем зависимости..."
+    if ! "$PY" -m pip install -r "$REQ"; then
+        echo "Ошибка установки Python-зависимостей. Venv оставлен как есть."
+        echo "Проверьте сеть и перезапустите."
+        exit 1
+    fi
+    req_hash > "$REQ_STAMP"
+    echo "[2/5] Python зависимости обновлены."
 else
-    echo "[2/5] Python venv уже есть — пропускаем"
+    echo "[2/5] Python venv актуален — пропускаем"
 fi
 
 # ── 3. npm зависимости ────────────────────────────────────────────────────────
@@ -122,16 +142,6 @@ sleep 2  # дать backend стартовать раньше frontend
 cd "$ROOT" && npm run dev &
 FRONTEND_PID=$!
 
-echo ""
-echo "========================================"
-echo "  Сайт:   http://localhost:3000"
-echo "  Админ:  http://localhost:3000/admin"
-echo "  API:    http://localhost:8000/docs"
-echo "========================================"
-echo ""
-echo "Нажмите Ctrl+C чтобы остановить оба сервера."
-echo ""
-
 # Гасим оба сервера при Ctrl+C, завершении или падении одного из них
 cleanup() {
     trap - INT TERM EXIT
@@ -141,6 +151,46 @@ cleanup() {
     exit 0
 }
 trap cleanup INT TERM EXIT
+
+# ── Smoke: дожидаемся живого ответа, а не просто запущенного процесса ─────────
+# Порт может слушаться раньше, чем приложение готово отвечать, поэтому опрашиваем.
+wait_for() {
+    local url="$1" name="$2" tries=60
+    while [ "$tries" -gt 0 ]; do
+        if curl -fsS -o /dev/null --max-time 2 "$url" 2>/dev/null; then
+            echo "  OK   $name отвечает"
+            return 0
+        fi
+        kill -0 "$BACKEND_PID" 2>/dev/null || { echo "  СБОЙ: backend упал при старте"; return 1; }
+        kill -0 "$FRONTEND_PID" 2>/dev/null || { echo "  СБОЙ: frontend упал при старте"; return 1; }
+        tries=$((tries - 1))
+        sleep 1
+    done
+    echo "  СБОЙ: $name не ответил за 60 сек ($url)"
+    return 1
+}
+
+echo ""
+echo "Проверяем, что серверы поднялись..."
+if command -v curl &>/dev/null; then
+    if ! wait_for "http://localhost:8000/docs" "backend" || ! wait_for "http://localhost:3000/" "frontend"; then
+        echo ""
+        echo "Запуск не удался — смотрите ошибки выше."
+        cleanup
+    fi
+else
+    echo "  curl не найден — пропускаем проверку"
+fi
+
+echo ""
+echo "========================================"
+echo "  Сайт:   http://localhost:3000"
+echo "  Админ:  http://localhost:3000/admin"
+echo "  API:    http://localhost:8000/docs"
+echo "========================================"
+echo ""
+echo "Нажмите Ctrl+C чтобы остановить оба сервера."
+echo ""
 
 # Ждём, пока живы оба; как только один упал — cleanup гасит второй (не оставляем сироту).
 # Опрос вместо `wait -n` ради совместимости с bash 3.2 (macOS).

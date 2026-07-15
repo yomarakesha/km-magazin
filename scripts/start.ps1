@@ -16,6 +16,9 @@ $venv    = Join-Path $backend ".venv"
 $py      = Join-Path $venv "Scripts\python.exe"
 $envFile = Join-Path $backend ".env"
 $db      = Join-Path $backend "data\km.db"
+$req     = Join-Path $backend "requirements.txt"
+# Hash requirements.txt, chtoby venv, sobrannyj do dobavleniya paketa, dostroilsya
+$reqStamp = Join-Path $venv ".requirements.sha"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
@@ -95,7 +98,7 @@ if (-not (Test-Path $py)) {
 
     & $pyCmd -m venv $venv
     & $py -m pip install --upgrade pip -q
-    & $py -m pip install -r (Join-Path $backend "requirements.txt")
+    & $py -m pip install -r $req
     # pip - native exe: oshibka ne brosaet isklyuchenie, proveryaem kod vyhoda.
     # Esli deps ne stali (net seti) - udalyaem nepolnyj venv, chtoby sleduyushij zapusk povtoril.
     if ($LASTEXITCODE -ne 0) {
@@ -103,9 +106,22 @@ if (-not (Test-Path $py)) {
         Remove-Item -Recurse -Force $venv -ErrorAction SilentlyContinue
         exit 1
     }
+    (Get-FileHash $req -Algorithm SHA256).Hash | Set-Content $reqStamp -Encoding utf8
     Write-Host "[2/5] Python zavisimosti ustanovleny." -ForegroundColor Green
+} elseif ((-not (Test-Path $reqStamp)) -or
+          ((Get-Content $reqStamp -Raw).Trim() -ne (Get-FileHash $req -Algorithm SHA256).Hash)) {
+    # venv sobran do togo, kak v requirements.txt dobavili paket - dostavlyaem
+    Write-Host "[2/5] requirements.txt izmenilsya - dostavlyaem zavisimosti..." -ForegroundColor Cyan
+    & $py -m pip install -r $req
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Oshibka ustanovki Python-zavisimostej. Venv ostavlen kak est." -ForegroundColor Red
+        Write-Host "Proverte set i perezapustite." -ForegroundColor Red
+        exit 1
+    }
+    (Get-FileHash $req -Algorithm SHA256).Hash | Set-Content $reqStamp -Encoding utf8
+    Write-Host "[2/5] Python zavisimosti obnovleny." -ForegroundColor Green
 } else {
-    Write-Host "[2/5] Python venv uzhe est - propuskaem" -ForegroundColor DarkGray
+    Write-Host "[2/5] Python venv aktualen - propuskaem" -ForegroundColor DarkGray
 }
 
 # ── 3. npm zavisimosti ────────────────────────────────────────────────────────
@@ -146,6 +162,34 @@ Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
     "Write-Host 'Frontend :3000' -ForegroundColor Green; Set-Location '$root'; npm run dev"
 )
+
+# ── Smoke: zhdem zhivoj otvet, a ne prosto zapushchennyj process ─────────────
+# Port mozhet slushatsya ranshe, chem prilozhenie gotovo otvechat - oprashivaem.
+function Wait-For {
+    param([string]$Url, [string]$Name, [int]$Tries = 60)
+    for ($i = 0; $i -lt $Tries; $i++) {
+        try {
+            Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop | Out-Null
+            Write-Host "  OK   $Name otvechaet" -ForegroundColor Green
+            return $true
+        } catch {
+            Start-Sleep -Seconds 1
+        }
+    }
+    Write-Host "  SBOJ: $Name ne otvetil za $Tries sek ($Url)" -ForegroundColor Red
+    return $false
+}
+
+Write-Host ""
+Write-Host "Proveryaem, chto servery podnyalis..." -ForegroundColor Cyan
+$backendOk  = Wait-For -Url "http://localhost:8000/docs" -Name "backend"
+$frontendOk = Wait-For -Url "http://localhost:3000/"     -Name "frontend"
+
+if (-not $backendOk -or -not $frontendOk) {
+    Write-Host ""
+    Write-Host "Zapusk ne udalsya - smotrite oshibki v otkrytyh oknah." -ForegroundColor Red
+    exit 1
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
