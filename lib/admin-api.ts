@@ -196,7 +196,7 @@ export interface AdminProductTr { lang: string; title: string; short: string; bo
 export interface AdminProductAttr { attribute_id: number; value: string; num_value: number | null }
 export interface AdminProduct {
   id: number; slug: string; category_id: number; price: number; old_price: number | null; stock_qty: number | null; currency: string;
-  in_stock: boolean; sku: string; enabled: boolean; sort_order: number; image_count: number;
+  in_stock: boolean; sku: string; barcode: string | null; enabled: boolean; sort_order: number; image_count: number;
   translations: AdminProductTr[]; attributes: AdminProductAttr[];
 }
 export interface AdminProductImage { id: number; filename: string; sort_order: number }
@@ -226,7 +226,8 @@ export interface AdminPromo {
   used_count: number; max_uses: number | null; created_at: string;
 }
 export interface AdminShopStats {
-  orders_new: number; orders_today: number; orders_week: number; revenue_week: number;
+  // null when the signed-in role may not see money (warehouse, content)
+  orders_new: number; orders_today: number; orders_week: number; revenue_week: number | null;
   reviews_pending: number;
   top_products: { id: number; title: string; sold: number }[];
   low_stock: { id: number; title: string; stock_qty: number }[];

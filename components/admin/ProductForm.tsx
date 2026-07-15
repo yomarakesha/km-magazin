@@ -15,6 +15,7 @@ export interface ProductFormValue {
   in_stock: boolean;
   stock_qty: number | null;
   sku: string;
+  barcode: string | null;
   enabled: boolean;
   translations: AdminProductTr[];
   attributes: { attribute_id: number; value: string; num_value: number | null }[];
@@ -22,7 +23,7 @@ export interface ProductFormValue {
 
 export function blankProduct(category_id = 0): ProductFormValue {
   return {
-    slug: "", category_id, price: 0, old_price: null, currency: "TMT", in_stock: true, stock_qty: null, sku: "", enabled: true,
+    slug: "", category_id, price: 0, old_price: null, currency: "TMT", in_stock: true, stock_qty: null, sku: "", barcode: null, enabled: true,
     translations: LANGS.map((lang) => ({ lang, title: "", short: "", body: "", specs: [] })),
     attributes: [],
   };
@@ -147,6 +148,9 @@ export default function ProductForm({
           <div className="adm-field"><label>Остаток, шт (пусто = не отслеживать)</label>
             <input className="adm-in" type="number" value={v.stock_qty ?? ""} placeholder="—"
               onChange={(e) => setV({ ...v, stock_qty: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+          <div className="adm-field"><label>Штрихкод (скан на кассе)</label>
+            <input className="adm-in" value={v.barcode ?? ""} placeholder="отсканируйте или введите EAN"
+              onChange={(e) => setV({ ...v, barcode: e.target.value.trim() === "" ? null : e.target.value.trim() })} /></div>
         </div>
         <label style={{ display: "flex", gap: 10, alignItems: "center", fontFamily: "var(--mono)", fontSize: 13 }}>
           <input type="checkbox" checked={v.in_stock} onChange={(e) => setV({ ...v, in_stock: e.target.checked })} />

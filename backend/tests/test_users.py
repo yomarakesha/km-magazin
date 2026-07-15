@@ -157,3 +157,141 @@ def test_owner_can_change_price(client, make_product):
     r = client.put(f"/api/admin/shop/products/{p['id']}", json={"price": 999})
     assert r.status_code == 200
     assert r.json()["price"] == 999
+
+
+# ---- barcode: the warehouse's lane (складчик присваивает код при приёмке) ----
+
+def test_warehouse_can_set_and_change_barcode(client, make_product):
+    p = make_product(price=100)
+    username, password = _make_user(client, "warehouse")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    code = f"EAN{uuid.uuid4().hex[:10]}"
+    r = client.put(f"/api/admin/shop/products/{p['id']}", json={"barcode": code})
+    assert r.status_code == 200, r.text
+    assert r.json()["barcode"] == code
+    # a typo must stay fixable by the same складчик, not escalate to the owner
+    fixed = f"EAN{uuid.uuid4().hex[:10]}"
+    r2 = client.put(f"/api/admin/shop/products/{p['id']}", json={"barcode": fixed})
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["barcode"] == fixed
+
+
+def test_content_cannot_change_barcode(client, make_product):
+    p = make_product(price=100)
+    username, password = _make_user(client, "content")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    r = client.put(f"/api/admin/shop/products/{p['id']}", json={"barcode": "EAN-CONTENT"})
+    assert r.status_code == 403
+
+
+def test_sales_cannot_change_barcode(client, make_product):
+    p = make_product(price=100)
+    username, password = _make_user(client, "sales")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    r = client.put(f"/api/admin/shop/products/{p['id']}", json={"barcode": "EAN-SALES"})
+    assert r.status_code == 403
+
+
+def test_barcode_must_be_unique_across_products(client, make_product):
+    # a duplicate would make POS /lookup ambiguous — it must be refused
+    code = f"EAN{uuid.uuid4().hex[:10]}"
+    a = make_product(price=100)
+    b = make_product(price=100)
+    _login(client)
+    ok = client.put(f"/api/admin/shop/products/{a['id']}", json={"barcode": code})
+    assert ok.status_code == 200, ok.text
+    dup = client.put(f"/api/admin/shop/products/{b['id']}", json={"barcode": code})
+    assert dup.status_code == 409, dup.text
+    # re-saving the same code on the same product is not a duplicate
+    same = client.put(f"/api/admin/shop/products/{a['id']}", json={"barcode": code})
+    assert same.status_code == 200, same.text
+
+
+def test_barcode_can_be_cleared_and_set_on_create(client):
+    _login(client)
+    code = f"EAN{uuid.uuid4().hex[:10]}"
+    created = client.post(
+        "/api/admin/shop/products",
+        json={"slug": f"p-{uuid.uuid4().hex[:8]}", "category_id": 1, "price": 10, "barcode": code},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["barcode"] == code
+    pid = created.json()["id"]
+    cleared = client.put(f"/api/admin/shop/products/{pid}", json={"barcode": None})
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["barcode"] is None
+
+
+def test_scanned_barcode_reaches_pos_lookup(client, make_product):
+    # the whole point: what the складчик binds, the кассир can scan
+    p = make_product(price=100, stock_qty=3)
+    username, password = _make_user(client, "warehouse")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    code = f"EAN{uuid.uuid4().hex[:10]}"
+    assert client.put(f"/api/admin/shop/products/{p['id']}", json={"barcode": code}).status_code == 200
+    client.post("/api/auth/logout")
+    _login(client)
+    r = client.get(f"/api/admin/pos/lookup?code={code}")
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == p["id"]
+
+
+def test_content_cannot_bind_barcode_at_creation(client):
+    # the create endpoint is open to content+warehouse; the barcode lane must
+    # still hold there, or content could bind a code it may never edit after
+    username, password = _make_user(client, "content")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    r = client.post(
+        "/api/admin/shop/products",
+        json={"slug": f"p-{uuid.uuid4().hex[:8]}", "category_id": 1, "price": 10,
+              "barcode": f"EAN{uuid.uuid4().hex[:8]}"},
+    )
+    assert r.status_code == 403, r.text
+    # ...but content may still create a product without touching the barcode
+    ok = client.post(
+        "/api/admin/shop/products",
+        json={"slug": f"p-{uuid.uuid4().hex[:8]}", "category_id": 1, "price": 10},
+    )
+    assert ok.status_code == 201, ok.text
+
+
+def test_warehouse_can_bind_barcode_at_creation(client):
+    username, password = _make_user(client, "warehouse")
+    client.post("/api/auth/logout")
+    _login(client, username, password)
+    code = f"EAN{uuid.uuid4().hex[:10]}"
+    r = client.post(
+        "/api/admin/shop/products",
+        json={"slug": f"p-{uuid.uuid4().hex[:8]}", "category_id": 1, "price": 10, "barcode": code},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["barcode"] == code
+
+
+def test_dashboard_stats_hides_revenue_from_roles_without_money_access(client):
+    # /reports/sales already 403s the warehouse — the dashboard must not be a
+    # side door to the same number
+    for role in ("warehouse", "content"):
+        username, password = _make_user(client, role)
+        client.post("/api/auth/logout")
+        _login(client, username, password)
+        assert client.get("/api/admin/reports/sales?days=7").status_code == 403
+        r = client.get("/api/admin/shop/stats")
+        assert r.status_code == 200, r.text
+        assert r.json()["revenue_week"] is None, f"{role} must not see revenue"
+        client.post("/api/auth/logout")
+
+
+def test_dashboard_stats_shows_revenue_to_owner_and_sales(client):
+    for username, password in [("admin", "test-password"), _make_user(client, "sales")]:
+        client.post("/api/auth/logout")
+        _login(client, username, password)
+        r = client.get("/api/admin/shop/stats")
+        assert r.status_code == 200, r.text
+        assert isinstance(r.json()["revenue_week"], int), "owner/sales must see revenue"
+        client.post("/api/auth/logout")

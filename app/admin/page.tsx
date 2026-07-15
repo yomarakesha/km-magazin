@@ -1,18 +1,29 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type AdminService, type AdminShopStats, type Lead } from "@/lib/admin-api";
+import { api, type AdminRole, type AdminService, type AdminShopStats, type Lead } from "@/lib/admin-api";
 
 export default function Dashboard() {
+  const [role, setRole] = useState<AdminRole | null>(null);
   const [services, setServices] = useState<AdminService[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stats, setStats] = useState<AdminShopStats | null>(null);
 
   useEffect(() => {
-    api.getServices().then(setServices).catch(() => {});
-    api.getLeads().then(setLeads).catch(() => {});
-    api.getShopStats().then(setStats).catch(() => {});
+    api.me().then((m) => setRole(m.role)).catch(() => {});
   }, []);
+
+  const canContent = role === "owner" || role === "content";
+  const canSales = role === "owner" || role === "sales";
+
+  // each card's data is fetched only by the roles allowed to read it, so a
+  // cashier's dashboard doesn't fire requests the API will answer with 403
+  useEffect(() => {
+    if (role === null) return;
+    if (canContent) api.getServices().then(setServices).catch(() => {});
+    if (canSales) api.getLeads().then(setLeads).catch(() => {});
+    api.getShopStats().then(setStats).catch(() => {});
+  }, [role, canContent, canSales]);
 
   const mediaCount = services.reduce((n, s) => n + (s.media_count ?? 0), 0);
   const newLeads = leads.filter((l) => l.status === "new").length;
@@ -36,14 +47,18 @@ export default function Dashboard() {
           <div className="n">{stats?.orders_week ?? "—"}</div>
           <div className="l">Заказов за неделю</div>
         </div>
-        <div className="adm-card">
-          <div className="n">{stats ? stats.revenue_week : "—"}</div>
-          <div className="l">Выручка за неделю, TMT</div>
-        </div>
-        <Link className="adm-card" href="/admin/shop/reviews">
-          <div className="n">{stats?.reviews_pending ?? "—"}</div>
-          <div className="l">Отзывов на модерации</div>
-        </Link>
+        {stats?.revenue_week != null && (
+          <div className="adm-card">
+            <div className="n">{stats.revenue_week}</div>
+            <div className="l">Выручка за неделю, TMT</div>
+          </div>
+        )}
+        {canContent && (
+          <Link className="adm-card" href="/admin/shop/reviews">
+            <div className="n">{stats?.reviews_pending ?? "—"}</div>
+            <div className="l">Отзывов на модерации</div>
+          </Link>
+        )}
       </div>
 
       {stats && (stats.top_products.length > 0 || stats.low_stock.length > 0) && (
@@ -77,25 +92,37 @@ export default function Dashboard() {
         </div>
       )}
 
-      <h3 style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Лендинг</h3>
-      <div className="adm-cards adm-section">
-        <Link className="adm-card" href="/admin/services">
-          <div className="n">{services.length}</div>
-          <div className="l">Услуги</div>
-        </Link>
-        <div className="adm-card">
-          <div className="n">{mediaCount}</div>
-          <div className="l">Медиа файлов</div>
-        </div>
-        <Link className="adm-card" href="/admin/leads">
-          <div className="n">{newLeads}</div>
-          <div className="l">Новых заявок</div>
-        </Link>
-        <Link className="adm-card" href="/admin/content">
-          <div className="n">3</div>
-          <div className="l">Языка</div>
-        </Link>
-      </div>
+      {(canContent || canSales) && (
+        <>
+          <h3 style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Лендинг</h3>
+          <div className="adm-cards adm-section">
+            {canContent && (
+              <Link className="adm-card" href="/admin/services">
+                <div className="n">{services.length}</div>
+                <div className="l">Услуги</div>
+              </Link>
+            )}
+            {canContent && (
+              <div className="adm-card">
+                <div className="n">{mediaCount}</div>
+                <div className="l">Медиа файлов</div>
+              </div>
+            )}
+            {canSales && (
+              <Link className="adm-card" href="/admin/leads">
+                <div className="n">{newLeads}</div>
+                <div className="l">Новых заявок</div>
+              </Link>
+            )}
+            {canContent && (
+              <Link className="adm-card" href="/admin/content">
+                <div className="n">3</div>
+                <div className="l">Языка</div>
+              </Link>
+            )}
+          </div>
+        </>
+      )}
     </>
   );
 }

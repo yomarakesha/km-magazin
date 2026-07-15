@@ -160,6 +160,7 @@ class ProductIn(BaseModel):
     in_stock: bool = True
     stock_qty: int | None = Field(default=None, ge=0)
     sku: str = ""
+    barcode: str | None = Field(default=None, max_length=64)
     enabled: bool = True
     translations: list[ProductTranslationIn] = Field(default_factory=list)
     attributes: list[ProductAttributeIn] = Field(default_factory=list)
@@ -176,6 +177,8 @@ class ProductUpdateIn(BaseModel):
     # present-with-null disables stock tracking
     stock_qty: int | None = Field(default=None, ge=0)
     sku: str | None = None
+    # present-with-null clears the barcode; missing key = no change
+    barcode: str | None = Field(default=None, max_length=64)
     enabled: bool | None = None
     translations: list[ProductTranslationIn] | None = None
     attributes: list[ProductAttributeIn] | None = None

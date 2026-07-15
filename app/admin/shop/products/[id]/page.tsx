@@ -22,7 +22,7 @@ export default function ProductEdit() {
 
   const initial: ProductFormValue = {
     slug: p.slug, category_id: p.category_id, price: p.price, old_price: p.old_price, currency: p.currency,
-    in_stock: p.in_stock, stock_qty: p.stock_qty, sku: p.sku, enabled: p.enabled,
+    in_stock: p.in_stock, stock_qty: p.stock_qty, sku: p.sku, barcode: p.barcode, enabled: p.enabled,
     translations: p.translations, attributes: p.attributes,
   };
 

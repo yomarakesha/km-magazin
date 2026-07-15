@@ -126,6 +126,7 @@ def _product(p: Product) -> dict:
         "in_stock": p.in_stock,
         "stock_qty": p.stock_qty,
         "sku": p.sku or "",
+        "barcode": p.barcode,
         "enabled": p.enabled,
         "sort_order": p.sort_order,
         "image_count": len(p.images),
@@ -606,6 +607,12 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
         raise HTTPException(409, "Slug already exists")
     if not db.get(ShopCategory, payload.category_id):
         raise HTTPException(400, "Category not found")
+    if payload.barcode:
+        # create is open to content+warehouse, but the barcode lane holds here too
+        if user["role"] not in ("owner", "warehouse"):
+            raise HTTPException(403, "barcode changes are warehouse-only")
+        if db.scalar(select(Product.id).where(Product.barcode == payload.barcode)):
+            raise HTTPException(409, "barcode already bound to another product")
     max_order = db.scalar(
         select(func.max(Product.sort_order)).where(Product.category_id == payload.category_id)
     )
@@ -618,6 +625,7 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
         in_stock=payload.in_stock,
         stock_qty=payload.stock_qty,
         sku=payload.sku or None,
+        barcode=payload.barcode or None,
         enabled=payload.enabled,
         sort_order=(max_order + 1) if max_order is not None else 0,
     )
@@ -652,7 +660,7 @@ def update_product(
         raise HTTPException(404, "Product not found")
     # Per-field ownership (owner passes all). Each edited domain is checked
     # against the role that owns it so no role can reach outside its lane:
-    #   price/old_price → owner · stock_qty → warehouse · everything else → content
+    #   price/old_price → owner · stock_qty/barcode → warehouse · everything else → content
     role = user["role"]
 
     def owns(*roles: str) -> bool:
@@ -662,6 +670,7 @@ def update_product(
         "old_price" in payload.model_fields_set and payload.old_price != p.old_price
     )
     stock_touched = "stock_qty" in payload.model_fields_set and payload.stock_qty != p.stock_qty
+    barcode_touched = "barcode" in payload.model_fields_set and payload.barcode != p.barcode
     catalog_touched = any((
         payload.slug is not None,
         payload.category_id is not None,
@@ -676,8 +685,20 @@ def update_product(
         raise HTTPException(403, "price changes are owner-only")
     if stock_touched and not owns("warehouse"):
         raise HTTPException(403, "stock changes are warehouse-only")
+    if barcode_touched and not owns("warehouse"):
+        raise HTTPException(403, "barcode changes are warehouse-only")
     if catalog_touched and not owns("content"):
         raise HTTPException(403, "catalog fields are content-only")
+    if barcode_touched and payload.barcode:
+        # a duplicate would make the POS scanner ambiguous — /lookup picks one at random
+        taken = db.scalar(
+            select(Product.id).where(Product.barcode == payload.barcode, Product.id != p.id)
+        )
+        if taken:
+            raise HTTPException(409, "barcode already bound to another product")
+        p.barcode = payload.barcode
+    elif barcode_touched:
+        p.barcode = None
     if payload.slug is not None:
         p.slug = payload.slug
     if payload.category_id is not None:
@@ -923,7 +944,7 @@ def list_orders(
 
 
 @router.get("/stats")
-def shop_stats(db: Session = Depends(get_db)) -> dict:
+def shop_stats(db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
     from datetime import datetime, timedelta, timezone
 
     # Orders store aware-UTC created_at (models._now); compare in the same frame.
@@ -940,11 +961,16 @@ def shop_stats(db: Session = Depends(get_db)) -> dict:
     orders_week = db.scalar(
         select(func.count(Order.id)).where(Order.created_at >= week_ago, not_cancelled)
     ) or 0
-    revenue_week = db.scalar(
-        select(func.coalesce(func.sum(Order.total), 0)).where(
-            Order.created_at >= week_ago, not_cancelled
-        )
-    ) or 0
+    # money is the owner's and sales' lane — /reports/sales gates it the same
+    # way, and this endpoint must not become a side door around that
+    sees_money = user["role"] in ("owner", "sales")
+    revenue_week = (
+        db.scalar(
+            select(func.coalesce(func.sum(Order.total), 0)).where(
+                Order.created_at >= week_ago, not_cancelled
+            )
+        ) or 0
+    ) if sees_money else None
     reviews_pending = db.scalar(
         select(func.count(ProductReview.id)).where(ProductReview.status == "pending")
     ) or 0
@@ -990,7 +1016,7 @@ def shop_stats(db: Session = Depends(get_db)) -> dict:
         "orders_new": orders_new,
         "orders_today": orders_today,
         "orders_week": orders_week,
-        "revenue_week": int(revenue_week),
+        "revenue_week": int(revenue_week) if revenue_week is not None else None,
         "reviews_pending": reviews_pending,
         "top_products": top_products,
         "low_stock": low_stock,
