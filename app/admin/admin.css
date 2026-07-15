@@ -3,15 +3,17 @@
 .adm-loading{display:grid;place-items:center;min-height:100vh;color:var(--tx2);font-family:var(--mono)}
 
 .adm-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:8px;
-  padding:26px 18px;border-right:1px solid var(--line2);background:var(--surf)}
-.adm-brand{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:.12em;margin-bottom:22px}
+  padding:26px 18px;border-right:1px solid var(--line2);background:var(--surf);overflow:hidden}
+.adm-brand{flex:none;font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:.12em;margin-bottom:22px}
 .adm-brand span{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--green-br);margin-left:8px;text-transform:uppercase}
-.adm-side nav{display:grid;gap:4px}
+.adm-side nav{display:grid;gap:4px;flex:1 1 auto;min-height:0;overflow-y:auto;
+  margin:0 -4px;padding:0 4px}
 .adm-side nav a{font-family:var(--mono);font-size:13px;letter-spacing:.05em;color:var(--tx2);
   padding:11px 14px;border-radius:11px;transition:.2s}
 .adm-side nav a:hover{background:var(--surf2);color:var(--tx)}
 .adm-side nav a.act{background:linear-gradient(120deg,rgba(34,224,125,.16),rgba(0,166,80,.08));color:var(--tx);border:1px solid var(--line2)}
-.adm-side-foot{margin-top:auto;display:grid;gap:10px;font-family:var(--mono);font-size:12px}
+.adm-side-foot{flex:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line2);
+  display:grid;gap:10px;font-family:var(--mono);font-size:12px}
 .adm-side-user{color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .adm-side-foot a{color:var(--tx3)}
 .adm-side-foot a:hover{color:var(--green-br)}
@@ -19,7 +21,9 @@
   padding:10px;border-radius:10px;cursor:pointer;font-family:var(--mono);font-size:12px;transition:.2s}
 .adm-side-foot button:hover{border-color:var(--green-br);color:var(--tx)}
 
-.adm-main{padding:38px 42px;max-width:1100px}
+/* min-width:0 lets the 1fr column shrink under a wide table instead of
+   stretching past the viewport, where body{overflow-x:hidden} would clip it */
+.adm-main{padding:38px 42px;max-width:1100px;min-width:0}
 .adm-h1{font-family:var(--disp);font-weight:800;font-size:30px;margin-bottom:6px}
 .adm-sub{color:var(--tx2);margin-bottom:28px}
 .adm-section{margin-bottom:34px}
@@ -52,7 +56,7 @@ textarea.adm-in{min-height:64px}
 .adm-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px}
 
 /* tabs */
-.adm-tabs{display:flex;gap:8px;margin-bottom:22px}
+.adm-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
 .adm-tabs button{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
   padding:9px 18px;border-radius:30px;border:1px solid var(--line2);background:none;color:var(--tx2);cursor:pointer}
 .adm-tabs button.on{background:var(--surf2);color:var(--tx);border-color:var(--green-br)}
