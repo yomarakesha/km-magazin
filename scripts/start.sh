@@ -37,7 +37,8 @@ echo ""
 if [ ! -f "$ENV_FILE" ]; then
     echo "[1/5] Создаём backend/.env..."
 
-    ADMIN_PWD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)
+    # Открытый пароль по умолчанию — задай свой в backend/.env перед продакшном.
+    ADMIN_PWD=admin
     SECRET_KEY=$(LC_ALL=C tr -dc 'A-Za-z0-9+/' </dev/urandom | head -c 64)
 
     cat > "$ENV_FILE" <<EOF
@@ -53,6 +54,7 @@ EOF
     echo "  *** ПАРОЛЬ АДМИНИСТРАТОРА: $ADMIN_PWD ***"
     echo "  Логин: admin / $ADMIN_PWD"
     echo "  (сохранён в backend/.env)"
+    echo "  ВНИМАНИЕ: пароль по умолчанию 'admin' — СМЕНИТЕ в backend/.env перед публикацией!"
     echo ""
 else
     echo "[1/5] backend/.env уже есть — пропускаем"

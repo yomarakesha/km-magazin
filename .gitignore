@@ -61,9 +61,12 @@ __pycache__/
 *.pyc
 /backend/.venv/
 /backend/venv/
-/backend/data/
-/backend/media/
-/backend/app/seed_data.json
+# Zhivaya BD i media kommityatsya, chtoby proekt podnimalsya 1-v-1 na drugom PC.
+# Repozitorij PRIVATNYJ (v km.db est telefony leadov i hesh parolej adminov).
+/backend/data/*
+!/backend/data/km.db
+# media (foto/video lendinga) - v repo
+!/backend/app/seed_data.json
 
 # vercel
 .vercel

@@ -32,11 +32,8 @@ if (-not (Test-Path $envFile)) {
 
     $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
 
-    $pwBytes = New-Object byte[] 12
-    $rng.GetBytes($pwBytes)
-    $adminPwd = [Convert]::ToBase64String($pwBytes)
-    $adminPwd = $adminPwd -replace '[+/=]', ''
-    if ($adminPwd.Length -gt 16) { $adminPwd = $adminPwd.Substring(0, 16) }
+    # Otkrytyj parol po umolchaniyu - zadaj svoj v backend\.env pered prodakshnom.
+    $adminPwd = "admin"
 
     $skBytes = New-Object byte[] 48
     $rng.GetBytes($skBytes)
@@ -57,6 +54,7 @@ if (-not (Test-Path $envFile)) {
     Write-Host "  *** PAROL ADMINISTRATORA: $adminPwd ***" -ForegroundColor Yellow
     Write-Host "  Login: admin / $adminPwd" -ForegroundColor Yellow
     Write-Host "  (sohranyon v backend\.env)" -ForegroundColor DarkGray
+    Write-Host "  VNIMANIE: parol po umolchaniyu 'admin' - SMENITE v backend\.env pered publikatsiej!" -ForegroundColor Red
     Write-Host ""
 } else {
     Write-Host "[1/5] backend\.env uzhe est - propuskaem" -ForegroundColor DarkGray

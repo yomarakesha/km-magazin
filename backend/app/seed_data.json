@@ -1,0 +1,1010 @@
+{
+  "langs": [
+    "ru",
+    "tk",
+    "en"
+  ],
+  "blocks": {
+    "ru": {
+      "meta": {
+        "brandFull": "Kanagatly Mahabat",
+        "tagline": "Системы безопасности и автоматизации"
+      },
+      "hero": {
+        "heroKicker": "Инжиниринг · Монтаж · Программирование",
+        "heroSub": "Проектируем, монтируем и программируем системы безопасности, связи и автоматизации — контроль доступа, видеонаблюдение, сети, пожарная сигнализация и климат. Под ключ.",
+        "heroScroll": "Листайте вниз"
+      },
+      "marquee": {
+        "marquee": [
+          "СКУД",
+          "FACE ID",
+          "ВИДЕОНАБЛЮДЕНИЕ",
+          "ЛВС / СЕТИ",
+          "ОХРАННО-ПОЖАРНАЯ",
+          "КОНДИЦИОНЕРЫ",
+          "ШЛАГБАУМЫ",
+          "ПРОГРАММИРОВАНИЕ"
+        ]
+      },
+      "nav": {
+        "nav": {
+          "about": "О компании",
+          "services": "Услуги",
+          "process": "Процесс",
+          "contact": "Контакты"
+        }
+      },
+      "about": {
+        "aboutCode": "00 / О КОМПАНИИ",
+        "aboutTitle": "Инженерные решения для безопасности и автоматизации объектов",
+        "aboutBody": "KM (Kanagatly Mahabat) — компания, выполняющая полный спектр слаботочных и инженерных работ: контроль доступа и распознавание лиц, видеонаблюдение, прокладку офисных сетей, охранно-пожарную сигнализацию, кондиционирование и автоматизацию. Мы реализуем проекты «под ключ» — от обследования объекта и проектирования до монтажа, программирования, пусконаладки и сервисного обслуживания.",
+        "stats": [
+          [
+            "8",
+            "направлений работ"
+          ],
+          [
+            "Под ключ",
+            "полный цикл"
+          ],
+          [
+            "Гарантия",
+            "на оборудование и монтаж"
+          ],
+          [
+            "Сервис",
+            "техническая поддержка"
+          ]
+        ]
+      },
+      "services": {
+        "servicesCode": "НАШИ УСЛУГИ",
+        "servicesTitle": "Все системы — под ключ",
+        "servicesSub": "Каждое направление выполняем отдельно или комплексно.",
+        "more": "Подробнее",
+        "mediaSoon": "Материалы добавляются"
+      },
+      "process": {
+        "processCode": "КАК МЫ РАБОТАЕМ",
+        "processTitle": "Полный цикл работ",
+        "process": [
+          [
+            "01",
+            "Обследование объекта"
+          ],
+          [
+            "02",
+            "Проектирование"
+          ],
+          [
+            "03",
+            "Поставка оборудования"
+          ],
+          [
+            "04",
+            "Монтаж и прокладка"
+          ],
+          [
+            "05",
+            "Программирование и пусконаладка"
+          ],
+          [
+            "06",
+            "Сервисное обслуживание"
+          ]
+        ]
+      },
+      "advantages": {
+        "advCode": "ПОЧЕМУ KM",
+        "advTitle": "Наши преимущества",
+        "adv": [
+          [
+            "cycle",
+            "Полный цикл «под ключ»",
+            "От обследования объекта до сервисного обслуживания."
+          ],
+          [
+            "team",
+            "Опытная инженерная команда",
+            "Специалисты по слаботочным, сетевым и пожарным системам."
+          ],
+          [
+            "cert",
+            "Сертифицированное оборудование",
+            "Надёжные компоненты проверенных производителей."
+          ],
+          [
+            "shield",
+            "Гарантия и поддержка",
+            "Гарантия на работы и оперативный сервис."
+          ]
+        ]
+      },
+      "contact": {
+        "contactCode": "СВЯЗАТЬСЯ С НАМИ",
+        "contactTitle": "Обсудим ваш проект",
+        "contactSub": "Оставьте заявку — подберём решение под ваш объект.",
+        "catalogCta": "Скачать каталог (PDF)",
+        "lbl": {
+          "addr": "Адрес",
+          "phone": "Телефон",
+          "email": "Email"
+        },
+        "capVideo": "Видео",
+        "capPhoto": "Фото",
+        "close": "Закрыть",
+        "play": "Смотреть",
+        "contact": {
+          "addr": "г. Ашхабад, ул. Московская",
+          "phone": "+993 65 55 55 68",
+          "email": "kanagatlymahabat@gmail.com",
+          "legal": "Kanagatly Mahabat"
+        }
+      }
+    },
+    "tk": {
+      "meta": {
+        "brandFull": "Kanagatly Mahabat",
+        "tagline": "Howpsuzlyk we awtomatlaşdyryş ulgamlary"
+      },
+      "hero": {
+        "heroKicker": "Inžiniring · Gurnama · Programmirleme",
+        "heroSub": "Howpsuzlyk, aragatnaşyk we awtomatlaşdyryş ulgamlaryny taslaýarys, gurýarys we programmirleýäris — giriş gözegçiligi, wideogözegçilik, ulgamlar, ýangyn duýduryşy we klimat. Açar bilen.",
+        "heroScroll": "Aşak aýlaň"
+      },
+      "marquee": {
+        "marquee": [
+          "СКУД",
+          "FACE ID",
+          "WIDEOGÖZEGÇILIK",
+          "ÝERLI ULGAMLAR",
+          "GORAG-ÝANGYN",
+          "KONDISIONERLER",
+          "ŞLAGBAUMLAR",
+          "PROGRAMMIRLEME"
+        ]
+      },
+      "nav": {
+        "nav": {
+          "about": "Kompaniýa",
+          "services": "Hyzmatlar",
+          "process": "Proses",
+          "contact": "Habarlaşmak"
+        }
+      },
+      "about": {
+        "aboutCode": "00 / KOMPANIÝA HAKDA",
+        "aboutTitle": "Desgalaryň howpsuzlygy we awtomatlaşdyrylyşy üçin inžener çözgütleri",
+        "aboutBody": "KM (Kanagatly Mahabat) — pes woltly we inžener işleriniň doly toplumyny ýerine ýetirýän kompaniýa: giriş gözegçiligi we ýüz tanamak, wideogözegçilik, ofis ulgamlaryny çekmek, gorag-ýangyn duýduryşy, kondisionerleme we awtomatlaşdyryş. Biz taslamalary «açar bilen» durmuşa geçirýäris — desgany barlamakdan we taslamakdan başlap, gurnama, programmirleme, işe goýbermek we hyzmat etmäge çenli.",
+        "stats": [
+          [
+            "8",
+            "iş ugry"
+          ],
+          [
+            "Açar bilen",
+            "doly aýlaw"
+          ],
+          [
+            "Kepillik",
+            "enjama we gurnama"
+          ],
+          [
+            "Hyzmat",
+            "tehniki goldaw"
+          ]
+        ]
+      },
+      "services": {
+        "servicesCode": "HYZMATLARYMYZ",
+        "servicesTitle": "Ähli ulgamlar — açar bilen",
+        "servicesSub": "Her ugry aýratyn ýa-da toplumlaýyn ýerine ýetirýäris.",
+        "more": "Giňişleýin",
+        "mediaSoon": "Materiallar goşulýar"
+      },
+      "process": {
+        "processCode": "BIZ NÄHILI IŞLEÝÄRIS",
+        "processTitle": "Doly iş aýlawy",
+        "process": [
+          [
+            "01",
+            "Desgany barlamak"
+          ],
+          [
+            "02",
+            "Taslamak"
+          ],
+          [
+            "03",
+            "Enjam getirmek"
+          ],
+          [
+            "04",
+            "Gurnamak we çekmek"
+          ],
+          [
+            "05",
+            "Programmirlemek we işe goýbermek"
+          ],
+          [
+            "06",
+            "Hyzmat etmek"
+          ]
+        ]
+      },
+      "advantages": {
+        "advCode": "NÄME ÜÇIN KM",
+        "advTitle": "Artykmaçlyklarymyz",
+        "adv": [
+          [
+            "cycle",
+            "Doly «açar bilen» aýlaw",
+            "Desgany barlamakdan hyzmat etmäge çenli."
+          ],
+          [
+            "team",
+            "Tejribeli inžener topary",
+            "Pes woltly, ulgam we ýangyn ulgamlary boýunça hünärmenler."
+          ],
+          [
+            "cert",
+            "Sertifikatlaşdyrylan enjamlar",
+            "Ynamdar öndürijileriň ygtybarly komponentleri."
+          ],
+          [
+            "shield",
+            "Kepillik we goldaw",
+            "Işlere kepillik we çalt hyzmat."
+          ]
+        ]
+      },
+      "contact": {
+        "contactCode": "BIZ BILEN HABARLAŞYŇ",
+        "contactTitle": "Taslamaňyzy maslahatlaşalyň",
+        "contactSub": "Arza galdyryň — desgaňyz üçin çözgüt saýlarys.",
+        "catalogCta": "Katalogy ýüklemek (PDF)",
+        "lbl": {
+          "addr": "Salgy",
+          "phone": "Telefon",
+          "email": "Email"
+        },
+        "capVideo": "Wideo",
+        "capPhoto": "Surat",
+        "close": "Ýap",
+        "play": "Görmek",
+        "contact": {
+          "addr": "Aşgabat ş., Moskowskaýa köç.",
+          "phone": "+993 65 55 55 68",
+          "email": "kanagatlymahabat@gmail.com",
+          "legal": "Kanagatly Mahabat"
+        }
+      }
+    },
+    "en": {
+      "meta": {
+        "brandFull": "Kanagatly Mahabat",
+        "tagline": "Security & automation systems"
+      },
+      "hero": {
+        "heroKicker": "Engineering · Installation · Programming",
+        "heroSub": "We design, install and program security, networking and automation systems — access control, video surveillance, networks, fire alarms and climate. Turnkey.",
+        "heroScroll": "Scroll down"
+      },
+      "marquee": {
+        "marquee": [
+          "ACCESS CONTROL",
+          "FACE ID",
+          "CCTV",
+          "NETWORKS / LAN",
+          "FIRE & SECURITY",
+          "AIR CONDITIONING",
+          "BARRIERS",
+          "PROGRAMMING"
+        ]
+      },
+      "nav": {
+        "nav": {
+          "about": "Company",
+          "services": "Services",
+          "process": "Process",
+          "contact": "Contacts"
+        }
+      },
+      "about": {
+        "aboutCode": "00 / ABOUT US",
+        "aboutTitle": "Engineering solutions for facility security and automation",
+        "aboutBody": "KM (Kanagatly Mahabat) is a company delivering the full range of low-voltage and engineering works: access control and face recognition, video surveillance, office network cabling, fire & security alarms, air conditioning and automation. We deliver turnkey projects — from site survey and design to installation, programming, commissioning and maintenance.",
+        "stats": [
+          [
+            "8",
+            "areas of work"
+          ],
+          [
+            "Turnkey",
+            "full cycle"
+          ],
+          [
+            "Warranty",
+            "on equipment & installation"
+          ],
+          [
+            "Service",
+            "technical support"
+          ]
+        ]
+      },
+      "services": {
+        "servicesCode": "OUR SERVICES",
+        "servicesTitle": "All systems — turnkey",
+        "servicesSub": "We deliver each area separately or as a complete solution.",
+        "more": "Details",
+        "mediaSoon": "Materials coming soon"
+      },
+      "process": {
+        "processCode": "HOW WE WORK",
+        "processTitle": "Full project cycle",
+        "process": [
+          [
+            "01",
+            "Site survey"
+          ],
+          [
+            "02",
+            "Design"
+          ],
+          [
+            "03",
+            "Equipment supply"
+          ],
+          [
+            "04",
+            "Installation & cabling"
+          ],
+          [
+            "05",
+            "Programming & commissioning"
+          ],
+          [
+            "06",
+            "Maintenance"
+          ]
+        ]
+      },
+      "advantages": {
+        "advCode": "WHY KM",
+        "advTitle": "Our advantages",
+        "adv": [
+          [
+            "cycle",
+            "Full turnkey cycle",
+            "From site survey to ongoing maintenance."
+          ],
+          [
+            "team",
+            "Experienced engineering team",
+            "Specialists in low-voltage, network and fire systems."
+          ],
+          [
+            "cert",
+            "Certified equipment",
+            "Reliable components from trusted manufacturers."
+          ],
+          [
+            "shield",
+            "Warranty & support",
+            "Workmanship warranty and prompt service."
+          ]
+        ]
+      },
+      "contact": {
+        "contactCode": "GET IN TOUCH",
+        "contactTitle": "Let's discuss your project",
+        "contactSub": "Leave a request — we'll find a solution for your facility.",
+        "catalogCta": "Download catalog (PDF)",
+        "lbl": {
+          "addr": "Address",
+          "phone": "Phone",
+          "email": "Email"
+        },
+        "capVideo": "Video",
+        "capPhoto": "Photo",
+        "close": "Close",
+        "play": "Watch",
+        "contact": {
+          "addr": "Ashgabat, Moskovskaya St.",
+          "phone": "+993 65 55 55 68",
+          "email": "kanagatlymahabat@gmail.com",
+          "legal": "Kanagatly Mahabat"
+        }
+      }
+    }
+  },
+  "services": [
+    {
+      "slug": "skud",
+      "icon": "access",
+      "sort_order": 0,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "СКУД",
+          "short": "СКУД",
+          "title": "Системы контроля доступа (СКУД)",
+          "body": "Проектирование и монтаж систем контроля и управления доступом: турникеты, электронные замки, контроллеры и считыватели. Гибкая настройка прав, учёт рабочего времени, журналирование и интеграция с распознаванием лиц.",
+          "feats": [
+            "Турникеты, электронные замки, контроллеры",
+            "Карты, PIN-коды и биометрия",
+            "Учёт рабочего времени и журнал событий",
+            "Гибкая настройка прав доступа"
+          ]
+        },
+        "tk": {
+          "code": "СКУД",
+          "short": "СКУД",
+          "title": "Giriş gözegçilik ulgamlary (СКУД)",
+          "body": "Giriş gözegçiligi we dolandyryş ulgamlaryny taslamak we gurnamak: turniketler, elektron gulplar, kontrollerler we okaýjylar. Hukuklary çeýe sazlamak, iş wagtyny hasaba almak, ýazga geçirmek we ýüz tanamak bilen birleşdirmek.",
+          "feats": [
+            "Turniketler, elektron gulplar, kontrollerler",
+            "Kartlar, PIN-kodlar we biometrika",
+            "Iş wagtyny hasaba almak we waka žurnaly",
+            "Giriş hukuklaryny çeýe sazlamak"
+          ]
+        },
+        "en": {
+          "code": "ACCESS CONTROL",
+          "short": "Access control",
+          "title": "Access control systems (ACS)",
+          "body": "Design and installation of access control and management systems: turnstiles, electronic locks, controllers and readers. Flexible rights management, time & attendance, event logging and integration with face recognition.",
+          "feats": [
+            "Turnstiles, electronic locks, controllers",
+            "Cards, PIN codes and biometrics",
+            "Time & attendance and event log",
+            "Flexible access-rights setup"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "video",
+          "filename": "s1-1.mp4",
+          "poster": "s1-1-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "video",
+          "filename": "s1-2.mp4",
+          "poster": "s1-2-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "video",
+          "filename": "s1-3.mp4",
+          "poster": "s1-3-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "faceid",
+      "icon": "faceid",
+      "sort_order": 1,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "FACE ID",
+          "short": "Face ID",
+          "title": "Распознавание лиц (Face ID)",
+          "body": "Установка и настройка терминалов распознавания лиц для бесконтактного и быстрого прохода. Высокая точность идентификации, защита от подделки и интеграция в общую систему контроля доступа.",
+          "feats": [
+            "Бесконтактный проход по лицу",
+            "Высокая скорость и точность",
+            "Защита от подделки (anti-spoofing)",
+            "Интеграция со СКУД и турникетами"
+          ]
+        },
+        "tk": {
+          "code": "FACE ID",
+          "short": "Face ID",
+          "title": "Ýüz tanamak (Face ID)",
+          "body": "Galtaşyksyz we çalt geçmek üçin ýüz tanamak terminallaryny gurnamak we sazlamak. Ýokary takyklyk, galplyga garşy gorag we umumy giriş gözegçilik ulgamyna birleşdirmek.",
+          "feats": [
+            "Ýüz boýunça galtaşyksyz geçiş",
+            "Ýokary tizlik we takyklyk",
+            "Galplyga garşy gorag (anti-spoofing)",
+            "СКУД we turniketler bilen birleşmek"
+          ]
+        },
+        "en": {
+          "code": "FACE ID",
+          "short": "Face ID",
+          "title": "Face recognition (Face ID)",
+          "body": "Installation and setup of face-recognition terminals for fast, contactless entry. High identification accuracy, anti-spoofing protection and integration into the overall access-control system.",
+          "feats": [
+            "Contactless face-based entry",
+            "High speed and accuracy",
+            "Anti-spoofing protection",
+            "Integration with ACS and turnstiles"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "img",
+          "filename": "faceid-1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "faceid-2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "faceid-3.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "cctv",
+      "icon": "camera",
+      "sort_order": 2,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "ВИДЕОНАБЛЮДЕНИЕ",
+          "short": "Видеонаблюдение",
+          "title": "Видеонаблюдение и камеры",
+          "body": "Проектирование и монтаж систем видеонаблюдения: IP- и аналоговые камеры, видеорегистраторы, настройка записи и удалённого доступа. Контроль территории и помещений в реальном времени.",
+          "feats": [
+            "IP- и аналоговые камеры",
+            "Запись и архив видео",
+            "Удалённый доступ со смартфона",
+            "Аналитика и детекция движения"
+          ]
+        },
+        "tk": {
+          "code": "WIDEOGÖZEGÇILIK",
+          "short": "Wideogözegçilik",
+          "title": "Wideogözegçilik we kameralar",
+          "body": "Wideogözegçilik ulgamlaryny taslamak we gurnamak: IP we analog kameralar, wideoýazgy enjamlary, ýazgyny we uzakdan girişi sazlamak. Çäkleri we jaýlary hakyky wagtda gözegçilik.",
+          "feats": [
+            "IP we analog kameralar",
+            "Wideo ýazgy we arhiw",
+            "Smartfondan uzakdan giriş",
+            "Hereket kesgitlemesi we analitika"
+          ]
+        },
+        "en": {
+          "code": "CCTV",
+          "short": "Video surveillance",
+          "title": "Video surveillance & cameras",
+          "body": "Design and installation of video-surveillance systems: IP and analog cameras, recorders, recording and remote-access setup. Real-time monitoring of premises and grounds.",
+          "feats": [
+            "IP and analog cameras",
+            "Recording and video archive",
+            "Remote access from your phone",
+            "Analytics and motion detection"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "img",
+          "filename": "cctv-4.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "cctv-1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "cctv-3.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "cctv-2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "lan",
+      "icon": "network",
+      "sort_order": 3,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "ЛВС / СЕТИ",
+          "short": "Офисные сети",
+          "title": "Офисные локальные сети (ЛВС)",
+          "body": "Прокладка и пусконаладочные работы офисных локальных сетей. Монтаж кабельных трасс, патч-панелей и серверных шкафов, тестирование и сертификация линий, настройка активного оборудования.",
+          "feats": [
+            "Прокладка СКС и кабельных трасс",
+            "Монтаж патч-панелей и серверных шкафов",
+            "Тестирование и сертификация линий",
+            "Настройка коммутаторов и Wi-Fi"
+          ]
+        },
+        "tk": {
+          "code": "ÝERLI ULGAMLAR",
+          "short": "Ofis ulgamlary",
+          "title": "Ofis ýerli ulgamlary (ЛВС)",
+          "body": "Ofis ýerli ulgamlaryny çekmek we işe goýbermek işleri. Kabel ýollaryny, patç-panellerini we serwer şkaflaryny gurnamak, liniýalary barlamak we sertifikatlaşdyrmak, işjeň enjamlary sazlamak.",
+          "feats": [
+            "СКС we kabel ýollaryny çekmek",
+            "Patç-panel we serwer şkaflaryny gurnamak",
+            "Liniýalary barlamak we sertifikatlaşdyrmak",
+            "Kommutatorlary we Wi-Fi sazlamak"
+          ]
+        },
+        "en": {
+          "code": "NETWORKS / LAN",
+          "short": "Office networks",
+          "title": "Office local networks (LAN)",
+          "body": "Cabling and commissioning of office local networks. Installation of cable trays, patch panels and server racks, line testing and certification, active-equipment setup.",
+          "feats": [
+            "Structured cabling and trays",
+            "Patch panels and server racks",
+            "Line testing and certification",
+            "Switch and Wi-Fi setup"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "img",
+          "filename": "lan-1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "lan-2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "lan-3.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "fire",
+      "icon": "fire",
+      "sort_order": 4,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "ОХРАННО-ПОЖАРНАЯ",
+          "short": "Сигнализация",
+          "title": "Охранно-пожарная сигнализация",
+          "body": "Установка, подключение и программирование систем охранной и пожарной сигнализации. Монтаж извещателей и шлейфов, настройка приёмно-контрольных приборов, оповещение и управление эвакуацией.",
+          "feats": [
+            "Дымовые, тепловые и охранные извещатели",
+            "Прокладка шлейфов и монтаж ПКП",
+            "Программирование под конкретный объект",
+            "Оповещение и управление эвакуацией"
+          ]
+        },
+        "tk": {
+          "code": "GORAG-ÝANGYN",
+          "short": "Duýduryş",
+          "title": "Gorag-ýangyn duýduryş ulgamlary",
+          "body": "Gorag we ýangyn duýduryş ulgamlaryny gurnamak, birikdirmek we programmirlemek. Duýdurçylary we şleýflary gurnamak, kabul ediş-gözegçilik enjamlaryny sazlamak, duýdurmak we ewakuasiýany dolandyrmak.",
+          "feats": [
+            "Tüsse, ýylylyk we gorag duýdurçylary",
+            "Şleýflary çekmek we ПКП gurnamak",
+            "Her desga üçin programmirlemek",
+            "Duýdurmak we ewakuasiýany dolandyrmak"
+          ]
+        },
+        "en": {
+          "code": "FIRE & SECURITY",
+          "short": "Alarms",
+          "title": "Fire & security alarm systems",
+          "body": "Installation, connection and programming of fire and security alarm systems. Mounting detectors and loops, configuring control panels, alerting and evacuation control.",
+          "feats": [
+            "Smoke, heat and security detectors",
+            "Loop wiring and control-panel mounting",
+            "Programming for each facility",
+            "Alerting and evacuation control"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "video",
+          "filename": "s3-1.mp4",
+          "poster": "s3-1-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "video",
+          "filename": "s3-2.mp4",
+          "poster": "s3-2-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "video",
+          "filename": "s3-3.mp4",
+          "poster": "s3-3-poster.jpg",
+          "still": true,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "video",
+          "filename": "s3-4.mp4",
+          "poster": "s3-4-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "fire-p1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "fire-p2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "fire-p4.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "fire-p6.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "climate",
+      "icon": "climate",
+      "sort_order": 5,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "КОНДИЦИОНЕРЫ",
+          "short": "Климат",
+          "title": "Кондиционеры и климатические системы",
+          "body": "Установка, подключение и программирование систем кондиционирования и климат-контроля. Настройка режимов работы, диспетчеризация и интеграция в системы автоматизации здания.",
+          "feats": [
+            "Монтаж и подключение кондиционеров",
+            "Программирование режимов работы",
+            "Диспетчеризация и автоматизация",
+            "Сервис и обслуживание"
+          ]
+        },
+        "tk": {
+          "code": "KONDISIONERLER",
+          "short": "Klimat",
+          "title": "Kondisionerler we klimat ulgamlary",
+          "body": "Kondisionerleme we klimat-gözegçilik ulgamlaryny gurnamak, birikdirmek we programmirlemek. Iş tertiplerini sazlamak, dispetçerleşdirmek we jaýy awtomatlaşdyryş ulgamlaryna birleşdirmek.",
+          "feats": [
+            "Kondisionerleri gurnamak we birikdirmek",
+            "Iş tertiplerini programmirlemek",
+            "Dispetçerleşdirmek we awtomatlaşdyrmak",
+            "Hyzmat we abatlaýyş"
+          ]
+        },
+        "en": {
+          "code": "AIR CONDITIONING",
+          "short": "Climate",
+          "title": "Air conditioning & climate systems",
+          "body": "Installation, connection and programming of air-conditioning and climate-control systems. Operating-mode setup, dispatching and integration into building automation.",
+          "feats": [
+            "AC installation and connection",
+            "Operating-mode programming",
+            "Dispatching and automation",
+            "Service and maintenance"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "img",
+          "filename": "ac-1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "ac-2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "ac-3.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "ac-4.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "barrier",
+      "icon": "barrier",
+      "sort_order": 6,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "ШЛАГБАУМЫ",
+          "short": "Шлагбаумы",
+          "title": "Шлагбаумы и дорожные датчики",
+          "body": "Монтаж автоматических шлагбаумов и дорожных датчиков для организации въезда и контроля транспортных потоков. Индукционные петли и датчики присутствия обеспечивают автоматическую работу и интеграцию с распознаванием номеров.",
+          "feats": [
+            "Автоматические шлагбаумы для въезда",
+            "Индукционные петли и датчики присутствия",
+            "Защита от опускания на автомобиль",
+            "Интеграция с распознаванием номеров"
+          ]
+        },
+        "tk": {
+          "code": "ŞLAGBAUMLAR",
+          "short": "Şlagbaumlar",
+          "title": "Şlagbaumlar we ýol datçikleri",
+          "body": "Awtoulag akymlaryny dolandyrmak we girişi guramak üçin awtomatik şlagbaumlary hem-de ýol datçiklerini gurnamak. Induksion halkalar we barlyk datçikleri awtomatik işlemegi we belgi tanamak bilen birleşmegi üpjün edýär.",
+          "feats": [
+            "Giriş üçin awtomatik şlagbaumlar",
+            "Induksion halkalar we barlyk datçikleri",
+            "Awtoulagyň üstüne düşmekden goramak",
+            "Belgi tanamak bilen birleşmek"
+          ]
+        },
+        "en": {
+          "code": "BARRIERS",
+          "short": "Barriers",
+          "title": "Barriers & road sensors",
+          "body": "Installation of automatic barriers and road sensors to manage entry and traffic flow. Induction loops and presence sensors provide automatic operation and integration with license-plate recognition.",
+          "feats": [
+            "Automatic entry barriers",
+            "Induction loops and presence sensors",
+            "Anti-drop vehicle protection",
+            "License-plate recognition integration"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "video",
+          "filename": "s2-1.mp4",
+          "poster": "s2-1-poster.jpg",
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "s2-photo1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        },
+        {
+          "kind": "img",
+          "filename": "s2-photo2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "photo"
+        }
+      ]
+    },
+    {
+      "slug": "programming",
+      "icon": "code",
+      "sort_order": 7,
+      "enabled": true,
+      "translations": {
+        "ru": {
+          "code": "ПРОГРАММИРОВАНИЕ",
+          "short": "Программирование",
+          "title": "Программирование и разработка ПО",
+          "body": "Программируем и настраиваем оборудование систем безопасности — видеорегистраторы и камеры Dahua, контроллеры СКУД, пожарные панели и климатические системы. Также разрабатываем собственное программное обеспечение: мобильные приложения, backend и интеграции. Примеры проектов — собственная система видеонаблюдения Kanagatly VMS и курьерская платформа Chapar Express (приложение курьера, карты, рейсы, баланс, REST API).",
+          "feats": [
+            "Программирование оборудования Dahua (NVR, камеры, СКУД)",
+            "Настройка пожарных панелей и контроллеров",
+            "Разработка мобильных приложений и backend",
+            "Интеграция систем, API и автоматизация"
+          ]
+        },
+        "tk": {
+          "code": "PROGRAMMIRLEME",
+          "short": "Programmirleme",
+          "title": "Programmirleme we programma üpjünçiligi",
+          "body": "Howpsuzlyk ulgamlarynyň enjamlaryny programmirleýäris we sazlaýarys — Dahua wideoýazgy enjamlary we kameralar, СКУД kontrollerler, ýangyn panelleri we klimat ulgamlary. Şeýle-de öz programma üpjünçiligimizi taýýarlaýarys: mobil goşundylar, backend we integrasiýalar. Taslamalaryň mysallary — öz wideogözegçilik ulgamymyz Kanagatly VMS we Chapar Express kuriýer platformasy (kuriýer goşundysy, kartalar, reýsler, balans, REST API).",
+          "feats": [
+            "Dahua enjamlaryny programmirlemek (NVR, kamera, СКУД)",
+            "Ýangyn panellerini we kontrollerleri sazlamak",
+            "Mobil goşundylary we backend taýýarlamak",
+            "Ulgamlaryň integrasiýasy, API we awtomatlaşdyrmak"
+          ]
+        },
+        "en": {
+          "code": "PROGRAMMING",
+          "short": "Programming",
+          "title": "Programming & software development",
+          "body": "We program and configure security-system equipment — Dahua recorders and cameras, ACS controllers, fire panels and climate systems. We also develop our own software: mobile apps, backends and integrations. Project examples — our own Kanagatly VMS video-management system and the Chapar Express courier platform (courier app, maps, flights, balance, REST API).",
+          "feats": [
+            "Dahua equipment programming (NVR, cameras, ACS)",
+            "Fire panel and controller setup",
+            "Mobile app and backend development",
+            "System integration, APIs and automation"
+          ]
+        }
+      },
+      "media": [
+        {
+          "kind": "img",
+          "filename": "cctv-vms.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "vms"
+        },
+        {
+          "kind": "img",
+          "filename": "prog-1.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "chapar"
+        },
+        {
+          "kind": "img",
+          "filename": "prog-2.jpg",
+          "poster": null,
+          "still": false,
+          "caption_kind": "chapar"
+        }
+      ]
+    }
+  ]
+}
