@@ -39,16 +39,35 @@ if (-not (Test-Path $envFile)) {
     $rng.GetBytes($skBytes)
     $secretKey = [Convert]::ToBase64String($skBytes)
 
+    # Obshij sekret dlya myagnovennogo obnovleniya lendinga posle pravok v admin.
+    # Dolzhen sovpadat v backend\.env i frontend .env.local (nizhe).
+    $revBytes = New-Object byte[] 24
+    $rng.GetBytes($revBytes)
+    $revSecret = ([Convert]::ToBase64String($revBytes) -replace '[+/=]', '')
+
     $lines = @(
         "ADMIN_PASSWORD=$adminPwd",
         "SECRET_KEY=$secretKey",
         "FRONTEND_ORIGIN=http://localhost:3000",
         "PUBLIC_URL=http://localhost:8000",
         "COOKIE_SECURE=false",
-        "REVALIDATE_SECRET="
+        "REVALIDATE_SECRET=$revSecret"
     )
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllLines($envFile, $lines, $utf8NoBom)
+
+    # frontend .env.local s tem zhe REVALIDATE_SECRET (esli net)
+    $envLocal = Join-Path $root ".env.local"
+    if (-not (Test-Path $envLocal)) {
+        $localLines = @(
+            "API_URL=http://localhost:8000",
+            "NEXT_PUBLIC_API_URL=http://localhost:8000",
+            "NEXT_PUBLIC_SITE_URL=http://localhost:3000",
+            "REVALIDATE_SECRET=$revSecret"
+        )
+        [System.IO.File]::WriteAllLines($envLocal, $localLines, $utf8NoBom)
+        Write-Host "  Sozdan .env.local (frontend)" -ForegroundColor DarkGray
+    }
 
     Write-Host ""
     Write-Host "  *** PAROL ADMINISTRATORA: $adminPwd ***" -ForegroundColor Yellow

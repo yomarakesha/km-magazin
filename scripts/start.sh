@@ -40,6 +40,8 @@ if [ ! -f "$ENV_FILE" ]; then
     # Открытый пароль по умолчанию — задай свой в backend/.env перед продакшном.
     ADMIN_PWD=admin
     SECRET_KEY=$(LC_ALL=C tr -dc 'A-Za-z0-9+/' </dev/urandom | head -c 64)
+    # Общий секрет мгновенного обновления лендинга — совпадает в backend/.env и .env.local.
+    REV_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
 
     cat > "$ENV_FILE" <<EOF
 ADMIN_PASSWORD=$ADMIN_PWD
@@ -47,8 +49,19 @@ SECRET_KEY=$SECRET_KEY
 FRONTEND_ORIGIN=http://localhost:3000
 PUBLIC_URL=http://localhost:8000
 COOKIE_SECURE=false
-REVALIDATE_SECRET=
+REVALIDATE_SECRET=$REV_SECRET
 EOF
+
+    # frontend .env.local с тем же REVALIDATE_SECRET (если нет)
+    if [ ! -f "$ROOT/.env.local" ]; then
+        cat > "$ROOT/.env.local" <<EOF
+API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+REVALIDATE_SECRET=$REV_SECRET
+EOF
+        echo "  Создан .env.local (frontend)"
+    fi
 
     echo ""
     echo "  *** ПАРОЛЬ АДМИНИСТРАТОРА: $ADMIN_PWD ***"
