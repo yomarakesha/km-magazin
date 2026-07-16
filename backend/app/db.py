@@ -65,6 +65,22 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN cost_price INTEGER"))
             if "barcode" not in cols:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN barcode VARCHAR(64)"))
+        # DB-level uniqueness is the backstop for the app-level check, which has
+        # a TOCTOU race (two PUTs both pass the SELECT before either INSERTs).
+        # Partial index so the many products without a barcode (NULL) don't clash.
+        with engine.begin() as conn:
+            try:
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_shop_products_barcode "
+                    "ON shop_products(barcode) WHERE barcode IS NOT NULL"
+                ))
+            except Exception:
+                # pre-existing duplicates in a live DB would block the index;
+                # leave it off and rely on the app-level 409 until deduped.
+                import logging
+                logging.getLogger(__name__).warning(
+                    "barcode unique index skipped — resolve duplicates first"
+                )
     if "shop_order_items" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_order_items")}
         if "cost_snapshot" not in cols:

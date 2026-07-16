@@ -2,6 +2,7 @@
 product images and customer orders. Mirrors the services/media/leads routers."""
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..auth import require_admin, require_role
@@ -601,6 +602,19 @@ def get_product(product_id: int, db: Session = Depends(get_db)) -> dict:
     return _product(p)
 
 
+def _commit_or_barcode_conflict(db: Session, barcode_in_play: bool) -> None:
+    """The app-level SELECT catches the common duplicate, but two concurrent
+    writers can both pass it before either commits; the DB unique index is the
+    backstop. Translate that race into the same 409, not a raw 500."""
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        if barcode_in_play:
+            raise HTTPException(409, "barcode already bound to another product")
+        raise
+
+
 @router.post("/products", status_code=201, dependencies=[CATALOG])
 def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
     if db.scalar(select(Product).where(Product.slug == payload.slug)):
@@ -644,7 +658,7 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
             db, product_id=p.id, qty_delta=payload.stock_qty, kind="adjust",
             username=user["username"], note="начальный остаток",
         )
-    db.commit()
+    _commit_or_barcode_conflict(db, bool(payload.barcode))
     return _product(p)
 
 
@@ -741,7 +755,7 @@ def update_product(
                 row.title, row.short, row.body, row.specs = t.title, t.short, t.body, t.specs
     if payload.attributes is not None:
         _apply_attributes(p, payload.attributes, db)
-    db.commit()
+    _commit_or_barcode_conflict(db, barcode_touched)
     return _product(p)
 
 

@@ -210,6 +210,42 @@ def test_barcode_must_be_unique_across_products(client, make_product):
     assert same.status_code == 200, same.text
 
 
+def test_barcode_uniqueness_enforced_at_db_level(db, make_product):
+    """The app-level check has a TOCTOU race: two concurrent PUTs can both pass
+    the SELECT before either INSERTs. A DB unique constraint is the backstop —
+    bypass the app and write two identical barcodes straight to the session."""
+    import sqlalchemy.exc
+    from app.models import Product, ProductTranslation, ShopCategory
+
+    code = f"EAN{uuid.uuid4().hex[:10]}"
+    a = make_product(price=100, barcode=code)  # first one takes the code
+    cat = ShopCategory(slug=f"cat-{uuid.uuid4().hex[:8]}")
+    db.add(cat)
+    db.flush()
+    clash = Product(slug=f"prod-{uuid.uuid4().hex[:8]}", category_id=cat.id,
+                    price=100, barcode=code)
+    clash.translations.append(ProductTranslation(lang="ru", title="Дубль"))
+    db.add(clash)
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        db.commit()
+    db.rollback()
+
+
+def test_barcode_null_is_not_unique_constrained(db):
+    """Many products carry no barcode; NULLs must not collide with each other."""
+    from app.models import Product, ProductTranslation, ShopCategory
+
+    for _ in range(3):
+        cat = ShopCategory(slug=f"cat-{uuid.uuid4().hex[:8]}")
+        db.add(cat)
+        db.flush()
+        p = Product(slug=f"prod-{uuid.uuid4().hex[:8]}", category_id=cat.id,
+                    price=100, barcode=None)
+        p.translations.append(ProductTranslation(lang="ru", title="Без кода"))
+        db.add(p)
+    db.commit()  # no IntegrityError → multiple NULL barcodes coexist
+
+
 def test_barcode_can_be_cleared_and_set_on_create(client):
     _login(client)
     code = f"EAN{uuid.uuid4().hex[:10]}"
