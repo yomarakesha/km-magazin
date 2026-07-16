@@ -74,6 +74,14 @@ textarea.adm-in{min-height:64px}
 .adm-block{border:1px solid var(--line2);border-radius:16px;padding:22px;background:var(--surf);margin-bottom:16px}
 .adm-block h3{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green-br);margin-bottom:16px}
 
+/* Structured list / object editors (content blocks) — no raw JSON */
+.adm-list{display:grid;gap:8px}
+.adm-list-row{display:flex;gap:8px;align-items:flex-start}
+.adm-list-val{flex:1;min-width:0}
+.adm-list .adm-list-row textarea.adm-in{min-height:40px}
+.adm-obj{display:grid;gap:10px;padding:12px;border:1px dashed var(--line2);border-radius:12px}
+.adm-obj .adm-field{margin-bottom:0}
+
 .adm-toast{position:fixed;bottom:24px;right:24px;z-index:50;padding:14px 20px;border-radius:12px;
   font-family:var(--mono);font-size:13px;border:1px solid var(--line2);background:var(--surf2)}
 .adm-toast.ok{border-color:var(--green-br);color:var(--tx)}

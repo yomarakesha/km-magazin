@@ -11,6 +11,7 @@ export default function ServicesPage() {
   const { show, node } = useToast();
   const { ask, node: confirmNode } = useConfirm();
   const [list, setList] = useState<AdminService[]>([]);
+  const [draft, setDraft] = useState<{ name: string; slug: string } | null>(null);
 
   const load = () => api.getServices().then(setList).catch((e) => show(String(e), "err"));
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -31,13 +32,16 @@ export default function ServicesPage() {
     load();
   }
 
-  async function create() {
-    const slug = prompt("Slug новой услуги (латиницей, напр. solar):");
-    if (!slug) return;
+  async function submitCreate() {
+    if (!draft) return;
+    const name = draft.name.trim();
+    const slug = (draft.slug.trim() || slugify(name)).toLowerCase();
+    if (!name) { show("Введите название услуги", "err"); return; }
+    if (!slug) { show("Не удалось составить идентификатор — впишите латиницей", "err"); return; }
     try {
       const svc = await api.createService({
         slug, icon: "code", enabled: true,
-        translations: ["ru", "tk", "en"].map((lang) => ({ lang, code: slug.toUpperCase(), short: slug, title: slug, body: "", feats: [] })),
+        translations: ["ru", "tk", "en"].map((lang) => ({ lang, code: slug.toUpperCase(), short: name, title: name, body: "", feats: [] })),
       });
       router.push(`/admin/services/${svc.id}`);
     } catch (e) { show(String(e), "err"); }
@@ -74,9 +78,38 @@ export default function ServicesPage() {
         </div>
       ))}
 
-      <div className="adm-actions">
-        <button className="adm-btn" onClick={create}>+ Добавить услугу</button>
-      </div>
+      {draft ? (
+        <div className="adm-block" style={{ marginTop: 16 }}>
+          <h3>Новая услуга</h3>
+          <div className="adm-field">
+            <label>Название услуги</label>
+            <input
+              className="adm-in"
+              autoFocus
+              placeholder="напр. Солнечные панели"
+              value={draft.name}
+              onChange={(e) => setDraft({ name: e.target.value, slug: slugify(e.target.value) })}
+            />
+          </div>
+          <div className="adm-field">
+            <label>Идентификатор для ссылки (латиницей, меняется редко)</label>
+            <input
+              className="adm-in"
+              placeholder="solar"
+              value={draft.slug}
+              onChange={(e) => setDraft((d) => (d ? { ...d, slug: e.target.value } : d))}
+            />
+          </div>
+          <div className="adm-actions" style={{ margin: 0 }}>
+            <button className="adm-btn" onClick={submitCreate}>Создать</button>
+            <button className="adm-btn ghost" onClick={() => setDraft(null)}>Отмена</button>
+          </div>
+        </div>
+      ) : (
+        <div className="adm-actions">
+          <button className="adm-btn" onClick={() => setDraft({ name: "", slug: "" })}>+ Добавить услугу</button>
+        </div>
+      )}
       {node}
       {confirmNode}
     </>
@@ -85,4 +118,20 @@ export default function ServicesPage() {
 
 function title(s: AdminService): string {
   return s.translations.find((t) => t.lang === "ru")?.title || s.slug;
+}
+
+/** Turn a (possibly Cyrillic) name into a URL-safe latin slug. */
+function slugify(name: string): string {
+  const map: Record<string, string> = {
+    а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y",
+    к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f",
+    х: "h", ц: "c", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+  };
+  return name
+    .toLowerCase()
+    .split("")
+    .map((ch) => (ch in map ? map[ch] : ch))
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
