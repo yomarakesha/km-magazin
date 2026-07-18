@@ -8,7 +8,7 @@ import ShopSidebar from "./ShopSidebar";
 import Icon from "./ui/Icon";
 
 export default function CatalogView({ catalog }: { catalog: Catalog }) {
-  const { t, settings, wa } = useShop();
+  const { t, settings } = useShop();
   const [extra, setExtra] = useState<ShopCard[]>([]);
   const [busy, setBusy] = useState(false);
   const products = [...catalog.products, ...extra];
@@ -25,7 +25,7 @@ export default function CatalogView({ catalog }: { catalog: Catalog }) {
 
   return (
     <>
-      {/* ---- split hero: copy + CTAs on the left, trust panel on the right ---- */}
+      {/* ---- hero: copy + catalog CTA ---- */}
       <section className="shop-hero">
         <div className="shop-wrap wide shop-hero-in">
           <div className="shop-hero-copy">
@@ -36,39 +36,20 @@ export default function CatalogView({ catalog }: { catalog: Catalog }) {
               <a href="#products" className="shop-btn">
                 <Icon name="grid" size={17} /> {t("allProducts")}
               </a>
-              {settings.whatsapp && (
-                <a href={wa(t("orderWhatsapp"))} target="_blank" rel="noreferrer" className="shop-btn wa">
-                  <Icon name="whatsapp" size={17} /> WhatsApp
-                </a>
-              )}
-            </div>
-          </div>
-
-          <div className="shop-hero-side" aria-hidden>
-            <div className="shop-hero-stat">
-              <div className="shop-hero-stat-ic"><Icon name="truck" size={20} /></div>
-              <div><b>{t("fastDelivery")}</b><span>{t("delivery")}</span></div>
-            </div>
-            <div className="shop-hero-stat">
-              <div className="shop-hero-stat-ic"><Icon name="shield" size={20} /></div>
-              <div><b>{t("warranty")}</b><span>{t("guarantee")}</span></div>
-            </div>
-            <div className="shop-hero-stat">
-              <div className="shop-hero-stat-ic"><Icon name="box" size={20} /></div>
-              <div><b>{catalog.categories.length} {t("categories")}</b><span>{t("allProducts")}</span></div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ---- bright promo / trust band bridging the hero seam ---- */}
-      <div className="shop-wrap wide">
-        <div className="shop-promo">
-          <span className="shop-promo-lead"><Icon name="whatsapp" size={17} /> {t("needHelp")}</span>
-          {settings.whatsapp && <a href={wa(t("orderWhatsapp"))} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</a>}
-          {settings.phone && <a href={`tel:${settings.phone.replace(/\s/g, "")}`}><Icon name="phone" size={15} /> {t("callUs")} · {settings.phone}</a>}
+      {/* ---- contact band bridging the hero seam ---- */}
+      {settings.phone && (
+        <div className="shop-wrap wide">
+          <div className="shop-promo">
+            <span className="shop-promo-lead"><Icon name="phone" size={17} /> {t("needHelp")}</span>
+            <a href={`tel:${settings.phone.replace(/\s/g, "")}`}><Icon name="phone" size={15} /> {t("callUs")} · {settings.phone}</a>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ---- main: category rail + product grid ---- */}
       <div className="shop-wrap wide shop-list-layout" id="products">

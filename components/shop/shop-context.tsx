@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { CatalogCategory, I18n, Lang, ShopCard, ShopService, ShopSettings } from "@/lib/shop-types";
 import { T } from "@/lib/shop-i18n";
-import { DEFAULT_SETTINGS, waLink } from "@/lib/shop-config";
+import { DEFAULT_SETTINGS } from "@/lib/shop-config";
 import {
   addItem,
   cartCount,
@@ -29,7 +29,6 @@ interface ShopCtx {
   categories: CatalogCategory[];
   settings: ShopSettings;
   services: ShopService[];
-  wa: (text: string) => string;
   // favorites (product cards, persisted like the cart)
   favs: ShopCard[];
   toggleFav: (card: ShopCard) => void;
@@ -140,7 +139,6 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
   const clear = () => setItems([]);
 
   const t = (key: string) => T[lang][key] ?? key;
-  const wa = (text: string) => waLink(settings.whatsapp, text);
 
   const isFav = (id: number) => favs.some((f) => f.id === id);
   const toggleFav = (card: ShopCard) =>
@@ -151,7 +149,7 @@ export function ShopProvider({ mediaBase, categories = [], settings = DEFAULT_SE
 
   const value = useMemo<ShopCtx>(
     () => ({
-      lang, setLang, t, pick, mediaBase, categories, settings, services, wa, favs, toggleFav, isFav, items, add, setQty, remove, reprice, clear, count, total,
+      lang, setLang, t, pick, mediaBase, categories, settings, services, favs, toggleFav, isFav, items, add, setQty, remove, reprice, clear, count, total,
       cartOpen, openCart, closeCart, quickView, openQuickView, closeQuickView, toast,
       compareItems, toggleCompare, inCompare, clearCompare, compareMax: COMPARE_MAX, compareOpen, openCompare, closeCompare,
     }),

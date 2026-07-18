@@ -10,7 +10,7 @@ import { loadCustomer, saveCustomer } from "@/lib/customer";
 import Icon from "@/components/shop/ui/Icon";
 
 export default function CheckoutPage() {
-  const { t, pick, items, total, clear, settings, wa, remove, reprice } = useShop();
+  const { t, pick, items, total, clear, settings, remove, reprice } = useShop();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -153,13 +153,6 @@ export default function CheckoutPage() {
     );
   }
 
-  const waText = [
-    `${t("checkout")}:`,
-    ...items.map((it) => `• ${pick(it.titles)} × ${it.qty} — ${(it.price * it.qty).toLocaleString("ru-RU")} ${it.currency}`),
-    ...(discount > 0 ? [`${t("discount")} (${promo?.code}): −${discount.toLocaleString("ru-RU")} ${cur}`] : []),
-    `${t("total")}: ${payable.toLocaleString("ru-RU")} ${cur}`,
-  ].join("\n");
-
   return (
     <div className="shop-wrap" style={{ paddingTop: 28 }}>
       <h1 className="shop-h1">{t("checkout")}</h1>
@@ -226,7 +219,6 @@ export default function CheckoutPage() {
           </label>
           {err && <p className="shop-err">{err}</p>}
           <button className="shop-btn block" type="submit" disabled={busy}>{busy ? t("sending") : t("placeOrder")}</button>
-          {settings.whatsapp && <a className="shop-btn wa block" href={wa(waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}</a>}
         </form>
 
         <aside className="shop-order-summary">

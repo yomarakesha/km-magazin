@@ -1,5 +1,5 @@
 /* Admin panel — reuses the site design tokens from globals.css */
-.adm{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.adm{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
 .adm-loading{display:grid;place-items:center;min-height:100vh;color:var(--tx2);font-family:var(--mono)}
 
 .adm-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:8px;
@@ -7,7 +7,8 @@
 .adm-brand{flex:none;font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:.12em;margin-bottom:22px}
 .adm-brand span{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--green-br);margin-left:8px;text-transform:uppercase}
 .adm-side nav{display:grid;gap:4px;flex:1 1 auto;min-height:0;overflow-y:auto;
-  margin:0 -4px;padding:0 4px}
+  margin:0 -4px;padding:0 4px;scrollbar-width:none}
+.adm-side nav::-webkit-scrollbar{display:none}
 .adm-side nav a{font-family:var(--mono);font-size:13px;letter-spacing:.05em;color:var(--tx2);
   padding:11px 14px;border-radius:11px;transition:.2s}
 .adm-side nav a:hover{background:var(--surf2);color:var(--tx)}

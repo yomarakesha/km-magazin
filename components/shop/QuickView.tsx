@@ -9,7 +9,7 @@ import ProductImage from "./ProductImage";
 import { useShop } from "./shop-context";
 
 export default function QuickView() {
-  const { quickView, closeQuickView, t, pick, mediaBase, add, settings, wa } = useShop();
+  const { quickView, closeQuickView, t, pick, lang, mediaBase, add } = useShop();
   const [data, setData] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState(false);
@@ -29,6 +29,13 @@ export default function QuickView() {
 
   const title = data ? pick(data.title) : "";
   const img = data?.images[0] ? `${mediaBase}/${data.images[0]}` : null;
+  // характеристики: attribute rows first (filterable), then free-form specs
+  const specRows = data
+    ? [
+        ...data.attributes.map((a) => ({ label: pick(a.label), value: a.unit ? `${a.value} ${a.unit}` : a.value })),
+        ...(data.specs[lang] ?? data.specs.ru ?? []),
+      ]
+    : [];
 
   function addToCart() {
     if (!data) return;
@@ -57,14 +64,19 @@ export default function QuickView() {
               <button className={`shop-btn ${added ? "added" : ""}`} onClick={addToCart}>
                 {added ? <><Icon name="check" size={16} /> {t("inCart")}</> : t("addToCart")}
               </button>
-              {settings.whatsapp && (
-                <a className="shop-btn wa" href={wa(`${title} — ${data.price} ${data.currency}`)} target="_blank" rel="noreferrer">
-                  <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
-                </a>
-              )}
             </div>
+            {specRows.length > 0 && (
+              <div className="shop-qv-specs">
+                <div className="shop-section-label">{t("specs")}</div>
+                <table className="shop-specs-table"><tbody>
+                  {specRows.map((row, i) => (
+                    <tr key={i}><td>{row.label}</td><td>{row.value}</td></tr>
+                  ))}
+                </tbody></table>
+              </div>
+            )}
             <Link href={`/shop/product/${data.slug}`} className="shop-link" onClick={closeQuickView}>
-              {t("specs")} <Icon name="arrow" size={14} />
+              {t("details")} <Icon name="arrow" size={14} />
             </Link>
           </div>
         </div>

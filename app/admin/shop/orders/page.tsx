@@ -21,13 +21,6 @@ const PAY_FILTERS = [
   { value: "refunded", label: "Возвраты" },
 ];
 
-// WhatsApp deep-link: notify the customer about the current order status in one click
-function waHref(o: AdminOrder): string {
-  const digits = o.phone.replace(/\D/g, "");
-  const text = `Здравствуйте, ${o.customer_name}! Ваш заказ #${o.id}: ${ST_LABEL[o.status] ?? o.status}. Сумма: ${o.total} TMT.`;
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
-}
-
 function toCsv(orders: AdminOrder[]): string {
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const head = ["ID", "Дата", "Клиент", "Телефон", "Адрес", "Оплата", "Статус оплаты", "Статус", "Сумма", "Состав"];
@@ -129,13 +122,6 @@ export default function OrdersPage() {
                   </td>
                   <td style={{ fontSize: 13 }}>
                     {o.phone}
-                    {o.phone.replace(/\D/g, "") && (
-                      <>
-                        {" "}
-                        <a href={waHref(o)} target="_blank" rel="noreferrer" title="Написать в WhatsApp о статусе"
-                          style={{ fontSize: 12, color: "var(--green-d)" }}>WA</a>
-                      </>
-                    )}
                     <br />{o.address}
                   </td>
                   <td><b>{o.total} TMT</b></td>

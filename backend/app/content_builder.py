@@ -54,7 +54,7 @@ def _sections_for_lang(db: Session, services: list[Service], lang: str) -> list[
         out.append(
             {
                 "id": svc.slug,
-                "no": f"{svc.sort_order + 1:02d}",
+                "no": f"{svc.sort_order + 1:03d}",
                 "icon": svc.icon,
                 "code": tr.code,
                 "short": tr.short,

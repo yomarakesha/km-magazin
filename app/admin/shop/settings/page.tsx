@@ -26,16 +26,12 @@ export default function ShopSettingsPage() {
   return (
     <>
       <h1 className="adm-h1">Контакты магазина</h1>
-      <p className="adm-sub">Телефон, WhatsApp и адрес — показываются в шапке, футере и кнопках заказа.</p>
+      <p className="adm-sub">Телефон и адрес — показываются в шапке и футере магазина.</p>
 
       <div className="adm-block">
         <h3>Связь</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="adm-field"><label>Телефон (как показывать)</label>
-            <input className="adm-in" value={s.phone} onChange={field("phone")} placeholder="+993 12 00-00-00" /></div>
-          <div className="adm-field"><label>WhatsApp (только цифры, без + и пробелов)</label>
-            <input className="adm-in" value={s.whatsapp} onChange={field("whatsapp")} placeholder="99312000000" /></div>
-        </div>
+        <div className="adm-field"><label>Телефон (как показывать)</label>
+          <input className="adm-in" value={s.phone} onChange={field("phone")} placeholder="+993 12 00-00-00" /></div>
       </div>
 
       <div className="adm-block">

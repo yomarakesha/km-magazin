@@ -11,7 +11,7 @@ import CompareView from "./CompareView";
 import Toast from "./ui/Toast";
 import Icon from "./ui/Icon";
 
-const LANG_LABEL: Record<string, string> = { ru: "РУ", tk: "TK", en: "EN" };
+const LANG_LABEL: Record<string, string> = { ru: "RU", tk: "TK", en: "EN" };
 
 export default function ShopChrome({
   mediaBase,
@@ -90,6 +90,7 @@ function Header() {
             {favs.length > 0 && <span className="shop-cart-badge">{favs.length}</span>}
           </Link>
           <div className="shop-langs">
+            <Icon name="globe" size={14} className="shop-langs-gl" />
             {LANGS.map((l) => (
               <button key={l} className={l === lang ? "on" : ""} onClick={() => setLang(l)}>{LANG_LABEL[l]}</button>
             ))}
@@ -105,7 +106,7 @@ function Header() {
 }
 
 function Footer() {
-  const { t, pick, settings, wa } = useShop();
+  const { t, pick, settings } = useShop();
   return (
     <footer className="shop-foot">
       <div className="shop-wrap shop-foot-in">
@@ -120,7 +121,6 @@ function Footer() {
         <div className="shop-foot-col">
           <div className="shop-foot-h">{t("needHelp")}</div>
           {settings.phone && <a className="shop-foot-cta" href={`tel:${settings.phone.replace(/\s/g, "")}`}><Icon name="phone" size={15} /> {settings.phone}</a>}
-          {settings.whatsapp && <a className="shop-foot-cta wa" href={wa(t("needHelp"))} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={15} /> WhatsApp</a>}
         </div>
       </div>
       <div className="shop-wrap">

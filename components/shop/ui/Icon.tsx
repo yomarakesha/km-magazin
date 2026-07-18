@@ -2,9 +2,9 @@
  *  text color. No emoji anywhere in the UI — these are the only glyphs. */
 type IconName =
   | "search" | "cart" | "eye" | "check" | "close" | "minus" | "plus"
-  | "phone" | "truck" | "filter" | "chevron" | "arrow" | "whatsapp"
+  | "phone" | "truck" | "filter" | "chevron" | "arrow"
   | "box" | "grid" | "shield" | "trash" | "compare"
-  | "wrench" | "settings" | "refresh" | "heart" | "star" | "share";
+  | "wrench" | "settings" | "refresh" | "heart" | "star" | "share" | "globe";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
@@ -19,7 +19,6 @@ const PATHS: Record<IconName, React.ReactNode> = {
   filter: <><path d="M4 6h16M7 12h10M10 18h4" /></>,
   chevron: <path d="m6 9 6 6 6-6" />,
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
-  whatsapp: <><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3Z" /><path d="M8.5 8.5c.3 2 1.5 4 3 5.2 1.4 1.1 2.8 1.3 3.7 1.1.5-.1.8-.7.6-1.2l-.5-1c-.2-.4-.7-.5-1-.2l-.7.5c-.9-.5-1.7-1.3-2.2-2.2l.5-.7c.2-.3.2-.7-.1-1l-.9-.6c-.4-.3-1-.1-1.2.4Z" fill="currentColor" stroke="none" /></>,
   box: <><path d="M12 3 4 7v10l8 4 8-4V7Z" /><path d="M4 7l8 4 8-4M12 11v10" /></>,
   grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
   shield: <path d="M12 3 5 6v6c0 4 3 6.5 7 8 4-1.5 7-4 7-8V6Z" />,
@@ -31,6 +30,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
   heart: <path d="M12 20.5s-7.5-4.6-9.3-9A5 5 0 0 1 12 6.5 5 5 0 0 1 21.3 11.5c-1.8 4.4-9.3 9-9.3 9Z" />,
   star: <path d="m12 3 2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-2.9-5.4 2.9 1.1-6L3.2 9.4l6.1-.8Z" />,
   share: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1" /></>,
+  globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18" /></>,
 };
 
 export default function Icon({

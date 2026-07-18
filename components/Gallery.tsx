@@ -1,13 +1,13 @@
 "use client";
-import type { Content, MediaItem, Section } from "@/lib/content";
+import type { MediaItem, Section } from "@/lib/content";
 import { useLang } from "@/lib/lang";
 import { useLightbox } from "./Lightbox";
 import Icon from "./Icon";
 
-function imgCaption(item: Extract<MediaItem, { kind: "img" }>, c: Content): string {
+function imgCaption(item: Extract<MediaItem, { kind: "img" }>): string | null {
   if (item.caption === "chapar") return "Chapar Express";
   if (item.caption === "vms") return "Kanagatly VMS";
-  return c.capPhoto;
+  return null;
 }
 
 export default function Gallery({ section }: { section: Section }) {
@@ -45,16 +45,16 @@ export default function Gallery({ section }: { section: Section }) {
             <video src={src} poster={poster} muted autoPlay loop playsInline preload="metadata" />
           )}
           <span className="play"><Icon name="camera" className="pic" /><b>{c.play}</b></span>
-          <figcaption><span className="dot" />{c.capVideo}</figcaption>
         </figure>
       );
     }
     const src = url(it.src);
+    const cap = imgCaption(it);
     return (
       <figure key={it.src} className="card" onClick={() => open({ kind: "img", src })}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" loading="lazy" />
-        <figcaption><span className="dot" />{imgCaption(it, c)}</figcaption>
+        {cap && <figcaption><span className="dot" />{cap}</figcaption>}
       </figure>
     );
   };

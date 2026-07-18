@@ -19,7 +19,7 @@ img,video{display:block;max-width:100%}
 .wrap{max-width:var(--mw);margin:0 auto;padding:0 28px}
 .code{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--green-br)}
 h2.title{font-family:var(--disp);font-weight:800;font-size:clamp(28px,4vw,46px);
-  line-height:1.05;letter-spacing:-.01em;margin:14px 0 0}
+  line-height:1.05;letter-spacing:-.01em;margin:14px 0 0;overflow-wrap:break-word;hyphens:auto}
 body::before{content:"";position:fixed;inset:0;z-index:-2;background:
   radial-gradient(1100px 700px at 80% -5%,rgba(0,166,80,.16),transparent 60%),
   radial-gradient(900px 600px at -5% 30%,rgba(0,166,80,.10),transparent 55%),var(--bg)}
@@ -106,7 +106,10 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;opacity:.5;background-i
 section{padding:108px 0;position:relative;scroll-margin-top:70px}
 .sec-head{max-width:760px;margin-bottom:48px}
 .sec-head .sub{color:var(--tx2);margin-top:14px}
+/* min-width:0 lets columns shrink below a long word's min-content (tk/en have
+   very long words), so break-word/hyphens can actually wrap them */
 .about-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:clamp(34px,4vw,60px);align-items:stretch}
+.about-grid>*{min-width:0}
 .about-grid p{color:var(--tx2);font-size:17px;max-width:580px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .stat{position:relative;display:flex;flex-direction:column;justify-content:space-between;aspect-ratio:1;
@@ -132,11 +135,12 @@ section{padding:108px 0;position:relative;scroll-margin-top:70px}
 @media(max-width:860px){.dirs{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.dirs{grid-template-columns:1fr}}
 .svc{display:grid;grid-template-columns:.92fr 1.08fr;gap:48px;align-items:center;padding:46px 0;border-top:1px solid var(--line);scroll-margin-top:80px}
+.svc>*{min-width:0}
 .svc.alt .svc-media{order:-1}
 .svc-head{display:flex;align-items:center;gap:12px}
 .svc-ic{width:26px;height:26px;color:var(--green-br)}
 .svc-no{font-family:var(--disp);font-weight:800;font-size:clamp(48px,7vw,84px);line-height:.9;color:transparent;-webkit-text-stroke:1.5px var(--line2);margin:8px 0}
-.svc h3{font-family:var(--disp);font-weight:600;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-bottom:14px}
+.svc h3{font-family:var(--disp);font-weight:600;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-bottom:14px;overflow-wrap:break-word;hyphens:auto}
 .svc-info p{color:var(--tx2);max-width:500px}
 .feats{list-style:none;margin-top:22px;display:grid;gap:11px}
 .feats li{display:flex;align-items:flex-start;gap:11px;font-size:15px;color:var(--tx)}
@@ -182,7 +186,7 @@ figure.card:hover::after{opacity:.55}
 .gal-empty::after{width:330px;height:330px;opacity:.55;animation:evpulse 4.5s ease-in-out infinite .7s}
 @keyframes evpulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.07);opacity:.9}}
 .ev-ic{width:94px;height:94px;color:var(--green-br);position:relative;z-index:2;filter:drop-shadow(0 0 28px rgba(34,224,125,.55))}
-.ev-tag{position:absolute;bottom:28px;font-family:var(--mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--tx2);z-index:2}
+.ev-tag{position:absolute;bottom:28px;font-family:var(--mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--tx2);z-index:2;max-width:92%;text-align:center}
 @media(max-width:860px){.svc{grid-template-columns:1fr;gap:28px}.svc.alt .svc-media{order:0}}
 .proc{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:20px;overflow:hidden}
 .step{padding:34px 28px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);transition:.3s}

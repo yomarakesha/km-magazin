@@ -15,7 +15,7 @@ import Stars from "./ui/Stars";
 import Reveal from "@/components/Reveal";
 
 export default function ProductView({ p }: { p: ProductDetail }) {
-  const { t, pick, lang, mediaBase, add, settings, wa, toggleFav, isFav } = useShop();
+  const { t, pick, lang, mediaBase, add, settings, toggleFav, isFav } = useShop();
   const [active, setActive] = useState(0);
   const [added, setAdded] = useState(false);
   const [zoom, setZoom] = useState(false);
@@ -122,11 +122,6 @@ export default function ProductView({ p }: { p: ProductDetail }) {
             >
               <Icon name="heart" size={16} /> {isFav(p.id) ? t("inFavorites") : t("favorites")}
             </button>
-            {settings.whatsapp && (
-              <a className="shop-btn wa" href={wa(`${title} — ${p.price} ${p.currency}`)} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" size={16} /> {t("orderWhatsapp")}
-              </a>
-            )}
             <button className="shop-btn ghost" onClick={share} title={t("share")}>
               <Icon name="share" size={16} /> {shared ? t("shareCopied") : t("share")}
             </button>
