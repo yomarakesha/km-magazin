@@ -7,6 +7,10 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
   retries: 0,
+  // Mutating tests share one live database — run files strictly one at a time.
+  workers: 1,
+  globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   use: {
     baseURL: process.env.PW_BASE_URL || "http://localhost:3000",
     // system Chrome: avoids downloading Playwright's bundled Chromium
