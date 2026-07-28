@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { ownerContext, PREFIX, SLUG_PREFIX } from "./helpers/api";
+import { apiContext, ownerContext, PREFIX, SLUG_PREFIX } from "./helpers/api";
 import { customerPage } from "./helpers/ui";
 
 /** Точность цифр: суммы, скидки и остатки сходятся копейка в копейку, а
@@ -125,7 +125,7 @@ test("сайт не даёт заказать распроданный това�
     price: 70,
     stock: 0,
   });
-  const anon = await (await import("./helpers/api")).apiContext();
+  const anon = await apiContext();
   const res = await anon.post("/api/shop/orders", {
     data: {
       customer_name: `${PREFIX}Ноль-заказ`,

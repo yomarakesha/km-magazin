@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import {
   adminPassword,
+  API,
   backupBlock,
   ownerContext,
   PREFIX,
@@ -139,7 +140,7 @@ test.describe.serial("сага коммерса", () => {
     const page = await staffPage(browser, "warehouse");
 
     // поставщик — API складчика (право warehouse)
-    const sup = await page.context().request.post("http://localhost:8000/api/admin/warehouse/suppliers", {
+    const sup = await page.context().request.post(`${API}/api/admin/warehouse/suppliers`, {
       data: { name: SUPPLIER, phone: "+99365000000" },
     });
     expect(sup.ok(), await sup.text()).toBeTruthy();
@@ -161,7 +162,7 @@ test.describe.serial("сага коммерса", () => {
 
     // штрихкод — зона склада
     const bc = await page.context().request.put(
-      `http://localhost:8000/api/admin/shop/products/${productId}`,
+      `${API}/api/admin/shop/products/${productId}`,
       { data: { barcode: BARCODE } },
     );
     expect(bc.ok(), await bc.text()).toBeTruthy();
@@ -210,7 +211,7 @@ test.describe.serial("сага коммерса", () => {
 
     // остаток списан ровно на проданное количество
     const look = await page.context().request.get(
-      `http://localhost:8000/api/admin/pos/lookup?code=${BARCODE}`,
+      `${API}/api/admin/pos/lookup?code=${BARCODE}`,
     );
     expect((await look.json()).stock_qty).toBe(RECEIVED - POS_QTY);
     await page.context().close();

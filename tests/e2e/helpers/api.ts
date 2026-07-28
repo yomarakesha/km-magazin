@@ -162,15 +162,21 @@ export async function cleanupAll(): Promise<string[]> {
       }
     }
 
-    // suppliers
+    // suppliers — skip any with a posted purchase invoice: PurchaseDoc is
+    // immutable (no DELETE route) and deleting the supplier would SET NULL
+    // its supplier_id, orphaning the invoice instead of removing it.
+    const purchasesPage: { items: Array<{ supplier_id: number | null }> } = await (
+      await ok(await owner.get("/api/admin/warehouse/purchases?limit=200"), "list purchases")
+    ).json();
+    const suppliersWithPurchases = new Set(purchasesPage.items.map((p) => p.supplier_id));
     const suppliers: Array<{ id: number; name: string }> = await (
       await ok(await owner.get("/api/admin/warehouse/suppliers"), "list suppliers")
     ).json();
     for (const s of suppliers) {
-      if ((s.name || "").startsWith(PREFIX)) {
-        await ok(await owner.delete(`/api/admin/warehouse/suppliers/${s.id}`), `delete supplier ${s.id}`);
-        removed.push(`supplier ${s.name}`);
-      }
+      if (!(s.name || "").startsWith(PREFIX)) continue;
+      if (suppliersWithPurchases.has(s.id)) continue; // kept: immutable purchase history references it
+      await ok(await owner.delete(`/api/admin/warehouse/suppliers/${s.id}`), `delete supplier ${s.id}`);
+      removed.push(`supplier ${s.name}`);
     }
 
     // staff accounts

@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import {
+  apiContext,
   ensureStaff,
   loginContext,
   ownerContext,
@@ -7,6 +8,7 @@ import {
   STAFF,
   STAFF_PASSWORD,
 } from "./helpers/api";
+import { staffPage } from "./helpers/ui";
 
 /** Границы ролей: каждый сотрудник заперт в своей зоне, и API отвечает
  *  честным 403, а не молчаливым успехом. Владелец проходит везде. */
@@ -104,7 +106,7 @@ test("зоны позитивно: каждый может своё", async () =
 });
 
 test("неавторизованный получает 401 на всё админское", async () => {
-  const anon = await (await import("./helpers/api")).apiContext();
+  const anon = await apiContext();
   for (const url of [
     "/api/admin/users",
     "/api/admin/shop/products",
@@ -118,7 +120,6 @@ test("неавторизованный получает 401 на всё адми
 });
 
 test("UI: складчик не видит чужих разделов в меню, маршрут закрыт", async ({ browser }) => {
-  const { staffPage } = await import("./helpers/ui");
   const page = await staffPage(browser, "warehouse");
   await page.goto("/admin");
   const nav = page.locator(".adm-side nav");
