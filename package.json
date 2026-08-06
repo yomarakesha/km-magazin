@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "dump:seed": "tsx scripts/dump-seed.ts"
+    "dump:seed": "tsx scripts/dump-seed.ts",
+    "build:catalog": "node scripts/build-catalog.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.63.0",

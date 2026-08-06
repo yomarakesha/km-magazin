@@ -80,7 +80,7 @@ export default function PosSalesPage() {
                 <td>
                   <b>{fmt(s.sold_total)}</b>
                   {s.discount > 0 && <span style={{ color: "#ffb86b", fontSize: 13 }}> (−{fmt(s.discount)})</span>}
-                  {s.discount < 0 && <span style={{ color: "var(--green-br)", fontSize: 13 }}> (+{fmt(-s.discount)})</span>}
+                  {s.discount < 0 && <span style={{ color: "var(--acc-br)", fontSize: 13 }}> (+{fmt(-s.discount)})</span>}
                 </td>
                 <td>{PAY_LABEL[s.payment_method] ?? s.payment_method}</td>
                 <td>
@@ -89,7 +89,7 @@ export default function PosSalesPage() {
                       долг · {s.debtor_name} {s.debtor_phone}
                     </span>
                   ) : (
-                    <span style={{ color: "var(--green-br)" }}>
+                    <span style={{ color: "var(--acc-br)" }}>
                       оплачено{s.settled_at ? " (долг погашен)" : ""}
                     </span>
                   )}

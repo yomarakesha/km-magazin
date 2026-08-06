@@ -32,15 +32,26 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070b09",
+  themeColor: "#0a0906",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`${disp.variable} ${body.variable} ${mono.variable}`}>
-      <body>{children}</body>
+    <html lang="ru" className={`${disp.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+      <body>
+        {/* Night (gold on dark) is the default; km-theme="light" switches to the
+            day variant. ?theme=light / ?theme=dark also sets it. Runs before
+            hydration so there is no flash of the wrong theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              '(function(){try{var q=new URLSearchParams(location.search).get("theme");if(q==="light"||q==="dark")localStorage.setItem("km-theme",q);if(localStorage.getItem("km-theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}})();',
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

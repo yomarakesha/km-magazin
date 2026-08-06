@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useLang, LANGS } from "@/lib/lang";
+import { SHOP_ENABLED } from "@/lib/shop-flag";
 import Icon from "./Icon";
 
 const SECTIONS = ["about", "services", "process", "contact"] as const;
 const SHOP_LABEL: Record<string, string> = { ru: "Магазин", tk: "Dükan", en: "Shop" };
+const THEME_LABEL: Record<string, string> = { ru: "Ночной / дневной режим", tk: "Gije / gündiz reji", en: "Night / day mode" };
 
 export default function Nav() {
   const { c, lang, setLang } = useLang();
@@ -12,6 +14,21 @@ export default function Nav() {
   const [prog, setProg] = useState(0);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("about");
+  // Night is the default; the inline script in app/layout.tsx applies the saved
+  // choice before paint, so read it back here instead of assuming.
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    if (next === "light") document.documentElement.dataset.theme = "light";
+    else delete document.documentElement.dataset.theme;
+    try { localStorage.setItem("km-theme", next); } catch {}
+  };
 
   useEffect(() => {
     const onScroll = () => {
@@ -56,9 +73,20 @@ export default function Nav() {
               {c.nav[id]}
             </a>
           ))}
-          <a href="/shop" className="nav-shop" onClick={() => setOpen(false)}>
-            {SHOP_LABEL[lang] ?? "Магазин"}
-          </a>
+          {SHOP_ENABLED && (
+            <a href="/shop" className="nav-shop" onClick={() => setOpen(false)}>
+              {SHOP_LABEL[lang] ?? "Магазин"}
+            </a>
+          )}
+          <button
+            className="thm"
+            type="button"
+            aria-label={THEME_LABEL[lang] ?? THEME_LABEL.ru}
+            title={THEME_LABEL[lang] ?? THEME_LABEL.ru}
+            onClick={toggleTheme}
+          >
+            <Icon name={theme === "light" ? "moon" : "sun"} />
+          </button>
           <span className="lang">
             <Icon name="globe" className="gl" />
             {LANGS.map((l) => (

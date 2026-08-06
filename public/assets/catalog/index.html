@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<title>KM — Каталог услуг 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Manrope:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+/* ===========================================================================
+   KM — каталог услуг. Печатный дубль лендинга: те же токены, шрифты и приёмы
+   (моно-кикеры с разрядкой, контурные номера, золотые волосяные линии,
+   чипы-галочки). Обложки — ночная схема лендинга, разворот — дневная.
+   Собирается в PDF: npm run build:catalog
+   =========================================================================== */
+:root{
+  /* ночь — как :root лендинга */
+  --n-acc:#c9a227; --n-acc-br:#e8c55a; --n-acc-d:#7a6118;
+  --n-acc-rgb:201,162,39; --n-accbr-rgb:232,197,90; --n-line-rgb:163,140,84;
+  --n-bg:#0a0906; --n-tx:#f2ecdd; --n-tx2:#b5aa8d; --n-tx3:#867c64;
+  /* день — как html[data-theme="light"] лендинга */
+  --acc:#a8811a; --acc-br:#7a5f12; --acc-d:#c9a227;
+  --acc-rgb:168,129,26; --accbr-rgb:122,95,18; --line-rgb:150,128,80;
+  --ink:#fdf8ea;
+  --bg:#faf7f0; --surf:#fffdf7; --surf2:#f3ecdd;
+  --line:rgba(var(--line-rgb),.32); --line2:rgba(var(--line-rgb),.5);
+  --tx:#1b1710; --tx2:#5c5340; --tx3:#8a7f68;
+  --disp:"Unbounded",sans-serif;
+  --body:"Manrope",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--body);background:#d9d3c6;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;align-items:center;gap:10mm;padding:10mm 0}
+img{display:block;max-width:100%}
+
+/* ── лист ───────────────────────────────────────────────────────────────── */
+.page{position:relative;width:210mm;height:297mm;overflow:hidden;background:var(--bg);color:var(--tx);
+  display:flex;flex-direction:column;padding:18mm 17mm 14mm;break-after:page}
+.page:last-child{break-after:auto}
+.page.dark{background:var(--n-bg);color:var(--n-tx)}
+/* атмосфера тёмных полос — те же радиальные подсветки и сетка, что на лендинге */
+.page.dark::before{content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(150mm 100mm at 82% -6%,rgba(var(--n-acc-rgb),.20),transparent 62%),
+    radial-gradient(120mm 90mm at -8% 34%,rgba(var(--n-acc-rgb),.12),transparent 58%)}
+.page.dark::after{content:"";position:absolute;inset:0;opacity:.5;
+  background-image:
+    linear-gradient(rgba(var(--n-line-rgb),.07) .25mm,transparent .25mm),
+    linear-gradient(90deg,rgba(var(--n-line-rgb),.07) .25mm,transparent .25mm);
+  background-size:12mm 12mm;
+  -webkit-mask-image:radial-gradient(circle at 50% 34%,#000,transparent 88%)}
+.page>*{position:relative;z-index:2}
+
+/* ── колонтитулы светлых страниц ────────────────────────────────────────── */
+.run{display:flex;justify-content:space-between;align-items:baseline;
+  font-family:var(--mono);font-size:7.6pt;letter-spacing:.2em;text-transform:uppercase;color:var(--tx3)}
+.run b{color:var(--acc-br);font-weight:500}
+.rule{height:.5mm;background:var(--line);margin:3.5mm 0 0;position:relative}
+.rule::after{content:"";position:absolute;left:0;top:0;height:.5mm;width:22mm;
+  background:linear-gradient(90deg,var(--acc),var(--acc-d))}
+.foot{margin-top:auto;padding-top:4mm;border-top:.3mm solid var(--line);
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-family:var(--mono);font-size:7.2pt;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3)}
+.foot .pg{font-family:var(--disp);font-weight:800;font-size:12pt;letter-spacing:0;color:var(--tx)}
+
+/* ── типографика ────────────────────────────────────────────────────────── */
+.kicker{display:inline-flex;align-items:center;gap:2.4mm;font-family:var(--mono);
+  font-size:8pt;letter-spacing:.24em;text-transform:uppercase;color:var(--acc-br)}
+.kicker .dot{width:2mm;height:2mm;border-radius:50%;background:var(--acc);flex:none}
+h1,h2,h3,h4{font-family:var(--disp);font-weight:800;letter-spacing:-.01em;line-height:1.06}
+h2.sec{font-size:26pt;margin-top:5mm}
+.lead{color:var(--tx2);font-size:10.5pt;line-height:1.62;max-width:150mm;margin-top:5mm}
+
+/* ── обложка ────────────────────────────────────────────────────────────── */
+.cover{justify-content:center}
+.cover .kicker{color:var(--n-acc-br);border:.3mm solid rgba(var(--n-line-rgb),.34);
+  padding:2.4mm 5mm;border-radius:20mm;align-self:flex-start}
+.cover .kicker .dot{background:var(--n-acc-br);box-shadow:0 0 0 1.2mm rgba(var(--n-accbr-rgb),.18)}
+.cover .wordmark{font-family:var(--disp);font-weight:800;font-size:150pt;line-height:.8;letter-spacing:-.03em;
+  margin-top:12mm;background:linear-gradient(160deg,#fff 8%,var(--n-acc-br) 52%,var(--n-acc-d) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.cover .full{font-family:var(--mono);font-size:9.5pt;letter-spacing:.36em;text-transform:uppercase;
+  color:var(--n-tx2);margin-top:3mm}
+.cover .title{font-family:var(--disp);font-weight:600;font-size:30pt;line-height:1.1;margin-top:14mm;color:var(--n-tx)}
+.cover .sub{color:var(--n-tx2);font-size:11pt;line-height:1.6;max-width:120mm;margin-top:6mm}
+.cover .hair{height:.4mm;width:52mm;margin-top:12mm;
+  background:linear-gradient(90deg,var(--n-acc-br),rgba(var(--n-accbr-rgb),0))}
+.cover .ring{position:absolute;top:50%;right:-38mm;transform:translateY(-50%);
+  width:110mm;height:110mm;border-radius:50%;display:grid;place-items:center;z-index:1;
+  background:
+    radial-gradient(circle,rgba(var(--n-acc-rgb),0) 38%,rgba(var(--n-acc-rgb),.16) 40%,transparent 42%),
+    radial-gradient(circle,rgba(var(--n-acc-rgb),0) 58%,rgba(var(--n-acc-rgb),.11) 60%,transparent 62%)}
+.cover .ring::before{content:"";position:absolute;inset:5%;border-radius:50%;
+  border:.4mm solid transparent;border-top-color:rgba(var(--n-accbr-rgb),.6);
+  border-right-color:rgba(var(--n-accbr-rgb),.16)}
+.cover .ring img{width:46%;height:46%;border-radius:50%;
+  filter:hue-rotate(-103deg) saturate(.72) brightness(1.28)}
+.cover .meta{position:absolute;top:18mm;right:17mm;font-family:var(--mono);font-size:8pt;
+  letter-spacing:.2em;color:var(--n-tx3);text-align:right;z-index:3}
+.cover-contacts{position:absolute;left:17mm;right:17mm;bottom:16mm;z-index:3;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8mm;
+  padding-top:6mm;border-top:.3mm solid rgba(var(--n-line-rgb),.3)}
+.cover-contacts .lb{font-family:var(--mono);font-size:7pt;letter-spacing:.22em;text-transform:uppercase;color:var(--n-acc-br)}
+.cover-contacts .vl{font-size:10pt;font-weight:600;color:var(--n-tx);margin-top:1.6mm;line-height:1.4}
+
+/* ── содержание ─────────────────────────────────────────────────────────── */
+/* строки разгоняются по высоте листа, чтобы полоса не заканчивалась пустотой */
+.toc{margin-top:12mm;margin-bottom:6mm;flex:1;display:grid;gap:0;align-content:space-between}
+.toc-row{display:grid;grid-template-columns:14mm 1fr auto;align-items:baseline;gap:6mm;
+  padding:5.4mm 0;border-bottom:.3mm solid var(--line)}
+.toc-row:first-child{border-top:.3mm solid var(--line)}
+.toc-no{font-family:var(--disp);font-weight:800;font-size:15pt;color:transparent;
+  -webkit-text-stroke:.35mm var(--line2)}
+.toc-t{font-family:var(--disp);font-weight:600;font-size:13pt;line-height:1.2}
+.toc-c{display:block;font-family:var(--mono);font-size:7.4pt;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--acc-br);margin-top:1.6mm;font-weight:500}
+.toc-p{font-family:var(--mono);font-size:9pt;letter-spacing:.12em;color:var(--tx3)}
+
+/* ── о компании ─────────────────────────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;margin-top:9mm}
+.stat{border:.3mm solid var(--line);border-radius:5mm;padding:5mm;min-height:34mm;
+  background:linear-gradient(155deg,var(--surf2),var(--surf));
+  display:flex;flex-direction:column;justify-content:space-between}
+.snum{font-family:var(--disp);font-weight:800;font-size:17pt;line-height:1.05;
+  background:linear-gradient(150deg,#2a2008 18%,var(--acc-br));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.slab{font-family:var(--mono);font-size:6.8pt;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);margin-top:4mm}
+.why{display:grid;grid-template-columns:1fr 1fr;gap:4mm;margin-top:7mm}
+.why-card{position:relative;border:.3mm solid var(--line);border-radius:4.5mm;padding:6mm 6mm 6mm 7mm;background:var(--surf);overflow:hidden}
+.why-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:.8mm;
+  background:linear-gradient(180deg,var(--acc-d),var(--acc))}
+.why-no{font-family:var(--mono);font-size:7.4pt;letter-spacing:.2em;color:var(--acc-br)}
+.why-card h4{font-size:11.5pt;font-weight:800;margin-top:2.6mm;font-family:var(--disp);line-height:1.2}
+.why-card p{color:var(--tx2);font-size:9pt;line-height:1.55;margin-top:2.4mm}
+
+/* ── страница направления ───────────────────────────────────────────────── */
+.svc-watermark{position:absolute;top:30mm;right:14mm;font-family:var(--disp);font-weight:800;
+  font-size:104pt;line-height:1;color:transparent;-webkit-text-stroke:.45mm var(--line);z-index:1}
+.svc-head{display:flex;align-items:center;gap:5mm;margin-top:10mm}
+.svc-badge{width:16mm;height:16mm;flex:none;border-radius:4.5mm;display:grid;place-items:center;
+  background:rgba(var(--acc-rgb),.12);border:.3mm solid rgba(var(--acc-rgb),.32)}
+.svc-badge svg{width:8.5mm;height:8.5mm;stroke:var(--acc-br);fill:none;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.svc-code{font-family:var(--mono);font-size:8pt;letter-spacing:.24em;text-transform:uppercase;color:var(--acc-br)}
+.svc-of{font-family:var(--mono);font-size:7.4pt;letter-spacing:.2em;color:var(--tx3);margin-top:1.4mm}
+.svc h2{font-size:24pt;margin-top:7mm;max-width:140mm}
+.svc p.lead{margin-top:5mm;max-width:140mm}
+.feats{list-style:none;margin-top:8mm;display:grid;grid-template-columns:1fr 1fr;gap:4mm 7mm}
+.feats li{display:flex;align-items:center;gap:3.4mm;font-size:9.6pt;line-height:1.4}
+.feats .chip{width:6.4mm;height:6.4mm;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:rgba(var(--acc-rgb),.12);border:.3mm solid rgba(var(--acc-rgb),.3)}
+.feats .chip svg{width:3.6mm;height:3.6mm;stroke:var(--acc-br);fill:none;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+/* полоса кадров прижата к низу листа и отбита волосяной линией — тот же приём,
+   что разделяет услуги на лендинге */
+.shots{margin-top:auto;padding-top:10mm;display:grid;gap:3.4mm;position:relative}
+.shots::before{content:"";position:absolute;left:0;right:0;top:0;height:.3mm;background:var(--line)}
+.shots::after{content:"";position:absolute;left:0;top:0;height:.3mm;width:22mm;
+  background:linear-gradient(90deg,var(--acc),var(--acc-d))}
+.shots.n3{grid-template-columns:repeat(3,1fr)}
+.shots.n4{grid-template-columns:repeat(4,1fr)}
+.shot{position:relative;border:.3mm solid var(--line);border-radius:4mm;overflow:hidden;background:var(--surf2)}
+.shot img{width:100%;height:70mm;object-fit:cover;object-position:50% 32%}
+.shots.n4 .shot img{height:58mm}
+
+/* ── процесс ────────────────────────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:4mm;
+  margin-top:10mm;margin-bottom:6mm;flex:1}
+.step{position:relative;border:.3mm solid var(--line);border-radius:4.5mm;background:var(--surf);
+  padding:7mm 7mm 7mm 8mm;overflow:hidden;min-height:34mm}
+.step::before{content:"";position:absolute;left:0;top:0;bottom:0;width:.8mm;
+  background:linear-gradient(180deg,var(--acc-d),var(--acc))}
+.step-no{font-family:var(--disp);font-weight:800;font-size:20pt;color:transparent;-webkit-text-stroke:.35mm var(--line2)}
+.step h4{font-family:var(--disp);font-weight:700;font-size:12.5pt;line-height:1.2;margin-top:3mm}
+.step p{color:var(--tx2);font-size:9pt;line-height:1.55;margin-top:2.4mm}
+
+/* ── финальная полоса ───────────────────────────────────────────────────── */
+.end{justify-content:center;text-align:left}
+.end .kicker{color:var(--n-acc-br)}
+.end h2{font-size:34pt;margin-top:6mm;color:var(--n-tx);
+  background:linear-gradient(160deg,#fff 12%,var(--n-acc-br) 78%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.end .sub{color:var(--n-tx2);font-size:11pt;line-height:1.6;max-width:120mm;margin-top:6mm}
+.end-rows{margin-top:14mm;display:grid;gap:0;max-width:135mm}
+.end-row{display:grid;grid-template-columns:32mm 1fr;gap:6mm;align-items:baseline;
+  padding:4.6mm 0;border-bottom:.3mm solid rgba(var(--n-line-rgb),.26)}
+.end-row b{font-family:var(--mono);font-size:7.4pt;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--n-acc-br);font-weight:500}
+.end-row span{font-size:11pt;color:var(--n-tx)}
+.end .ring{position:absolute;right:-26mm;bottom:26mm;width:86mm;height:86mm;border-radius:50%;
+  display:grid;place-items:center;z-index:1;
+  background:radial-gradient(circle,rgba(var(--n-acc-rgb),.22),transparent 62%)}
+.end .ring img{width:38%;height:38%;border-radius:50%;
+  filter:hue-rotate(-103deg) saturate(.72) brightness(1.28)}
+.end-foot{position:absolute;left:17mm;right:17mm;bottom:14mm;z-index:3;
+  display:flex;justify-content:space-between;align-items:baseline;padding-top:5mm;
+  border-top:.3mm solid rgba(var(--n-line-rgb),.26);
+  font-family:var(--mono);font-size:7.4pt;letter-spacing:.16em;text-transform:uppercase;color:var(--n-tx3)}
+.end-foot b{color:var(--n-acc-br);font-weight:500}
+
+@page{size:A4;margin:0}
+@media print{
+  body{background:#fff;padding:0;gap:0}
+  .page{box-shadow:none}
+}
+@media screen{
+  .page{box-shadow:0 8mm 24mm rgba(20,16,6,.28)}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ 01 · обложка ═══════════════════════════════════════════════════ -->
+<section class="page dark cover">
+  <div class="meta">KANAGATLY MAHABAT<br />2026</div>
+  <div class="ring"><img src="../km-logo.png" alt="" /></div>
+  <span class="kicker"><span class="dot"></span>Инжиниринг · Монтаж · Программирование</span>
+  <div class="wordmark">KM</div>
+  <div class="full">Kanagatly Mahabat</div>
+  <div class="title">Каталог<br />услуг</div>
+  <p class="sub">Системы безопасности, связи и автоматизации под ключ — от обследования объекта до сервисного обслуживания.</p>
+  <div class="hair"></div>
+  <div class="cover-contacts">
+    <div><div class="lb">Телефон</div><div class="vl">+993 65 55 55 68</div></div>
+    <div><div class="lb">E-mail</div><div class="vl">kanagatlymahabat@gmail.com</div></div>
+    <div><div class="lb">Адрес</div><div class="vl">г. Ашхабад, ул. Московская</div></div>
+  </div>
+</section>
+
+<!-- ═══ 02 · содержание ════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="run"><span>KM — каталог услуг</span><b>Содержание</b></div>
+  <div class="rule"></div>
+  <span class="kicker" style="margin-top:12mm"><span class="dot"></span>Наши направления</span>
+  <h2 class="sec">Содержание</h2>
+  <div class="toc">
+    <div class="toc-row"><div class="toc-no">01</div><div><div class="toc-t">Системы контроля доступа</div><span class="toc-c">СКУД</span></div><div class="toc-p">с. 04</div></div>
+    <div class="toc-row"><div class="toc-no">02</div><div><div class="toc-t">Распознавание лиц</div><span class="toc-c">Face ID</span></div><div class="toc-p">с. 05</div></div>
+    <div class="toc-row"><div class="toc-no">03</div><div><div class="toc-t">Видеонаблюдение и камеры</div><span class="toc-c">Видеонаблюдение</span></div><div class="toc-p">с. 06</div></div>
+    <div class="toc-row"><div class="toc-no">04</div><div><div class="toc-t">Офисные локальные сети</div><span class="toc-c">ЛВС / Сети</span></div><div class="toc-p">с. 07</div></div>
+    <div class="toc-row"><div class="toc-no">05</div><div><div class="toc-t">Охранно-пожарная сигнализация</div><span class="toc-c">Охранно-пожарная</span></div><div class="toc-p">с. 08</div></div>
+    <div class="toc-row"><div class="toc-no">06</div><div><div class="toc-t">Кондиционеры и климат-системы</div><span class="toc-c">Кондиционеры</span></div><div class="toc-p">с. 09</div></div>
+    <div class="toc-row"><div class="toc-no">07</div><div><div class="toc-t">Шлагбаумы и дорожные датчики</div><span class="toc-c">Шлагбаумы</span></div><div class="toc-p">с. 10</div></div>
+    <div class="toc-row"><div class="toc-no">08</div><div><div class="toc-t">Программирование и разработка ПО</div><span class="toc-c">Программирование</span></div><div class="toc-p">с. 11</div></div>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">02</span></div>
+</section>
+
+<!-- ═══ 03 · о компании ════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="run"><span>KM — каталог услуг</span><b>О компании</b></div>
+  <div class="rule"></div>
+  <span class="kicker" style="margin-top:11mm"><span class="dot"></span>О компании</span>
+  <h2 class="sec">Инженерные решения для безопасности<br />и автоматизации объектов</h2>
+  <p class="lead">KM (Kanagatly Mahabat) — компания, выполняющая полный спектр слаботочных и инженерных работ: контроль доступа и распознавание лиц, видеонаблюдение, прокладку офисных сетей, охранно-пожарную сигнализацию, кондиционирование и автоматизацию. Мы реализуем проекты «под ключ» — от обследования и проектирования до монтажа, программирования, пусконаладки и сервисного обслуживания.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="snum">8</div><div class="slab">направлений работ</div></div>
+    <div class="stat"><div class="snum">Под ключ</div><div class="slab">полный цикл</div></div>
+    <div class="stat"><div class="snum">Гарантия</div><div class="slab">на оборудование и монтаж</div></div>
+    <div class="stat"><div class="snum">Сервис</div><div class="slab">техническая поддержка</div></div>
+  </div>
+
+  <span class="kicker" style="margin-top:11mm"><span class="dot"></span>Почему KM</span>
+  <div class="why">
+    <div class="why-card"><div class="why-no">01</div><h4>Полный цикл «под ключ»</h4><p>От обследования объекта до сервисного обслуживания — один подрядчик на все системы.</p></div>
+    <div class="why-card"><div class="why-no">02</div><h4>Опытная инженерная команда</h4><p>Специалисты по слаботочным, сетевым и пожарным системам.</p></div>
+    <div class="why-card"><div class="why-no">03</div><h4>Сертифицированное оборудование</h4><p>Надёжные компоненты проверенных производителей.</p></div>
+    <div class="why-card"><div class="why-no">04</div><h4>Гарантия и поддержка</h4><p>Гарантия на работы и оперативный сервис.</p></div>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">03</span></div>
+</section>
+
+<!-- ═══ 04 · СКУД ══════════════════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>СКУД</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">01</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg></div>
+    <div><div class="svc-code">СКУД</div><div class="svc-of">Направление 01 — 08</div></div>
+  </div>
+  <h2>Системы контроля доступа</h2>
+  <p class="lead">Проектирование и монтаж систем контроля и управления доступом: турникеты, электронные замки, контроллеры и считыватели. Гибкая настройка прав, учёт рабочего времени, журналирование и интеграция с распознаванием лиц.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Турникеты, электронные замки, контроллеры</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Карты, PIN-коды и биометрия</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Учёт рабочего времени и журнал событий</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Гибкая настройка прав доступа</li>
+  </ul>
+  <div class="shots n3">
+    <figure class="shot"><img src="../img/s1-1-poster.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/s1-2-poster.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/s1-3-poster.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">04</span></div>
+</section>
+
+<!-- ═══ 05 · Face ID ═══════════════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>Face ID</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">02</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M9 10v1M15 10v1M9.5 14.5c1.2 1 3.8 1 5 0"/></svg></div>
+    <div><div class="svc-code">Face ID</div><div class="svc-of">Направление 02 — 08</div></div>
+  </div>
+  <h2>Распознавание лиц</h2>
+  <p class="lead">Установка и настройка терминалов распознавания лиц для бесконтактного и быстрого прохода. Высокая точность идентификации, защита от подделки и интеграция в общую систему контроля доступа.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Бесконтактный проход по лицу</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Высокая скорость и точность</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Защита от подделки (anti-spoofing)</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Интеграция со СКУД и турникетами</li>
+  </ul>
+  <div class="shots n3">
+    <figure class="shot"><img src="../img/faceid-1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/faceid-2.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/faceid-3.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">05</span></div>
+</section>
+
+<!-- ═══ 06 · видеонаблюдение ═══════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>Видеонаблюдение</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">03</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7H14a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 16z"/><path d="M15.5 11l4.5-2.2v7.4L15.5 14"/><circle cx="8" cy="12" r="2.2"/></svg></div>
+    <div><div class="svc-code">Видеонаблюдение</div><div class="svc-of">Направление 03 — 08</div></div>
+  </div>
+  <h2>Видеонаблюдение и камеры</h2>
+  <p class="lead">Проектирование и монтаж систем видеонаблюдения: IP- и аналоговые камеры, видеорегистраторы, настройка записи и удалённого доступа. Контроль территории и помещений в реальном времени.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>IP- и аналоговые камеры</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Запись и архив видео</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Удалённый доступ со смартфона</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Аналитика и детекция движения</li>
+  </ul>
+  <div class="shots n4">
+    <figure class="shot"><img src="../img/cctv-4.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/cctv-1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/cctv-3.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/cctv-2.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">06</span></div>
+</section>
+
+<!-- ═══ 07 · ЛВС ═══════════════════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>ЛВС / Сети</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">04</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v3M6 16v-2.5h12V16"/></svg></div>
+    <div><div class="svc-code">ЛВС / Сети</div><div class="svc-of">Направление 04 — 08</div></div>
+  </div>
+  <h2>Офисные локальные сети</h2>
+  <p class="lead">Прокладка и пусконаладочные работы офисных локальных сетей. Монтаж кабельных трасс, патч-панелей и серверных шкафов, тестирование и сертификация линий, настройка активного оборудования.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Прокладка СКС и кабельных трасс</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Монтаж патч-панелей и серверных шкафов</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Тестирование и сертификация линий</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Настройка коммутаторов и Wi-Fi</li>
+  </ul>
+  <div class="shots n3">
+    <figure class="shot"><img src="../img/lan-1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/lan-2.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/lan-3.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">07</span></div>
+</section>
+
+<!-- ═══ 08 · охранно-пожарная ══════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>Охранно-пожарная</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">05</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 4 4 4 8a4 4 0 1 1-8 0c0-2 1-3 2-4 0 2 2 2 2 4"/></svg></div>
+    <div><div class="svc-code">Охранно-пожарная</div><div class="svc-of">Направление 05 — 08</div></div>
+  </div>
+  <h2>Охранно-пожарная сигнализация</h2>
+  <p class="lead">Установка, подключение и программирование систем охранной и пожарной сигнализации. Монтаж извещателей и шлейфов, настройка приёмно-контрольных приборов, оповещение и управление эвакуацией.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Дымовые, тепловые и охранные извещатели</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Прокладка шлейфов и монтаж ПКП</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Программирование под конкретный объект</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Оповещение и управление эвакуацией</li>
+  </ul>
+  <div class="shots n4">
+    <figure class="shot"><img src="../img/fire-p1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/fire-p2.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/fire-p4.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/fire-p6.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">08</span></div>
+</section>
+
+<!-- ═══ 09 · кондиционеры ══════════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>Кондиционеры</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">06</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="7" rx="2"/><path d="M6 8.5h7"/><path d="M7 15c0 1.2 1 1.2 1 2.4M12 15c0 1.2 1 1.2 1 2.4M17 15c0 1.2 1 1.2 1 2.4"/></svg></div>
+    <div><div class="svc-code">Кондиционеры</div><div class="svc-of">Направление 06 — 08</div></div>
+  </div>
+  <h2>Кондиционеры и климат-системы</h2>
+  <p class="lead">Установка, подключение и программирование систем кондиционирования и климат-контроля. Настройка режимов работы, диспетчеризация и интеграция в системы автоматизации здания.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Монтаж и подключение кондиционеров</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Программирование режимов работы</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Диспетчеризация и автоматизация</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Сервис и обслуживание</li>
+  </ul>
+  <div class="shots n4">
+    <figure class="shot"><img src="../img/ac-1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/ac-2.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/ac-3.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/ac-4.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">09</span></div>
+</section>
+
+<!-- ═══ 10 · шлагбаумы ═════════════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>Шлагбаумы</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">07</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><path d="M4 20V10M4 10l16-4M4 13l16-4M4 16l13-3"/><circle cx="4" cy="20" r="1.4"/></svg></div>
+    <div><div class="svc-code">Шлагбаумы</div><div class="svc-of">Направление 07 — 08</div></div>
+  </div>
+  <h2>Шлагбаумы и дорожные датчики</h2>
+  <p class="lead">Монтаж автоматических шлагбаумов и дорожных датчиков для организации въезда и контроля транспортных потоков. Индукционные петли и датчики присутствия обеспечивают автоматическую работу и интеграцию с распознаванием номеров.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Автоматические шлагбаумы для въезда</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Индукционные петли и датчики присутствия</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Защита от опускания на автомобиль</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Интеграция с распознаванием номеров</li>
+  </ul>
+  <div class="shots n3">
+    <figure class="shot"><img src="../img/s2-1-poster.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/s2-photo1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/s2-photo2.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">10</span></div>
+</section>
+
+<!-- ═══ 11 · программирование ══════════════════════════════════════════ -->
+<section class="page svc">
+  <div class="run"><span>KM — каталог услуг</span><b>Программирование</b></div>
+  <div class="rule"></div>
+  <div class="svc-watermark">08</div>
+  <div class="svc-head">
+    <div class="svc-badge"><svg viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></svg></div>
+    <div><div class="svc-code">Программирование</div><div class="svc-of">Направление 08 — 08</div></div>
+  </div>
+  <h2>Программирование и разработка ПО</h2>
+  <p class="lead">Программируем и настраиваем оборудование систем безопасности — видеорегистраторы и камеры Dahua, контроллеры СКУД, пожарные панели. Разрабатываем собственное ПО: мобильные приложения, backend и интеграции. Примеры — система видеонаблюдения Kanagatly VMS и курьерская платформа Chapar Express.</p>
+  <ul class="feats">
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Программирование оборудования Dahua</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Настройка пожарных панелей и контроллеров</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Мобильные приложения и backend</li>
+    <li><span class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>Интеграция систем, API и автоматизация</li>
+  </ul>
+  <div class="shots n3">
+    <figure class="shot"><img src="../img/cctv-vms.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/prog-1.jpg" alt="" /></figure>
+    <figure class="shot"><img src="../img/prog-2.jpg" alt="" /></figure>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">11</span></div>
+</section>
+
+<!-- ═══ 12 · как мы работаем ═══════════════════════════════════════════ -->
+<section class="page">
+  <div class="run"><span>KM — каталог услуг</span><b>Как мы работаем</b></div>
+  <div class="rule"></div>
+  <span class="kicker" style="margin-top:11mm"><span class="dot"></span>Полный цикл работ</span>
+  <h2 class="sec">Как мы работаем</h2>
+  <div class="steps">
+    <div class="step"><div class="step-no">01</div><h4>Обследование объекта</h4><p>Выезд на объект, замеры и оценка задач.</p></div>
+    <div class="step"><div class="step-no">02</div><h4>Проектирование</h4><p>Схемы, спецификации и подбор оборудования.</p></div>
+    <div class="step"><div class="step-no">03</div><h4>Поставка оборудования</h4><p>Сертифицированные компоненты под проект.</p></div>
+    <div class="step"><div class="step-no">04</div><h4>Монтаж и прокладка</h4><p>Кабельные трассы, установка и коммутация.</p></div>
+    <div class="step"><div class="step-no">05</div><h4>Программирование и пусконаладка</h4><p>Настройка, интеграция и запуск систем.</p></div>
+    <div class="step"><div class="step-no">06</div><h4>Сервисное обслуживание</h4><p>Гарантия, поддержка и плановый сервис.</p></div>
+  </div>
+  <div class="foot"><span>Kanagatly Mahabat · 2026</span><span class="pg">12</span></div>
+</section>
+
+<!-- ═══ 13 · контакты ══════════════════════════════════════════════════ -->
+<section class="page dark end">
+  <div class="ring"><img src="../km-logo.png" alt="" /></div>
+  <span class="kicker"><span class="dot" style="background:var(--n-acc)"></span>Связаться с нами</span>
+  <h2>Обсудим ваш проект</h2>
+  <p class="sub">Оставьте заявку — подберём решение под ваш объект и рассчитаем стоимость работ под ключ.</p>
+  <div class="end-rows">
+    <div class="end-row"><b>Телефон</b><span>+993 65 55 55 68</span></div>
+    <div class="end-row"><b>E-mail</b><span>kanagatlymahabat@gmail.com</span></div>
+    <div class="end-row"><b>Адрес</b><span>г. Ашхабад, ул. Московская</span></div>
+    <div class="end-row"><b>Компания</b><span>Kanagatly Mahabat</span></div>
+  </div>
+  <div class="end-foot"><span>© 2026 · Системы безопасности и автоматизации</span><b>KM</b></div>
+</section>
+
+</body>
+</html>

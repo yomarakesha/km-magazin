@@ -82,6 +82,7 @@ function BlockEditor({ title, data, onSave }: {
       {Object.entries(draft).map(([field, value]) => (
         <div className="adm-field" key={field}>
           <label>{FIELD_LABEL[field] ?? field}</label>
+          {FIELD_HINT[field] && <div className="adm-hint">{FIELD_HINT[field]}</div>}
           <ValueEditor value={value} onChange={(nv) => setDraft((d) => ({ ...d, [field]: nv }))} />
         </div>
       ))}
@@ -173,6 +174,11 @@ function blankLike(sample: unknown): unknown {
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
 }
+
+// Extra explanation shown under a field label where the value has a rule.
+const FIELD_HINT: Record<string, string> = {
+  stats: "Подстановка {services} выводит реальное число включённых услуг — цифру не нужно править вручную.",
+};
 
 // Friendly labels for the technical block field keys — no jargon in the UI.
 const FIELD_LABEL: Record<string, string> = {

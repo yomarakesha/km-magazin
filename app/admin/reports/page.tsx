@@ -75,7 +75,7 @@ export default function ReportsPage() {
             <div className="adm-card"><span>Заказов</span><b>{fmt(sales.orders)}</b></div>
             <div className="adm-card"><span>Средний чек</span><b>{fmt(sales.avg_check)} TMT</b></div>
             <div className="adm-card"><span>Себестоимость</span><b>{fmt(sales.cogs)} TMT</b></div>
-            <div className="adm-card"><span>Прибыль</span><b style={{ color: "var(--green-br)" }}>{fmt(sales.gross_profit)} TMT</b></div>
+            <div className="adm-card"><span>Прибыль</span><b style={{ color: "var(--acc-br)" }}>{fmt(sales.gross_profit)} TMT</b></div>
             <div className="adm-card"><span>Скидки</span><b>−{fmt(sales.discounts)} TMT</b></div>
           </div>
           {sales.cost_coverage != null && sales.cost_coverage < 1 && (
@@ -90,7 +90,7 @@ export default function ReportsPage() {
                 {sales.top_products.map((p) => (
                   <tr key={p.id}>
                     <td>{p.title}</td><td>{p.qty}</td><td>{fmt(p.revenue)}</td>
-                    <td style={{ color: p.profit >= 0 ? "var(--green-br)" : "#ff9a9a" }}>{fmt(p.profit)}</td>
+                    <td style={{ color: p.profit >= 0 ? "var(--acc-br)" : "#ff9a9a" }}>{fmt(p.profit)}</td>
                   </tr>
                 ))}
                 {sales.top_products.length === 0 && <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--tx3)", padding: 20 }}>Нет продаж за период</td></tr>}

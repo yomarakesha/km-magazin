@@ -147,7 +147,7 @@ export default function PosPage() {
               style={{ marginTop: 4 }}
             />
             {diff !== 0 && !soldInvalid && (
-              <span style={{ color: diff > 0 ? "#ffb86b" : "var(--green-br)", fontSize: 13 }}>
+              <span style={{ color: diff > 0 ? "#ffb86b" : "var(--acc-br)", fontSize: 13 }}>
                 {diff > 0 ? `скидка ${fmt(diff)}` : `наценка ${fmt(-diff)}`}
               </span>
             )}

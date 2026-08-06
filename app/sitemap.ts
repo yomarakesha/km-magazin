@@ -1,13 +1,14 @@
 import type { MetadataRoute } from "next";
+import { SHOP_ENABLED } from "@/lib/shop-flag";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const API = process.env.API_URL ?? "http://localhost:8000";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const urls: MetadataRoute.Sitemap = [
-    { url: SITE, changeFrequency: "weekly", priority: 1 },
-    { url: `${SITE}/shop`, changeFrequency: "daily", priority: 0.9 },
-  ];
+  const urls: MetadataRoute.Sitemap = [{ url: SITE, changeFrequency: "weekly", priority: 1 }];
+  // /shop 404s while the shop is off — keep its urls out of the sitemap
+  if (!SHOP_ENABLED) return urls;
+  urls.push({ url: `${SITE}/shop`, changeFrequency: "daily", priority: 0.9 });
   try {
     const res = await fetch(`${API}/api/shop/sitemap`, {
       cache: "no-store",

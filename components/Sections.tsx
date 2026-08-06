@@ -8,6 +8,9 @@ import LeadForm from "./LeadForm";
 
 export function About() {
   const { c } = useLang();
+  // {services} in a stat value renders the real number of published services,
+  // so the About figure can never drift from what the admin panel has enabled.
+  const fill = (v: string) => v.replace(/\{services\}/g, String(c.sections.length));
   return (
     <section id="about">
       <div className="wrap">
@@ -20,8 +23,8 @@ export function About() {
           <div className="stats">
             {c.stats.map((s, i) => (
               <Reveal key={i} className="stat" delay={i * 0.05}>
-                <div className="snum">{s[0]}</div>
-                <div className="slab">{s[1]}</div>
+                <div className="snum">{fill(s[0] ?? "")}</div>
+                <div className="slab">{fill(s[1] ?? "")}</div>
               </Reveal>
             ))}
           </div>
@@ -36,10 +39,9 @@ function ServiceBlock({ s, alt }: { s: Section; alt: boolean }) {
     <Reveal id={s.id} className={`svc${alt ? " alt" : ""}`}>
       <div className="svc-info">
         <div className="svc-head">
-          <Icon name={s.icon} className="svc-ic" />
-          <span className="code">{s.no} / {s.code}</span>
+          <span className="svc-badge"><Icon name={s.icon} className="svc-ic" /></span>
+          <div className="svc-no">{s.no}</div>
         </div>
-        <div className="svc-no">{s.no}</div>
         <h3>{s.title}</h3>
         <p>{s.body}</p>
         <ul className="feats">
@@ -69,7 +71,7 @@ export function Services() {
               <a className="dir" href={`#${s.id}`}>
                 <Icon name={s.icon} />
                 <b>{s.short}</b>
-                <span className="ar">{s.no} · {c.more} →</span>
+                <span className="ar">{c.more} →</span>
               </a>
             </Reveal>
           ))}
@@ -94,7 +96,6 @@ export function Process() {
         <div className="proc">
           {c.process.map((p, i) => (
             <Reveal key={i} className="step" delay={(i % 3) * 0.05}>
-              <div className="step-no">{p[0]}</div>
               <div className="step-t">{p[1]}</div>
             </Reveal>
           ))}
@@ -152,7 +153,6 @@ export function Contact() {
           <div className="cc-r">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/assets/km-logo.png" alt="KM" />
-            <div className="nm">KM</div>
           </div>
         </Reveal>
       </div>

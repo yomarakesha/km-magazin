@@ -36,12 +36,12 @@
         }
       },
       "about": {
-        "aboutCode": "00 / О КОМПАНИИ",
+        "aboutCode": "О КОМПАНИИ",
         "aboutTitle": "Инженерные решения для безопасности и автоматизации объектов",
         "aboutBody": "KM (Kanagatly Mahabat) — компания, выполняющая полный спектр слаботочных и инженерных работ: контроль доступа и распознавание лиц, видеонаблюдение, прокладку офисных сетей, охранно-пожарную сигнализацию, кондиционирование и автоматизацию. Мы реализуем проекты «под ключ» — от обследования объекта и проектирования до монтажа, программирования, пусконаладки и сервисного обслуживания.",
         "stats": [
           [
-            "8",
+            "{services}",
             "направлений работ"
           ],
           [
@@ -96,7 +96,7 @@
         ]
       },
       "advantages": {
-        "advCode": "ПОЧЕМУ KM",
+        "advCode": "ПОЧЕМУ KM — KANAGATLY MAHABAT",
         "advTitle": "Наши преимущества",
         "adv": [
           [
@@ -174,12 +174,12 @@
         }
       },
       "about": {
-        "aboutCode": "00 / KOMPANIÝA HAKDA",
+        "aboutCode": "KOMPANIÝA HAKDA",
         "aboutTitle": "Desgalaryň howpsuzlygy we awtomatlaşdyrylyşy üçin inžener çözgütleri",
         "aboutBody": "KM (Kanagatly Mahabat) — pes woltly we inžener işleriniň doly toplumyny ýerine ýetirýän kompaniýa: giriş gözegçiligi we ýüz tanamak, wideogözegçilik, ofis ulgamlaryny çekmek, gorag-ýangyn duýduryşy, kondisionerleme we awtomatlaşdyryş. Biz taslamalary «açar bilen» durmuşa geçirýäris — desgany barlamakdan we taslamakdan başlap, gurnama, programmirleme, işe goýbermek we hyzmat etmäge çenli.",
         "stats": [
           [
-            "8",
+            "{services}",
             "iş ugry"
           ],
           [
@@ -234,7 +234,7 @@
         ]
       },
       "advantages": {
-        "advCode": "NÄME ÜÇIN KM",
+        "advCode": "NÄME ÜÇIN KM — KANAGATLY MAHABAT",
         "advTitle": "Artykmaçlyklarymyz",
         "adv": [
           [
@@ -312,12 +312,12 @@
         }
       },
       "about": {
-        "aboutCode": "00 / ABOUT US",
+        "aboutCode": "ABOUT US",
         "aboutTitle": "Engineering solutions for facility security and automation",
         "aboutBody": "KM (Kanagatly Mahabat) is a company delivering the full range of low-voltage and engineering works: access control and face recognition, video surveillance, office network cabling, fire & security alarms, air conditioning and automation. We deliver turnkey projects — from site survey and design to installation, programming, commissioning and maintenance.",
         "stats": [
           [
-            "8",
+            "{services}",
             "areas of work"
           ],
           [
@@ -372,7 +372,7 @@
         ]
       },
       "advantages": {
-        "advCode": "WHY KM",
+        "advCode": "WHY KM — KANAGATLY MAHABAT",
         "advTitle": "Our advantages",
         "adv": [
           [

@@ -14,7 +14,7 @@ const KIND_LABEL: Record<MovementKind, string> = {
   adjust: "корректировка",
 };
 const KIND_COLOR: Record<MovementKind, string> = {
-  receipt: "var(--green-br)",
+  receipt: "var(--acc-br)",
   sale: "var(--tx2)",
   return: "#e8b34b",
   writeoff: "#ff9a9a",

@@ -159,7 +159,7 @@ export default function OrdersPage() {
                       <ul style={{ margin: 0, padding: "8px 16px", fontSize: 13 }}>
                         {o.items.map((it, k) => (
                           <li key={k}>
-                            {it.kind === "service" && <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--green-d)", border: "1px solid var(--green-d)", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>УСЛУГА</span>}
+                            {it.kind === "service" && <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--acc-d)", border: "1px solid var(--acc-d)", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>УСЛУГА</span>}
                             {it.title} — {it.qty} × {it.price} TMT = {it.qty * it.price} TMT
                           </li>
                         ))}

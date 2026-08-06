@@ -58,6 +58,7 @@ EOF
 API_URL=http://localhost:8000
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SHOP_ENABLED=0
 REVALIDATE_SECRET=$REV_SECRET
 EOF
         echo "  Создан .env.local (frontend)"
