@@ -6,7 +6,10 @@
 #   1. Sozdaet backend\.env s sluchajnymi klyuchami (esli net)
 #   2. Sozdaet Python venv i stavit zavisimosti
 #   3. Zapolnyaet BD demo-dannymi (esli net km.db)
-#   4. Zapuskaet backend :8000
+#   4. Sobiraet admin-panel (esli net sborki ili ishodniki izmenilis)
+#   5. Zapuskaet backend :8000 (admin na /admin)
+#
+# Avtoperezagruzka pri pravke koda: $env:KM_RELOAD = "1" pered zapuskom.
 
 $ErrorActionPreference = "Stop"
 $root    = Split-Path -Parent $PSScriptRoot
@@ -27,7 +30,7 @@ Write-Host ""
 
 # ── 1. backend/.env ───────────────────────────────────────────────────────────
 if (-not (Test-Path $envFile)) {
-    Write-Host "[1/4] Sozdaem backend\.env..." -ForegroundColor Cyan
+    Write-Host "[1/5] Sozdaem backend\.env..." -ForegroundColor Cyan
 
     $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
 
@@ -57,7 +60,7 @@ if (-not (Test-Path $envFile)) {
     Write-Host "  VNIMANIE: parol po umolchaniyu 'admin' - SMENITE v backend\.env pered publikatsiej!" -ForegroundColor Red
     Write-Host ""
 } else {
-    Write-Host "[1/4] backend\.env uzhe est - propuskaem" -ForegroundColor DarkGray
+    Write-Host "[1/5] backend\.env uzhe est - propuskaem" -ForegroundColor DarkGray
     $existingPwd = Get-Content $envFile | Where-Object { $_ -match '^ADMIN_PASSWORD=' }
     if ($existingPwd) {
         $existingPwd = $existingPwd -replace '^ADMIN_PASSWORD=', ''
@@ -76,7 +79,7 @@ foreach ($key in @("ADMIN_PASSWORD", "SECRET_KEY")) {
 
 # ── 2. Python venv + zavisimosti ─────────────────────────────────────────────
 if (-not (Test-Path $py)) {
-    Write-Host "[2/4] Sozdaem Python venv..." -ForegroundColor Cyan
+    Write-Host "[2/5] Sozdaem Python venv..." -ForegroundColor Cyan
 
     $pyCmd = $null
     foreach ($candidate in @("py", "python3", "python")) {
@@ -105,11 +108,11 @@ if (-not (Test-Path $py)) {
         exit 1
     }
     (Get-FileHash $req -Algorithm SHA256).Hash | Set-Content $reqStamp -Encoding utf8
-    Write-Host "[2/4] Python zavisimosti ustanovleny." -ForegroundColor Green
+    Write-Host "[2/5] Python zavisimosti ustanovleny." -ForegroundColor Green
 } elseif ((-not (Test-Path $reqStamp)) -or
           ((Get-Content $reqStamp -Raw).Trim() -ne (Get-FileHash $req -Algorithm SHA256).Hash)) {
     # venv sobran do togo, kak v requirements.txt dobavili paket - dostavlyaem
-    Write-Host "[2/4] requirements.txt izmenilsya - dostavlyaem zavisimosti..." -ForegroundColor Cyan
+    Write-Host "[2/5] requirements.txt izmenilsya - dostavlyaem zavisimosti..." -ForegroundColor Cyan
     & $py -m pip install -r $req
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Oshibka ustanovki Python-zavisimostej. Venv ostavlen kak est." -ForegroundColor Red
@@ -117,46 +120,79 @@ if (-not (Test-Path $py)) {
         exit 1
     }
     (Get-FileHash $req -Algorithm SHA256).Hash | Set-Content $reqStamp -Encoding utf8
-    Write-Host "[2/4] Python zavisimosti obnovleny." -ForegroundColor Green
+    Write-Host "[2/5] Python zavisimosti obnovleny." -ForegroundColor Green
 } else {
-    Write-Host "[2/4] Python venv aktualen - propuskaem" -ForegroundColor DarkGray
+    Write-Host "[2/5] Python venv aktualen - propuskaem" -ForegroundColor DarkGray
 }
 
 # ── 3. Seed demo-dannyh ───────────────────────────────────────────────────────
 if (-not (Test-Path $db)) {
-    Write-Host "[3/4] Zapolnyaem BD demo-dannymi..." -ForegroundColor Cyan
+    Write-Host "[3/5] Zapolnyaem BD demo-dannymi..." -ForegroundColor Cyan
     $dataDir = Join-Path $backend "data"
     if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir | Out-Null }
     Push-Location $backend
     & $py -m app.seed_demo
     Pop-Location
-    Write-Host "[3/4] BD sozdana s demo-dannymi." -ForegroundColor Green
+    Write-Host "[3/5] BD sozdana s demo-dannymi." -ForegroundColor Green
 } else {
-    Write-Host "[3/4] BD uzhe sushchestvuet - propuskaem seed" -ForegroundColor DarkGray
+    Write-Host "[3/5] BD uzhe sushchestvuet - propuskaem seed" -ForegroundColor DarkGray
 }
 
-# ── Admin-panel (admin\) - sobiraem, esli est npm i net gotovoj sborki ───────
-if (-not (Test-Path (Join-Path $root "admin\dist\index.html"))) {
-    if (Get-Command npm -ErrorAction SilentlyContinue) {
-        Write-Host "      Sobiraem admin-panel..." -ForegroundColor Cyan
-        Push-Location (Join-Path $root "admin")
-        npm install --no-audit --no-fund
-        if ($LASTEXITCODE -eq 0) { npm run build }
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "      VNIMANIE: sborka admin ne udalas - API rabotaet, /admin net." -ForegroundColor Yellow
-        }
-        Pop-Location
+# ── 4. Admin-panel (admin\) ─────────────────────────────────────────────────
+# Hash vsego, iz chego sobiraetsya admin: posle git pull s izmeneniyami
+# admin peresobiraetsya, a ne otdaet staruyu sborku.
+$admin      = Join-Path $root "admin"
+$adminStamp = Join-Path $admin "dist\.build.sha"
+function Get-AdminHash {
+    $parts = @("src", "public", "index.html", "package.json", "package-lock.json", "vite.config.ts", "tsconfig.json") |
+        ForEach-Object { Join-Path $admin $_ } | Where-Object { Test-Path $_ }
+    $files = Get-ChildItem -Path $parts -Recurse -File | Sort-Object FullName
+    $joined = ($files | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash }) -join ""
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($joined)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    return ([System.BitConverter]::ToString($sha.ComputeHash($bytes)) -replace "-", "")
+}
+$adminNow   = Get-AdminHash
+$adminBuilt = Test-Path (Join-Path $admin "dist\index.html")
+if ($adminBuilt -and (Test-Path $adminStamp) -and ((Get-Content $adminStamp -Raw).Trim() -eq $adminNow)) {
+    Write-Host "[4/5] Admin-panel sobrana i aktualna - propuskaem" -ForegroundColor DarkGray
+} elseif (Get-Command npm -ErrorAction SilentlyContinue) {
+    Write-Host "[4/5] Sobiraem admin-panel..." -ForegroundColor Cyan
+    Push-Location $admin
+    npm install --no-audit --no-fund
+    if ($LASTEXITCODE -eq 0) { npm run build }
+    $buildOk = ($LASTEXITCODE -eq 0)
+    Pop-Location
+    if ($buildOk) {
+        $adminNow | Set-Content $adminStamp -Encoding ascii
+        Write-Host "[4/5] Admin-panel sobrana." -ForegroundColor Green
+    } elseif ($adminBuilt) {
+        Write-Host "      VNIMANIE: sborka ne udalas - ostaetsya predydushchaya versiya admin." -ForegroundColor Yellow
     } else {
-        Write-Host "      npm ne najden - admin-panel ne sobrana (nuzhen Node.js 20+)." -ForegroundColor Yellow
+        Write-Host "      VNIMANIE: sborka ne udalas - API rabotaet, /admin nedostupna." -ForegroundColor Yellow
     }
+} elseif ($adminBuilt) {
+    Write-Host "[4/5] npm ne najden - ispolzuem imeyushchuyusya (vozmozhno ustarevshuyu) sborku admin." -ForegroundColor Yellow
+} else {
+    Write-Host "[4/5] npm ne najden - admin-panel ne sobrana (nuzhen Node.js 20+). API rabotaet." -ForegroundColor Yellow
 }
 
-# ── 4. Zapusk servera ────────────────────────────────────────────────────────
-Write-Host "[4/4] Zapuskaem backend..." -ForegroundColor Cyan
+# ── 5. Zapusk servera ────────────────────────────────────────────────────────
+# Zanyatyj port - chastaya prichina "lozhnogo OK": proverka nizhe dostuchalas by
+# do chuzhogo processa. Proveryaem zaranee.
+$probe = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, 8000)
+try { $probe.Start(); $probe.Stop() } catch {
+    Write-Host "OSHIBKA: port 8000 uzhe zanyat (vozmozhno, backend uzhe zapushchen)." -ForegroundColor Red
+    Write-Host "Ostanovite tot process i zapustite skript snova." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "[5/5] Zapuskaem backend..." -ForegroundColor Cyan
+$reload = if ($env:KM_RELOAD -eq "1") { "--reload" } else { "" }
 
 Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
-    "Write-Host 'Backend :8000' -ForegroundColor Green; Set-Location '$backend'; & '$py' -m uvicorn app.main:app --reload --port 8000"
+    "Write-Host 'Backend :8000' -ForegroundColor Green; Set-Location '$backend'; & '$py' -m uvicorn app.main:app $reload --port 8000"
 )
 
 # ── Smoke: zhdem zhivoj otvet, a ne prosto zapushchennyj process ─────────────
