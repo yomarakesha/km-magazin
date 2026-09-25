@@ -12,7 +12,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, type Lang } from "./api";
+import { ApiError, mediaUrl, type Lang } from "./api";
 
 // ---------------------------------------------------------------- formatting
 const nf = new Intl.NumberFormat("ru-RU");
@@ -270,4 +270,73 @@ export function Qty({ value, onChange, min = 1 }: { value: number; onChange: (v:
 
 export function confirmAction(text: string): boolean {
   return window.confirm(text);
+}
+
+/** Single picture slot (category tile, service card): preview, replace, remove. */
+export function PictureField({
+  image,
+  aspect = "1 / 1",
+  hint,
+  disabled,
+  onUpload,
+  onRemove,
+}: {
+  image: string | null;
+  aspect?: string;
+  hint?: string;
+  disabled?: boolean;
+  onUpload: (file: File) => Promise<unknown>;
+  onRemove: () => Promise<unknown>;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="stack" style={{ gap: 10 }}>
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={() => input.current?.click()}
+        style={{
+          aspectRatio: aspect, width: "100%", borderRadius: 12, border: "1px dashed var(--line)", background: "var(--bg)",
+          display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: disabled ? "default" : "pointer", padding: 0,
+        }}
+      >
+        {image ? (
+          <img src={mediaUrl(image)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", background: "var(--white)" }} />
+        ) : (
+          <span className="muted small">{busy ? "Загрузка…" : "Нажмите, чтобы выбрать фото"}</span>
+        )}
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) act(() => onUpload(f));
+        }}
+      />
+      {hint && <span className="muted small">{hint}</span>}
+      {image && !disabled && (
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => act(onRemove)}>
+          Убрать фото
+        </Button>
+      )}
+      <ErrorBox error={error} />
+    </div>
+  );
 }

@@ -7,14 +7,15 @@
   --blue: #1e6aee;
   --link: #1e7bff;
   --red: #ee1e1e;
-  --green: #1a9a4b;
+  --green: #34c759;
+  --green-text: #1f8a3c; /* readable text on white; --green is the Figma accent */
   --amber: #c98a00;
   --line: rgba(51, 51, 51, 0.15);
   --line-soft: rgba(51, 51, 51, 0.08);
   --bg: #f7f7f8;
   --blue-soft: rgba(30, 106, 238, 0.08);
   --red-soft: rgba(238, 30, 30, 0.08);
-  --green-soft: rgba(26, 154, 75, 0.1);
+  --green-soft: rgba(52, 199, 89, 0.12);
   --amber-soft: rgba(201, 138, 0, 0.12);
   --shadow: 0 -10px 25px rgba(51, 51, 51, 0.02), 0 4px 16px rgba(51, 51, 51, 0.04);
   --r-input: 12px;
@@ -196,7 +197,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .badge.red { background: var(--red); color: var(--white); }
 .badge.soft-blue { background: var(--blue-soft); color: var(--blue); }
 .badge.soft-red { background: var(--red-soft); color: var(--red); }
-.badge.soft-green { background: var(--green-soft); color: var(--green); }
+.badge.soft-green { background: var(--green-soft); color: var(--green-text); }
 .badge.soft-amber { background: var(--amber-soft); color: var(--amber); }
 
 .price { font-weight: 700; white-space: nowrap; }
@@ -210,7 +211,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 /* ---- feedback ---- */
 .alert { padding: 12px 16px; border-radius: var(--r-input); font-size: 13.5px; }
 .alert.error { background: var(--red-soft); color: var(--red); }
-.alert.ok { background: var(--green-soft); color: var(--green); }
+.alert.ok { background: var(--green-soft); color: var(--green-text); }
 .empty { padding: 48px 20px; text-align: center; color: var(--gray); display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .empty b { color: var(--black); font-size: 16px; }
 .spinner {

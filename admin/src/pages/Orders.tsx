@@ -168,6 +168,12 @@ function OrderModal({ order, onClose, onChanged, onDeleted }: { order: Order; on
           </span>
         </div>
       )}
+      {order.delivery > 0 && (
+        <div className="row between">
+          <span>Доставка</span>
+          <b className="mono">{money(order.delivery)}</b>
+        </div>
+      )}
       <div className="total-line">
         <span style={{ fontWeight: 800 }}>Итого</span>
         <b>{money(order.total)}</b>

@@ -51,7 +51,7 @@ export default function Movements() {
                         <td>
                           <Badge tone={KIND[m.kind].tone}>{KIND[m.kind].label}</Badge>
                         </td>
-                        <td className="right mono" style={{ color: m.qty_delta > 0 ? "var(--green)" : m.qty_delta < 0 ? "var(--red)" : undefined }}>
+                        <td className="right mono" style={{ color: m.qty_delta > 0 ? "var(--green-text)" : m.qty_delta < 0 ? "var(--red)" : undefined }}>
                           {m.qty_delta > 0 ? "+" : ""}
                           {m.qty_delta}
                         </td>

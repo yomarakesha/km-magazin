@@ -46,6 +46,13 @@ const json = (method: string, body?: unknown): RequestInit => ({
   body: body === undefined ? undefined : JSON.stringify(body),
 });
 
+/** multipart body with a single "file" field */
+function upload(file: File): RequestInit {
+  const form = new FormData();
+  form.append("file", file);
+  return { method: "POST", body: form };
+}
+
 function qs(params: Record<string, string | number | boolean | null | undefined>): string {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -83,6 +90,8 @@ export const api = {
   updateCategory: (id: number, body: CategoryIn) =>
     req<Category>(`/api/admin/shop/categories/${id}`, json("PUT", body)),
   deleteCategory: (id: number) => req(`/api/admin/shop/categories/${id}`, json("DELETE")),
+  uploadCategoryImage: (id: number, file: File) => req<Category>(`/api/admin/shop/categories/${id}/image`, upload(file)),
+  deleteCategoryImage: (id: number) => req<Category>(`/api/admin/shop/categories/${id}/image`, json("DELETE")),
   reorderCategories: (ids: number[]) => req("/api/admin/shop/categories/reorder", json("POST", { ids })),
 
   // category attributes
@@ -102,6 +111,8 @@ export const api = {
   updateService: (id: number, body: Partial<ShopServiceIn> & { category_id?: number }) =>
     req<ShopService>(`/api/admin/shop/services/${id}`, json("PUT", body)),
   deleteService: (id: number) => req(`/api/admin/shop/services/${id}`, json("DELETE")),
+  uploadServiceImage: (id: number, file: File) => req<ShopService>(`/api/admin/shop/services/${id}/image`, upload(file)),
+  deleteServiceImage: (id: number) => req<ShopService>(`/api/admin/shop/services/${id}/image`, json("DELETE")),
 
   // products
   products: (categoryId?: number) => req<Product[]>(`/api/admin/shop/products${qs({ category_id: categoryId })}`),
@@ -237,6 +248,7 @@ export interface Order {
   payment_status: PaymentStatus;
   total: number;
   promo_code: string;
+  delivery: number;
   discount: number;
   created_at: string;
   items: { product_id: number | null; service_id: number | null; kind: "product" | "service"; title: string; price: number; qty: number }[];
@@ -264,6 +276,7 @@ export interface Category {
   enabled: boolean;
   sort_order: number;
   parent_id: number | null;
+  image: string | null;
   product_count: number;
   translations: { lang: Lang; name: string }[];
   attributes: Attribute[];
@@ -287,6 +300,7 @@ export interface ShopService {
   category_id: number;
   price: number;
   price_from: boolean;
+  image: string | null;
   currency: string;
   icon: string;
   enabled: boolean;
@@ -422,6 +436,7 @@ export interface Settings {
   hours_ru: string;
   hours_tk: string;
   hours_en: string;
+  delivery_fee: number;
 }
 
 export type LeadStatus = "new" | "read" | "done";
@@ -535,6 +550,7 @@ export interface SalesReport {
   orders: number;
   revenue: number;
   discounts: number;
+  delivery: number;
   cogs: number;
   gross_profit: number;
   avg_check: number;

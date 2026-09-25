@@ -67,7 +67,7 @@ function SalesReport({ from, to }: { from: string; to: string }) {
               Период: {r.from} — {r.to}
             </p>
             <div className="grid4">
-              <Stat k="Выручка" v={money(r.revenue)} sub={`${num(r.orders)} продаж`} />
+              <Stat k="Выручка" v={money(r.revenue)} sub={`${num(r.orders)} продаж${r.delivery ? ` · доставка ${money(r.delivery)}` : ""}`} />
               <Stat k="Валовая прибыль" v={money(r.gross_profit)} sub={`себестоимость ${money(r.cogs)}`} />
               <Stat k="Средний чек" v={money(r.avg_check)} />
               <Stat k="Долги к получению" v={money(r.debts_outstanding)} sub={`скидки ${money(r.discounts)}`} />

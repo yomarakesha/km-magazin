@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { api, type Category } from "../api";
+import { api, mediaUrl, type Category } from "../api";
 import { Badge, Button, Card, Empty, Loaded, PageHead, useAction, useLoad } from "../ui";
 import { catName, categoryTree } from "./Products";
 
@@ -49,7 +49,8 @@ export default function Categories() {
                     {categoryTree(cats).map(({ cat: c, depth }) => (
                       <tr key={c.id} className="clickable" onClick={() => nav(`/categories/${c.id}`)}>
                         <td>
-                          <div className="title" style={{ paddingLeft: depth * 24, fontWeight: depth ? 400 : 600 }}>
+                          <div className="title row" style={{ paddingLeft: depth * 24, fontWeight: depth ? 400 : 600, gap: 10, flexWrap: "nowrap" }}>
+                            {c.image && <img className="thumb" src={mediaUrl(c.image)} alt="" style={{ width: 36, height: 36, borderRadius: 8 }} />}
                             {depth > 0 && <span className="muted">└ </span>}
                             {catName(c)} {!c.enabled && <Badge>Скрыта</Badge>}
                           </div>

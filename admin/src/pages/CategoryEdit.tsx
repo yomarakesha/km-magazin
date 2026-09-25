@@ -13,6 +13,7 @@ import {
   Loaded,
   Modal,
   PageHead,
+  PictureField,
   Select,
   confirmAction,
   useAction,
@@ -117,6 +118,7 @@ function Editor({ cat, cats, onSaved }: { cat: Category | null; cats: Category[]
             <p className="muted small">Фильтры и услуги можно добавить после создания категории.</p>
           )}
         </div>
+        <div className="stack">
         <Card title="Размещение">
           <Field label="Родительская категория">
             <Select value={f.parent_id ?? ""} onChange={(e) => setF({ ...f, parent_id: e.target.value ? Number(e.target.value) : null })}>
@@ -136,6 +138,17 @@ function Editor({ cat, cats, onSaved }: { cat: Category | null; cats: Category[]
             Показывать на сайте
           </Check>
         </Card>
+        {cat && (
+          <Card title="Фото плитки">
+            <PictureField
+              image={cat.image}
+              hint="Плитка на странице раздела каталога (например, «Компьютеры»)"
+              onUpload={(file) => api.uploadCategoryImage(cat.id, file).then(onSaved)}
+              onRemove={() => api.deleteCategoryImage(cat.id).then(onSaved)}
+            />
+          </Card>
+        )}
+        </div>
       </div>
     </>
   );
@@ -307,7 +320,10 @@ function Services({ cat }: { cat: Category }) {
         <ServiceModal
           categoryId={cat.id}
           svc={edit === "new" ? null : edit}
-          onClose={() => setEdit(null)}
+          onClose={() => {
+            setEdit(null);
+            state.reload(); // picture uploads save immediately
+          }}
           onDone={() => {
             setEdit(null);
             state.reload();

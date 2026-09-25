@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LANGS, api, type Category, type Lang, type ShopService, type ShopServiceIn, type ShopServiceTr } from "../api";
+import { LANGS, api, mediaUrl, type Category, type Lang, type ShopService, type ShopServiceIn, type ShopServiceTr } from "../api";
 import {
   Badge,
   Button,
@@ -14,6 +14,7 @@ import {
   Modal,
   NumInput,
   PageHead,
+  PictureField,
   Select,
   Textarea,
   confirmAction,
@@ -58,6 +59,9 @@ export default function Services() {
                           const ru = s.translations.find((t) => t.lang === "ru");
                           return (
                             <tr key={s.id} className="clickable" onClick={() => setEdit(s)}>
+                              <td style={{ width: 88 }}>
+                                {s.image ? <img className="thumb" src={mediaUrl(s.image)} alt="" style={{ objectFit: "cover" }} /> : <div className="thumb empty">нет</div>}
+                              </td>
                               <td>
                                 <div className="title">
                                   {serviceTitle(s)} {!s.enabled && <Badge>Скрыта</Badge>}
@@ -78,7 +82,10 @@ export default function Services() {
               <ServiceModal
                 svc={edit === "new" ? null : edit}
                 cats={cats}
-                onClose={() => setEdit(null)}
+                onClose={() => {
+                  setEdit(null);
+                  state.reload(); // picture uploads save immediately
+                }}
                 onDone={() => {
                   setEdit(null);
                   state.reload();
@@ -110,6 +117,7 @@ export function ServiceModal({
 }) {
   const { busy, error, run } = useAction();
   const [lang, setLang] = useState<Lang>("ru");
+  const [image, setImage] = useState<string | null>(svc?.image ?? null);
   const [catId, setCatId] = useState<number>(svc?.category_id ?? categoryId ?? cats?.[0]?.id ?? 0);
   const [f, setF] = useState<ShopServiceIn>(() => ({
     slug: svc?.slug ?? "",
@@ -182,6 +190,21 @@ export function ServiceModal({
             </Select>
           </Field>
         )}
+      </div>
+      <div className="grid3">
+        <div>
+          <span className="lbl small">Фото карточки</span>
+          {svc ? (
+            <PictureField
+              image={image}
+              aspect="626 / 226"
+              onUpload={(file) => api.uploadServiceImage(svc.id, file).then((r) => setImage(r.image))}
+              onRemove={() => api.deleteServiceImage(svc.id).then((r) => setImage(r.image))}
+            />
+          ) : (
+            <p className="muted small">Фото можно добавить после создания.</p>
+          )}
+        </div>
       </div>
       <div className="row">
         <Check checked={f.price_from} onChange={(v) => setF({ ...f, price_from: v })}>

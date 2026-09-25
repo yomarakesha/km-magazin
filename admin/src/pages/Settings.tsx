@@ -41,6 +41,18 @@ export default function SettingsPage() {
                   </Field>
                 </div>
               </Card>
+              <Card title="Доставка">
+                <div className="grid3">
+                  <Field label="Стоимость доставки, TMT" hint="Прибавляется к итогу каждого заказа с сайта. 0 — бесплатно">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={f.delivery_fee}
+                      onChange={(e) => setF((s) => (s ? { ...s, delivery_fee: Math.max(0, Number(e.target.value) || 0) } : s))}
+                    />
+                  </Field>
+                </div>
+              </Card>
               {(["ru", "tk", "en"] as const).map((l) => (
                 <Card key={l} title={LANG_NAMES[l]}>
                   <div className="grid2">
