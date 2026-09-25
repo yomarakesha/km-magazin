@@ -323,8 +323,9 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
-def _brand_slug_default(ctx) -> str:
-    return slugify(ctx.get_current_parameters().get("name") or "")
+def _brand_slug_default(ctx) -> str | None:
+    # non-Latin names ("Болид") slugify to "" — leave NULL rather than clash
+    return slugify(ctx.get_current_parameters().get("name") or "") or None
 
 
 class ShopBrand(Base):

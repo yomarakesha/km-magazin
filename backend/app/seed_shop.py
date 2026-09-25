@@ -25,107 +25,203 @@ from .models import (
 
 LANGS = ("ru", "tk", "en")
 
-# Each category: slug, names per lang, attribute defs, products.
-# Attribute def: key, type, unit, labels{lang}.
-# Product: slug, price, in_stock, titles{lang}, short{lang}, attrs{key: value}.
+
+def _attr(key: str, type_: str, unit: str, ru: str, tk: str, en: str) -> dict:
+    return {"key": key, "type": type_, "unit": unit, "labels": {"ru": ru, "tk": tk, "en": en}}
+
+
+def _names(ru: str, tk: str, en: str) -> dict:
+    return {"ru": ru, "tk": tk, "en": en}
+
+
+# Catalog mirrors the Figma design (nav: Компьютеры / Безопасность / Сетевое
+# оборудование). Each category: slug, names, optional parent, attribute defs,
+# products. Product: slug, price, optional old_price/stock_qty/is_new/brand,
+# title and short (a plain string is used for every language), attrs, and
+# optional body/specs (ru only; tk/en fall back to empty).
 DATA = [
-    {
-        "slug": "computers",
-        "names": {"ru": "Компьютеры", "tk": "Kompýuterler", "en": "Computers"},
-        "attributes": [
-            {"key": "cpu", "type": "select", "unit": "", "labels": {"ru": "Процессор", "tk": "Prosessor", "en": "CPU"}},
-            {"key": "ram", "type": "number", "unit": "GB", "labels": {"ru": "Память", "tk": "Ýat", "en": "RAM"}},
-            {"key": "gpu", "type": "select", "unit": "", "labels": {"ru": "Видеокарта", "tk": "Wideokarta", "en": "GPU"}},
-            {"key": "storage", "type": "number", "unit": "GB", "labels": {"ru": "Накопитель", "tk": "Disk", "en": "Storage"}},
-        ],
-        "products": [
-            {"slug": "pc-gamer-pro", "price": 27000, "in_stock": True, "stock_qty": 3,
-             "titles": {"ru": "Игровой ПК Gamer Pro", "tk": "Oýun kompýuteri Gamer Pro", "en": "Gamer Pro Desktop"},
-             "short": {"ru": "Core i7, RTX 4070, 32 ГБ", "tk": "Core i7, RTX 4070, 32 GB", "en": "Core i7, RTX 4070, 32 GB"},
-             "attrs": {"cpu": "Core i7", "ram": "32", "gpu": "RTX 4070", "storage": "1024"}},
-            {"slug": "pc-gamer-base", "price": 18500, "old_price": 19900, "in_stock": True,
-             "titles": {"ru": "Игровой ПК Gamer Base", "tk": "Oýun kompýuteri Gamer Base", "en": "Gamer Base Desktop"},
-             "short": {"ru": "Core i5, RTX 4060, 16 ГБ", "tk": "Core i5, RTX 4060, 16 GB", "en": "Core i5, RTX 4060, 16 GB"},
-             "attrs": {"cpu": "Core i5", "ram": "16", "gpu": "RTX 4060", "storage": "512"}},
-            {"slug": "pc-office", "price": 7500, "in_stock": True,
-             "titles": {"ru": "Офисный ПК Office", "tk": "Ofis kompýuteri", "en": "Office Desktop"},
-             "short": {"ru": "Core i3, 8 ГБ, SSD 256", "tk": "Core i3, 8 GB, SSD 256", "en": "Core i3, 8 GB, SSD 256"},
-             "attrs": {"cpu": "Core i3", "ram": "8", "gpu": "Intel UHD", "storage": "256"}},
-            {"slug": "pc-ryzen-work", "price": 9800, "in_stock": False,
-             "titles": {"ru": "Рабочий ПК Ryzen", "tk": "Iş kompýuteri Ryzen", "en": "Ryzen Workstation"},
-             "short": {"ru": "Ryzen 5, 16 ГБ, SSD 512", "tk": "Ryzen 5, 16 GB, SSD 512", "en": "Ryzen 5, 16 GB, SSD 512"},
-             "attrs": {"cpu": "Ryzen 5", "ram": "16", "gpu": "Radeon Vega", "storage": "512"}},
-        ],
-    },
-    {
-        "slug": "cameras",
-        "names": {"ru": "Камеры", "tk": "Kameralar", "en": "Cameras"},
-        "attributes": [
-            {"key": "resolution", "type": "select", "unit": "MP", "labels": {"ru": "Разрешение", "tk": "Çözgüt", "en": "Resolution"}},
-            {"key": "type", "type": "select", "unit": "", "labels": {"ru": "Тип", "tk": "Görnüşi", "en": "Type"}},
-        ],
-        "products": [
-            {"slug": "cam-dome-2mp", "price": 850, "old_price": 990, "in_stock": True, "stock_qty": 12,
-             "titles": {"ru": "Камера купольная 2 МП", "tk": "Gümmez kamera 2 MP", "en": "Dome Camera 2 MP"},
-             "short": {"ru": "Внутренняя, ИК-подсветка", "tk": "Içerki, IR yşyk", "en": "Indoor, IR night vision"},
-             "attrs": {"resolution": "2", "type": "Купольная"}},
-            {"slug": "cam-bullet-4mp", "price": 1200, "in_stock": True,
-             "titles": {"ru": "Камера цилиндрическая 4 МП", "tk": "Silindr kamera 4 MP", "en": "Bullet Camera 4 MP"},
-             "short": {"ru": "Уличная, IP67", "tk": "Daşarky, IP67", "en": "Outdoor, IP67"},
-             "attrs": {"resolution": "4", "type": "Цилиндрическая"}},
-            {"slug": "cam-ptz-8mp", "price": 4300, "in_stock": False,
-             "titles": {"ru": "Камера PTZ 8 МП", "tk": "PTZ kamera 8 MP", "en": "PTZ Camera 8 MP"},
-             "short": {"ru": "Поворотная, 20x зум", "tk": "Aýlanýan, 20x zum", "en": "Pan-tilt, 20x zoom"},
-             "attrs": {"resolution": "8", "type": "PTZ"}},
-        ],
-    },
-    {
-        "slug": "network",
-        "names": {"ru": "Сетевое оборудование", "tk": "Tor enjamlary", "en": "Networking"},
-        "attributes": [
-            {"key": "ports", "type": "number", "unit": "", "labels": {"ru": "Порты", "tk": "Portlar", "en": "Ports"}},
-            {"key": "speed", "type": "select", "unit": "", "labels": {"ru": "Скорость", "tk": "Tizlik", "en": "Speed"}},
-        ],
-        "products": [
-            {"slug": "switch-8", "price": 650, "in_stock": True,
-             "titles": {"ru": "Коммутатор 8 портов", "tk": "Kommutator 8 port", "en": "8-Port Switch"},
-             "short": {"ru": "Gigabit, неуправляемый", "tk": "Gigabit", "en": "Gigabit, unmanaged"},
-             "attrs": {"ports": "8", "speed": "1 Гбит"}},
-            {"slug": "switch-24", "price": 2100, "in_stock": True,
-             "titles": {"ru": "Коммутатор 24 порта", "tk": "Kommutator 24 port", "en": "24-Port Switch"},
-             "short": {"ru": "Gigabit, управляемый", "tk": "Gigabit, dolandyrylýan", "en": "Gigabit, managed"},
-             "attrs": {"ports": "24", "speed": "1 Гбит"}},
-            {"slug": "router-wifi6", "price": 1450, "in_stock": True,
-             "titles": {"ru": "Роутер Wi-Fi 6", "tk": "Wi-Fi 6 router", "en": "Wi-Fi 6 Router"},
-             "short": {"ru": "Двухдиапазонный, AX3000", "tk": "Iki diapazon, AX3000", "en": "Dual-band, AX3000"},
-             "attrs": {"ports": "4", "speed": "1 Гбит"}},
-        ],
-    },
-    {
-        "slug": "noutbuki",
-        "parent": "computers",
-        "names": {"ru": "Ноутбуки", "tk": "Noutbuklar", "en": "Laptops"},
-        "attributes": [
-            {"key": "cpu", "type": "select", "unit": "", "labels": {"ru": "Процессор", "tk": "Prosessor", "en": "CPU"}},
-            {"key": "ram", "type": "number", "unit": "GB", "labels": {"ru": "Память", "tk": "Ýat", "en": "RAM"}},
-            {"key": "storage", "type": "number", "unit": "GB", "labels": {"ru": "Накопитель", "tk": "Disk", "en": "Storage"}},
-            {"key": "screen", "type": "number", "unit": "\"", "labels": {"ru": "Экран", "tk": "Ekran", "en": "Screen"}},
-        ],
-        "products": [
-            {"slug": "laptop-pro-15", "price": 21000, "in_stock": True,
-             "titles": {"ru": "Ноутбук Pro 15", "tk": "Noutbuk Pro 15", "en": "Laptop Pro 15"},
-             "short": {"ru": "Core i7, 16 ГБ, SSD 1 ТБ", "tk": "Core i7, 16 GB, SSD 1 TB", "en": "Core i7, 16 GB, 1 TB SSD"},
-             "attrs": {"cpu": "Core i7", "ram": "16", "storage": "1024", "screen": "15.6"}},
-            {"slug": "laptop-air-14", "price": 14500, "in_stock": True,
-             "titles": {"ru": "Ноутбук Air 14", "tk": "Noutbuk Air 14", "en": "Laptop Air 14"},
-             "short": {"ru": "Core i5, 8 ГБ, SSD 512", "tk": "Core i5, 8 GB, SSD 512", "en": "Core i5, 8 GB, 512 SSD"},
-             "attrs": {"cpu": "Core i5", "ram": "8", "storage": "512", "screen": "14"}},
-            {"slug": "laptop-ryzen-16", "price": 12800, "in_stock": False,
-             "titles": {"ru": "Ноутбук Ryzen 16", "tk": "Noutbuk Ryzen 16", "en": "Laptop Ryzen 16"},
-             "short": {"ru": "Ryzen 7, 16 ГБ, SSD 512", "tk": "Ryzen 7, 16 GB, SSD 512", "en": "Ryzen 7, 16 GB, 512 SSD"},
-             "attrs": {"cpu": "Ryzen 7", "ram": "16", "storage": "512", "screen": "16"}},
-        ],
-    },
+    {"slug": "computers", "names": _names("Компьютеры", "Kompýuterler", "Computers"),
+     "attributes": [], "products": []},
+    {"slug": "cpu", "parent": "computers",
+     "names": _names("Процессоры (CPU)", "Prosessorlar (CPU)", "Processors (CPU)"),
+     "attributes": [
+         _attr("socket", "select", "", "Сокет", "Soket", "Socket"),
+         _attr("cores", "number", "", "Ядра", "Ýadrolar", "Cores"),
+     ],
+     "products": [
+         {"slug": "amd-ryzen-7-7800x3d", "brand": "AMD", "price": 6990, "stock_qty": 4,
+          "title": "AMD Ryzen 7 7800X3D", "short": "8 ядер, AM5, 3D V-Cache",
+          "attrs": {"socket": "AM5", "cores": "8"}},
+         {"slug": "intel-core-i5-13400f", "brand": "Intel", "price": 2890,
+          "title": "Intel Core i5-13400F", "short": "10 ядер, LGA1700",
+          "attrs": {"socket": "LGA1700", "cores": "10"}},
+         {"slug": "intel-core-i7-14700k", "brand": "Intel", "price": 5490, "old_price": 5990,
+          "title": "Intel Core i7-14700K", "short": "20 ядер, LGA1700",
+          "attrs": {"socket": "LGA1700", "cores": "20"}},
+     ]},
+    {"slug": "motherboards", "parent": "computers",
+     "names": _names("Материнские платы", "Ene platalar", "Motherboards"),
+     "attributes": [
+         _attr("socket", "select", "", "Сокет", "Soket", "Socket"),
+         _attr("form_factor", "select", "", "Форм-фактор", "Forma faktory", "Form factor"),
+     ],
+     "products": [
+         {"slug": "msi-mag-b650-tomahawk-wifi", "brand": "MSI", "price": 3190,
+          "title": "MSI MAG B650 Tomahawk WiFi", "short": "AM5, ATX, Wi‑Fi 6E",
+          "attrs": {"socket": "AM5", "form_factor": "ATX"}},
+         {"slug": "asus-tuf-gaming-b760m-plus", "brand": "ASUS", "price": 2290,
+          "title": "ASUS TUF Gaming B760M-Plus", "short": "LGA1700, mATX, DDR5",
+          "attrs": {"socket": "LGA1700", "form_factor": "mATX"}},
+     ]},
+    {"slug": "ram", "parent": "computers",
+     "names": _names("Оперативная память (RAM)", "Operatiw ýat (RAM)", "Memory (RAM)"),
+     "attributes": [
+         _attr("capacity", "number", "GB", "Объём", "Göwrüm", "Capacity"),
+         _attr("type", "select", "", "Тип", "Görnüşi", "Type"),
+     ],
+     "products": [
+         {"slug": "gskill-trident-z5-rgb-32gb-ddr5-6400", "brand": "G.Skill", "price": 1890, "is_new": True,
+          "title": "G.Skill Trident Z5 RGB 32GB DDR5-6400", "short": "2×16 ГБ, CL32",
+          "attrs": {"capacity": "32", "type": "DDR5"}},
+         {"slug": "kingston-fury-beast-16gb-ddr4-3200", "brand": "Kingston", "price": 890,
+          "title": "Kingston Fury Beast 16GB DDR4-3200", "short": "2×8 ГБ, CL16",
+          "attrs": {"capacity": "16", "type": "DDR4"}},
+     ]},
+    {"slug": "ssd", "parent": "computers",
+     "names": _names("Твердотельные накопители (SSD)", "SSD disklar", "Solid-state drives (SSD)"),
+     "attributes": [
+         _attr("capacity", "number", "GB", "Объём", "Göwrüm", "Capacity"),
+         _attr("interface", "select", "", "Интерфейс", "Interfeýs", "Interface"),
+     ],
+     "products": [
+         {"slug": "wd-black-sn850x-2tb", "brand": "WD", "price": 2690,
+          "title": "WD Black SN850X 2TB", "short": "NVMe PCIe 4.0, до 7300 МБ/с",
+          "attrs": {"capacity": "2048", "interface": "NVMe PCIe 4.0"}},
+         {"slug": "samsung-990-pro-1tb", "brand": "Samsung", "price": 1990,
+          "title": "Samsung 990 Pro 1TB", "short": "NVMe PCIe 4.0",
+          "attrs": {"capacity": "1024", "interface": "NVMe PCIe 4.0"}},
+         {"slug": "kingston-nv2-1tb", "brand": "Kingston", "price": 990, "old_price": 1190,
+          "title": "Kingston NV2 1TB", "short": "NVMe PCIe 4.0",
+          "attrs": {"capacity": "1024", "interface": "NVMe PCIe 4.0"}},
+     ]},
+    {"slug": "psu", "parent": "computers",
+     "names": _names("Блоки питания (PSU)", "Energiýa bloklary (PSU)", "Power supplies (PSU)"),
+     "attributes": [_attr("power", "number", "W", "Мощность", "Kuwwat", "Power")],
+     "products": [
+         {"slug": "corsair-rm850x", "brand": "Corsair", "price": 2190,
+          "title": "Corsair RM850x", "short": "850 Вт, 80+ Gold, модульный",
+          "attrs": {"power": "850"}},
+         {"slug": "deepcool-pk650d", "brand": "Deepcool", "price": 990,
+          "title": "Deepcool PK650D", "short": "650 Вт, 80+ Bronze",
+          "attrs": {"power": "650"}},
+     ]},
+    {"slug": "cases", "parent": "computers",
+     "names": _names("Корпуса", "Korpuslar", "Cases"),
+     "attributes": [_attr("form_factor", "select", "", "Форм-фактор", "Forma faktory", "Form factor")],
+     "products": [
+         {"slug": "lian-li-lancool-216-argb-white", "brand": "LIAN LI", "price": 1800, "is_new": True,
+          "title": "LIAN LI Lancool 216 ARGB White", "short": "ATX, 2×160 мм ARGB",
+          "attrs": {"form_factor": "ATX"}},
+         {"slug": "nzxt-h5-flow", "brand": "NZXT", "price": 1590,
+          "title": "NZXT H5 Flow", "short": "ATX, сетчатая панель",
+          "attrs": {"form_factor": "ATX"}},
+     ]},
+    {"slug": "builds", "parent": "computers",
+     "names": _names("Готовые сборки", "Taýýar ýygnamalar", "Ready-made PCs"),
+     "attributes": [_attr("cpu", "select", "", "Процессор", "Prosessor", "CPU")],
+     "products": [
+         {"slug": "km-gamer-ryzen-7-7800x3d", "price": 19000, "is_new": True, "stock_qty": 2,
+          "title": "KM Gamer · Ryzen 7 7800X3D", "short": "Ryzen 7 7800X3D, 32 ГБ DDR5, SSD 2 ТБ",
+          "body": "Готовый компьютер, собранный и протестированный в нашем магазине. "
+                  "Установим систему и драйверы, выдадим с гарантией.",
+          "attrs": {"cpu": "AMD Ryzen 7 7800X3D"}},
+         {"slug": "km-office-core-i5", "price": 7500,
+          "title": "KM Office · Core i5-13400F", "short": "Core i5, 16 ГБ, SSD 1 ТБ",
+          "attrs": {"cpu": "Intel Core i5-13400F"}},
+     ]},
+    {"slug": "security", "names": _names("Безопасность", "Howpsuzlyk", "Security"),
+     "attributes": [], "products": []},
+    {"slug": "cameras", "parent": "security",
+     "names": _names("Видеокамеры", "Wideokameralar", "Cameras"),
+     "attributes": [
+         _attr("resolution", "select", "MP", "Разрешение", "Çözgüt", "Resolution"),
+         _attr("type", "select", "", "Тип", "Görnüşi", "Type"),
+     ],
+     "products": [
+         {"slug": "hikvision-ds-2cd1043g2-i", "brand": "Hikvision", "price": 850, "old_price": 990, "stock_qty": 12,
+          "title": "Hikvision DS-2CD1043G2-I", "short": "4 МП, уличная, ИК до 30 м",
+          "attrs": {"resolution": "4", "type": "Цилиндрическая"}},
+         {"slug": "dahua-ipc-hdw1230t1-s5", "brand": "Dahua", "price": 650,
+          "title": "Dahua IPC-HDW1230T1-S5", "short": "2 МП, купольная, ИК до 30 м",
+          "attrs": {"resolution": "2", "type": "Купольная"}},
+         {"slug": "hikvision-ds-2de4425iw-de", "brand": "Hikvision", "price": 4300,
+          "title": "Hikvision DS-2DE4425IW-DE", "short": "4 МП, PTZ, 25× зум",
+          "attrs": {"resolution": "4", "type": "PTZ"}},
+     ]},
+    {"slug": "sensors", "parent": "security",
+     "names": _names("Датчики", "Datçikler", "Sensors"),
+     "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
+     "products": [
+         {"slug": "rubezh-ip-212-64-prima", "brand": "Рубеж", "price": 180,
+          "title": "Рубеж ИП 212-64 Прима", "short": "Дымовой извещатель, адресный",
+          "attrs": {"type": "Дымовой"}},
+         {"slug": "bolid-s2000-ip", "brand": "Болид", "price": 150,
+          "title": "Болид С2000-ИП", "short": "Тепловой извещатель, адресный",
+          "attrs": {"type": "Тепловой"}},
+         {"slug": "bolid-signal-20p", "brand": "Болид", "price": 1200, "is_new": True,
+          "title": "Болид Сигнал-20П", "short": "Прибор приёмно-контрольный, 20 шлейфов",
+          "attrs": {"type": "Прибор"}},
+     ]},
+    {"slug": "face-control", "parent": "security",
+     "names": _names("Терминалы Face Control", "Face Control terminallary", "Face Control terminals"),
+     "attributes": [_attr("faces", "number", "", "База лиц", "Ýüz binýady", "Face capacity")],
+     "products": [
+         {"slug": "hikvision-face-control-hk-043", "brand": "Hikvision", "price": 1200, "old_price": 1990,
+          "title": "HIKVISION Face Control HK-043", "short": "Экран 4.3\", Wi‑Fi, IP65",
+          "body": "Терминал распознавания лиц для учёта рабочего времени и контроля доступа. "
+                  "Быстрое распознавание, работа с картами.",
+          "specs": [
+              {"label": "База лиц", "value": "3 000"},
+              {"label": "Экран", "value": "4.3\""},
+              {"label": "Подключение", "value": "Wi‑Fi, TCP/IP"},
+              {"label": "Защита", "value": "IP65"},
+              {"label": "Гарантия", "value": "24 мес."},
+          ],
+          "attrs": {"faces": "3000"}},
+         {"slug": "dahua-asi7213x-t1", "brand": "Dahua", "price": 1500,
+          "title": "Dahua ASI7213X-T1", "short": "Экран 7\", карты, температура",
+          "attrs": {"faces": "10000"}},
+     ]},
+    {"slug": "network", "names": _names("Сетевое оборудование", "Tor enjamlary", "Networking"),
+     "attributes": [], "products": []},
+    {"slug": "switches", "parent": "network",
+     "names": _names("Коммутаторы", "Kommutatorlar", "Switches"),
+     "attributes": [_attr("ports", "number", "", "Порты", "Portlar", "Ports")],
+     "products": [
+         {"slug": "tp-link-tl-sg108", "brand": "TP-Link", "price": 350,
+          "title": "TP-Link TL-SG108", "short": "8 портов, Gigabit, неуправляемый",
+          "attrs": {"ports": "8"}},
+         {"slug": "ubiquiti-usw-lite-8-poe", "brand": "Ubiquiti", "price": 1650,
+          "title": "Ubiquiti USW-Lite-8-PoE", "short": "8 портов, 4 PoE+, управляемый",
+          "attrs": {"ports": "8"}},
+         {"slug": "mikrotik-crs326-24g-2s-in", "brand": "MikroTik", "price": 3200,
+          "title": "MikroTik CRS326-24G-2S+IN", "short": "24 порта Gigabit, 2×SFP+",
+          "attrs": {"ports": "24"}},
+     ]},
+    {"slug": "routers", "parent": "network",
+     "names": _names("Роутеры", "Routerler", "Routers"),
+     "attributes": [_attr("wifi", "select", "", "Wi‑Fi", "Wi‑Fi", "Wi‑Fi")],
+     "products": [
+         {"slug": "tp-link-archer-ax55", "brand": "TP-Link", "price": 1100, "is_new": True,
+          "title": "TP-Link Archer AX55", "short": "Wi‑Fi 6, AX3000",
+          "attrs": {"wifi": "Wi‑Fi 6"}},
+         {"slug": "keenetic-giga-kn-1012", "brand": "Keenetic", "price": 1450,
+          "title": "Keenetic Giga KN-1012", "short": "Wi‑Fi 6, AX1800, SFP",
+          "attrs": {"wifi": "Wi‑Fi 6"}},
+         {"slug": "mikrotik-hap-ax2", "brand": "MikroTik", "price": 1350,
+          "title": "MikroTik hAP ax²", "short": "Wi‑Fi 6, 5 портов Gigabit",
+          "attrs": {"wifi": "Wi‑Fi 6"}},
+     ]},
 ]
 
 
@@ -133,60 +229,74 @@ DATA = [
 # service: slug, price, icon, titles{lang}, short{lang}.
 SERVICES = {
     "computers": [
-        {"slug": "pc-repair", "price": 300, "icon": "wrench",
-         "titles": {"ru": "Ремонт компьютера", "tk": "Kompýuter abatlamak", "en": "PC repair"},
-         "short": {"ru": "Диагностика и ремонт", "tk": "Diagnostika we abatlaýyş", "en": "Diagnostics & repair"}},
-        {"slug": "os-reinstall", "price": 150, "icon": "refresh",
-         "titles": {"ru": "Переустановка ОС", "tk": "OS gaýtadan gurmak", "en": "OS reinstall"},
-         "short": {"ru": "Windows + драйверы + программы", "tk": "Windows + draýwerler", "en": "Windows + drivers + apps"}},
+        {"slug": "pc-build", "price": 250, "icon": "wrench",
+         "titles": _names("Сборка ПК", "Kompýuter ýygnamak", "PC assembly"),
+         "short": _names("Сборка, установка ОС и тестирование", "Ýygnamak, OS gurnamak we barlag",
+                         "Assembly, OS install and testing")},
+        {"slug": "pc-maintenance", "price": 150, "icon": "refresh",
+         "titles": _names("Профилактика", "Profilaktika", "Maintenance"),
+         "short": _names("Чистка, замена термопасты, проверка", "Arassalamak, termopasta çalyşmak",
+                         "Cleaning, thermal paste, check-up")},
+        {"slug": "pc-repair", "price": 100, "icon": "wrench",
+         "titles": _names("Ремонт", "Abatlamak", "Repair"),
+         "short": _names("Диагностика и замена комплектующих", "Diagnostika we bölekleri çalyşmak",
+                         "Diagnostics and part replacement")},
     ],
-    "cameras": [
+    "security": [
         {"slug": "cam-install", "price": 500, "icon": "wrench",
-         "titles": {"ru": "Монтаж камеры", "tk": "Kamera gurnamak", "en": "Camera installation"},
-         "short": {"ru": "Установка и подключение", "tk": "Gurnama we birikdirme", "en": "Mount & wiring"}},
-        {"slug": "cam-setup", "price": 200, "icon": "settings",
-         "titles": {"ru": "Настройка видеонаблюдения", "tk": "Wideo gözegçiligi sazlamak", "en": "CCTV setup"},
-         "short": {"ru": "ПО, запись, удалённый доступ", "tk": "Programma, ýazgy, uzak elýeterlik", "en": "Software, recording, remote access"}},
+         "titles": _names("Монтаж видеонаблюдения", "Wideo gözegçiligi gurnamak", "CCTV installation"),
+         "short": _names("Камеры, регистратор, просмотр со смартфона", "Kameralar, registrator, smartfondan görmek",
+                         "Cameras, recorder, phone viewing")},
     ],
     "network": [
-        {"slug": "net-setup", "price": 250, "icon": "settings",
-         "titles": {"ru": "Настройка сети", "tk": "Tor sazlamak", "en": "Network setup"},
-         "short": {"ru": "Роутеры, Wi-Fi, VLAN", "tk": "Routerler, Wi-Fi, VLAN", "en": "Routers, Wi-Fi, VLAN"}},
-        {"slug": "cabling", "price": 400, "icon": "wrench",
-         "titles": {"ru": "Прокладка кабеля", "tk": "Kabel çekmek", "en": "Cabling"},
-         "short": {"ru": "СКС, монтаж, обжим", "tk": "Gurnama, birikdirme", "en": "Structured cabling & crimping"}},
-    ],
-    "noutbuki": [
-        {"slug": "laptop-cleanup", "price": 180, "icon": "wrench",
-         "titles": {"ru": "Чистка ноутбука", "tk": "Noutbuk arassalamak", "en": "Laptop cleaning"},
-         "short": {"ru": "Термопаста, чистка от пыли", "tk": "Ýylylyk pastasy, tozan arassalaýyş", "en": "Thermal paste & dust cleanup"}},
+        {"slug": "net-setup", "price": 400, "icon": "settings",
+         "titles": _names("Установка и настройка сетевого оборудования", "Tor enjamlaryny gurnamak we sazlamak",
+                          "Network equipment setup"),
+         "short": _names("Проектирование, монтаж и администрирование сетей", "Tor taslamasy, gurnamak we dolandyrmak",
+                         "Network design, installation and administration")},
     ],
 }
 
 
-BRANDS = ["Hikvision", "Dell", "HP", "TP-Link", "Asus", "Lenovo", "Ubiquiti", "Logitech"]
+# Brands strip / brands page, in the order the design shows them. Cyrillic
+# names need an explicit slug (slugify keeps ASCII only).
+BRANDS = [
+    "Hikvision", "Kingston", "Dahua", "TP-Link", "Intel", "AMD", "ASUS", "LIAN LI",
+    ("Болид", "bolid"), "Ubiquiti", "Corsair", "MSI", "WD", "Seagate", "Deepcool",
+    ("Рубеж", "rubezh"), "MikroTik", "Logitech", "G.Skill", "Gigabyte", "Samsung", "Crucial",
+    "Toshiba", "be quiet!", "Seasonic", "NZXT", "Keenetic", "Mercusys", "TLK", "Hyperline",
+    "Keychron", "Dell", "HP",
+]
 
 SETTINGS = {
-    "phone": "+993 12 00-00-00",
-    "whatsapp": "99312000000",
-    "address_ru": "Ашхабад, ул. ...",
-    "address_tk": "Aşgabat, ... köç.",
-    "address_en": "Ashgabat, ... str.",
+    "phone": "+993 12 21 63 14",
+    "whatsapp": "",
+    "email": "kanagat22122022@gmail.com",
+    "address_ru": "г. Ашхабад, ул. Московская, дом 142, 1-ый этаж",
+    "address_tk": "Aşgabat ş., Moskowskaýa köçesi, 142-nji jaý, 1-nji gat",
+    "address_en": "142 Moskovskaya St., 1st floor, Ashgabat",
+    "hours_ru": "Пн–Сб: 9:00–19:00, Вс — выходной",
+    "hours_tk": "Db–Şb: 9:00–19:00, Ýb — dynç güni",
+    "hours_en": "Mon–Sat: 9:00–19:00, Sun — closed",
 }
 
 
 # sample reviews keyed by product slug: (name, rating, text, status)
 REVIEWS = {
-    "pc-gamer-pro": [
+    "km-gamer-ryzen-7-7800x3d": [
         ("Мердан", 5, "Отличная сборка, всё летает.", "approved"),
         ("Айна", 4, "Хороший ПК, доставили быстро.", "approved"),
     ],
-    "cam-dome-2mp": [
+    "hikvision-ds-2cd1043g2-i": [
         ("Сердар", 5, "Картинка чёткая даже ночью.", "approved"),
         ("Гость", 3, "Нормально за свои деньги.", "pending"),
     ],
-    "router-wifi6": [("Байрам", 5, "Wi-Fi стал гораздо стабильнее.", "approved")],
+    "tp-link-archer-ax55": [("Байрам", 5, "Wi-Fi стал гораздо стабильнее.", "approved")],
 }
+
+
+def _per_lang(v) -> dict:
+    return v if isinstance(v, dict) else {lang: v for lang in LANGS}
 
 
 def _wipe(db) -> None:
@@ -207,6 +317,14 @@ def seed_shop() -> None:
     db = SessionLocal()
     try:
         _wipe(db)
+        brand_by_name: dict[str, ShopBrand] = {}
+        for b_order, entry in enumerate(BRANDS):
+            name, slug = entry if isinstance(entry, tuple) else (entry, None)
+            brand = ShopBrand(name=name, sort_order=b_order, enabled=True)
+            if slug:
+                brand.slug = slug
+            db.add(brand)
+            brand_by_name[name] = brand
         n_prod = 0
         by_slug: dict[str, ShopCategory] = {}
         for c_order, c in enumerate(DATA):
@@ -229,12 +347,17 @@ def seed_shop() -> None:
             for p_order, p in enumerate(c["products"]):
                 prod = Product(
                     slug=p["slug"], price=p["price"], old_price=p.get("old_price"),
-                    currency="TMT", in_stock=p["in_stock"], stock_qty=p.get("stock_qty"),
-                    sort_order=p_order, enabled=True,
+                    currency="TMT", in_stock=p.get("in_stock", True), stock_qty=p.get("stock_qty"),
+                    is_new=p.get("is_new", False), sort_order=p_order, enabled=True,
                 )
+                if p.get("brand"):
+                    prod.brand = brand_by_name[p["brand"]]
+                titles, shorts = _per_lang(p["title"]), _per_lang(p["short"])
                 for lang in LANGS:
+                    ru = lang == "ru"
                     prod.translations.append(ProductTranslation(
-                        lang=lang, title=p["titles"][lang], short=p["short"][lang], body="", specs=[],
+                        lang=lang, title=titles[lang], short=shorts[lang],
+                        body=p.get("body", "") if ru else "", specs=p.get("specs", []) if ru else [],
                     ))
                 for key, value in p["attrs"].items():
                     attr = attr_by_key[key]
@@ -276,9 +399,6 @@ def seed_shop() -> None:
                 continue
             for name, rating, text, status in items:
                 db.add(ProductReview(product_id=p.id, name=name, rating=rating, text=text, status=status))
-
-        for b_order, name in enumerate(BRANDS):
-            db.add(ShopBrand(name=name, sort_order=b_order, enabled=True))
 
         # contacts singleton (id=1) — only seed defaults if absent, so re-seeding
         # the catalog doesn't clobber contacts an admin has already edited
