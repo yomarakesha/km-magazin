@@ -40,6 +40,8 @@ from ..stock import log_movement
 router = APIRouter(prefix="/api/shop", tags=["shop"])
 
 PRODUCTS_SUBDIR = "products"
+CATEGORIES_SUBDIR = "categories"
+SERVICES_SUBDIR = "services"
 
 
 DEFAULT_PAGE = 12
@@ -169,6 +171,7 @@ def _service_card(s: ShopService) -> dict:
         "price_from": s.price_from,
         "currency": s.currency,
         "icon": s.icon,
+        "image": f"{SERVICES_SUBDIR}/{s.image}" if s.image else None,
         "title": _imap(s.translations, "title"),
         "short": _imap(s.translations, "short"),
     }
@@ -191,6 +194,7 @@ def settings_dict(db: Session) -> dict:
         "phone": s.phone if s else "",
         "whatsapp": s.whatsapp if s else "",
         "email": s.email if s else "",
+        "delivery_fee": s.delivery_fee if s else 0,
         "address": {
             "ru": s.address_ru if s else "",
             "tk": s.address_tk if s else "",
@@ -209,16 +213,7 @@ def catalog(request: Request, db: Session = Depends(get_db)) -> dict:
     cats = db.scalars(
         select(ShopCategory).where(ShopCategory.enabled == True).order_by(ShopCategory.sort_order)  # noqa: E712
     ).all()
-    categories = [
-        {
-            "id": c.id,
-            "parent_id": c.parent_id,
-            "slug": c.slug,
-            "name": _imap(c.translations, "name"),
-            "product_count": sum(1 for p in c.products if p.enabled),
-        }
-        for c in cats
-    ]
+    categories = [_category_view(c) for c in cats]
     limit, offset = _page_params(request.query_params)
     total = db.scalar(select(func.count()).select_from(Product).where(Product.enabled == True))  # noqa: E712
     featured = db.scalars(
@@ -239,6 +234,43 @@ def catalog(request: Request, db: Session = Depends(get_db)) -> dict:
         "services": [_service_card(s) for s in services],
         "brands": [{"id": b.id, "slug": b.slug, "name": b.name} for b in brands],
         "settings": settings_dict(db),
+    }
+
+
+def _attr_condition(a: CategoryAttribute, params):
+    """SQL condition for one characteristic filter from the query string, or
+    None. select: ?<key>=v1,v2 (any of the values, as picked by checkboxes)
+    or number values the same way; number: also ?<key>_min / ?<key>_max."""
+    raw = params.get(a.key)
+    if raw:
+        vals = [v for v in raw.split(",") if v]
+        return Product.id.in_(
+            select(ProductAttribute.product_id).where(
+                ProductAttribute.attribute_id == a.id, ProductAttribute.value.in_(vals)
+            )
+        )
+    if a.type == "number":
+        nmin = _num(params.get(f"{a.key}_min"), float)
+        nmax = _num(params.get(f"{a.key}_max"), float)
+        if nmin is None and nmax is None:
+            return None
+        sub = select(ProductAttribute.product_id).where(ProductAttribute.attribute_id == a.id)
+        if nmin is not None:
+            sub = sub.where(ProductAttribute.num_value >= nmin)
+        if nmax is not None:
+            sub = sub.where(ProductAttribute.num_value <= nmax)
+        return Product.id.in_(sub)
+    return None
+
+
+def _category_view(c: ShopCategory) -> dict:
+    return {
+        "id": c.id,
+        "parent_id": c.parent_id,
+        "slug": c.slug,
+        "name": _imap(c.translations, "name"),
+        "image": f"{CATEGORIES_SUBDIR}/{c.image}" if c.image else None,
+        "product_count": sum(1 for p in c.products if p.enabled),
     }
 
 
@@ -264,27 +296,10 @@ def category(slug: str, request: Request, db: Session = Depends(get_db)) -> dict
         stmt = stmt.where(Product.in_stock == True)  # noqa: E712
 
     # dynamic attribute filters
-    for key, a in attr_by_key.items():
-        if a.type == "select":
-            raw = params.get(key)
-            if raw:
-                vals = [v for v in raw.split(",") if v]
-                sub = select(ProductAttribute.product_id).where(
-                    ProductAttribute.attribute_id == a.id, ProductAttribute.value.in_(vals)
-                )
-                stmt = stmt.where(Product.id.in_(sub))
-        else:  # number range
-            nmin = _num(params.get(f"{key}_min"), float)
-            nmax = _num(params.get(f"{key}_max"), float)
-            if nmin is not None or nmax is not None:
-                sub = select(ProductAttribute.product_id).where(
-                    ProductAttribute.attribute_id == a.id
-                )
-                if nmin is not None:
-                    sub = sub.where(ProductAttribute.num_value >= nmin)
-                if nmax is not None:
-                    sub = sub.where(ProductAttribute.num_value <= nmax)
-                stmt = stmt.where(Product.id.in_(sub))
+    for a in attr_by_key.values():
+        cond = _attr_condition(a, params)
+        if cond is not None:
+            stmt = stmt.where(cond)
 
     prods = db.scalars(_apply_sort(stmt, params.get("sort"))).all()
     filtered_ids = [p.id for p in prods]
@@ -299,6 +314,9 @@ def category(slug: str, request: Request, db: Session = Depends(get_db)) -> dict
         "mediaBase": f"{PUBLIC_URL}/media",
         "slug": cat.slug,
         "name": _imap(cat.translations, "name"),
+        "image": f"{CATEGORIES_SUBDIR}/{cat.image}" if cat.image else None,
+        # section page tiles ("Компьютеры" → Процессоры, Материнская плата…)
+        "children": [_category_view(c) for c in cat.children if c.enabled],
         "facets": facets,
         "products": _attach_ratings([_card(p) for p in page], db),
         "total": len(prods),
@@ -461,11 +479,17 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
     # facet-owned filters: key -> conditions
     own: dict[str, list] = {"category": [], "brand": [], "price": []}
     cat_slug = params.get("category")
+    attrs: list[CategoryAttribute] = []
     if cat_slug:
         cat = db.scalar(select(ShopCategory).where(ShopCategory.slug == cat_slug))
         if not cat or not cat.enabled:
             raise HTTPException(404, "Category not found")
         own["category"].append(Product.category_id.in_(_descendant_ids(db, cat.id)))
+        # "По характеристике": the category's own characteristics filter too
+        attrs = sorted((a for a in cat.attributes if a.filterable), key=lambda a: a.sort_order)
+        for a in attrs:
+            cond = _attr_condition(a, params)
+            own[f"attr:{a.key}"] = [cond] if cond is not None else []
     brand_slugs = [b for b in (params.get("brand") or "").split(",") if b]
     if brand_slugs:
         own["brand"].append(
@@ -517,6 +541,28 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
         select(func.min(Product.price), func.max(Product.price)).where(*where_except("price"))
     ).first()
 
+    # characteristic facets: values (with counts) among products matching every
+    # other filter, so ticking "AMD" still lists the other brands' sockets
+    attribute_facets = []
+    for a in attrs:
+        matching = select(Product.id).where(*where_except(f"attr:{a.key}"))
+        rows = db.execute(
+            select(ProductAttribute.value, func.count())
+            .where(
+                ProductAttribute.attribute_id == a.id,
+                ProductAttribute.value != "",
+                ProductAttribute.product_id.in_(matching),
+            )
+            .group_by(ProductAttribute.value)
+        ).all()
+        if not rows:
+            continue
+        options = sorted(({"value": v, "count": int(n)} for v, n in rows), key=_facet_order(a))
+        attribute_facets.append({
+            "key": a.key, "label": _imap(a.translations, "label"), "type": a.type,
+            "unit": a.unit or "", "options": options,
+        })
+
     return {
         "mediaBase": f"{PUBLIC_URL}/media",
         "query": q,
@@ -545,8 +591,21 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
                 key=lambda b: b["name"].lower(),
             ),
             "price": {"min": pmin, "max": pmax},
+            "attributes": attribute_facets,
         },
     }
+
+
+def _facet_order(a: CategoryAttribute):
+    """Numbers ascending by value, text alphabetically."""
+    if a.type == "number":
+        def key(o):
+            try:
+                return (0, float(o["value"].replace(",", ".")), "")
+            except ValueError:
+                return (1, 0.0, o["value"])
+        return key
+    return lambda o: o["value"].lower()
 
 
 # --------------------------------------------------------------------------
@@ -556,9 +615,8 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
 def services(db: Session = Depends(get_db)) -> dict:
     rows = db.scalars(
         select(ShopService)
-        .join(ShopCategory, ShopCategory.id == ShopService.category_id)
         .where(ShopService.enabled == True)  # noqa: E712
-        .order_by(ShopCategory.sort_order, ShopService.sort_order)
+        .order_by(ShopService.sort_order, ShopService.id)
     ).all()
     return {"services": [_service_card(s) for s in rows], "settings": settings_dict(db)}
 
@@ -570,9 +628,8 @@ def service_detail(slug: str, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(404, "Service not found")
     others = db.scalars(
         select(ShopService)
-        .join(ShopCategory, ShopCategory.id == ShopService.category_id)
         .where(ShopService.enabled == True, ShopService.id != s.id)  # noqa: E712
-        .order_by(ShopCategory.sort_order, ShopService.sort_order)
+        .order_by(ShopService.sort_order, ShopService.id)
     ).all()
     return {
         **_service_card(s),
@@ -631,9 +688,9 @@ HOME_ROW = 10
 
 @router.get("/home")
 def home(db: Session = Depends(get_db)) -> dict:
-    """Everything the home page shows in one call: hero banners, discounted,
-    new and ready-made builds rows, and the brands strip. Category rows
-    (e.g. "Датчики") come from /products?category=<slug>."""
+    """Everything the home page shows in one call: hero banners, discounted
+    and new rows, and the brands strip. Other rows (builds, a category) come
+    from /products?build=1 or ?category=<slug>."""
 
     def row(*conds) -> list[dict]:
         stmt = select(Product).where(Product.enabled == True, *conds)  # noqa: E712
@@ -648,7 +705,6 @@ def home(db: Session = Depends(get_db)) -> dict:
         "banners": _banners(db),
         "discount": row(Product.old_price.is_not(None), Product.old_price > Product.price),
         "new": row(Product.is_new == True),  # noqa: E712
-        "builds": row(Product.id.in_(select(ProductComponent.build_id))),
         "brands": [{"id": b.id, "slug": b.slug, "name": b.name} for b in brand_rows],
         "settings": settings_dict(db),
     }
@@ -848,6 +904,7 @@ def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) 
         "status": o.status,
         "payment_method": o.payment_method,
         "payment_status": o.payment_status,
+        "delivery": o.delivery,
         "total": o.total,
         "created_at": o.created_at,
         "items": [
@@ -909,7 +966,12 @@ def cart_validate(payload: CartValidateIn, db: Session = Depends(get_db)) -> dic
                 "price": p.price if ok else None,
                 "in_stock": _in_stock(p) if ok else None,
             })
-    return {"items": out}
+    return {"items": out, "delivery_fee": _delivery_fee(db)}
+
+
+def _delivery_fee(db: Session) -> int:
+    s = db.get(ShopSettings, 1)
+    return s.delivery_fee if s else 0
 
 
 @router.post("/orders", status_code=201, dependencies=[Depends(limiter("orders", 5))])
@@ -1004,6 +1066,9 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
         order.promo_code = promo.code
         order.discount = discount
         total -= discount
+    # delivery is added after the promo: a discount never eats into it
+    order.delivery = _delivery_fee(db)
+    total += order.delivery
     order.total = total
     db.add(order)
     db.flush()  # order.id for the ledger rows
@@ -1018,11 +1083,16 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
     lines = [f"{it.title_snapshot} × {it.qty} = {it.price_snapshot * it.qty} TMT" for it in order.items]
     if promo:
         lines.append(f"Промокод {promo.code}: −{discount} TMT")
+    if order.delivery:
+        lines.append(f"Доставка: {order.delivery} TMT")
     background.add_task(
         telegram_notify,
         order_message(order.id, order.customer_name, order.phone, total, lines),
     )
-    return {"ok": True, "id": order.id, "total": total, "discount": discount if promo else 0}
+    return {
+        "ok": True, "id": order.id, "total": total,
+        "discount": discount if promo else 0, "delivery": order.delivery,
+    }
 
 
 @router.post("/payments/webhook", dependencies=[Depends(limiter("pay-webhook", 30))])

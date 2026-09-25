@@ -13,6 +13,7 @@ from pathlib import Path
 
 _TMP = tempfile.mkdtemp(prefix="km-test-")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TMP}/test.db"
+os.environ["MEDIA_DIR"] = f"{_TMP}/media"  # uploads never touch backend/media
 os.environ["ADMIN_PASSWORD"] = "test-password"
 os.environ["SECRET_KEY"] = "test-secret-key-0123456789abcdef-0123456789abcdef"
 os.environ["REVALIDATE_SECRET"] = ""      # no frontend cache pings from tests

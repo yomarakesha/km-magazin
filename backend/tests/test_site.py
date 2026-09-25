@@ -167,3 +167,83 @@ def test_page_crud_and_public(client):
 
 def test_site_content_is_content_role_only(client):
     assert client.post("/api/admin/site/pages", json={"slug": "x"}).status_code == 401
+
+
+# ------------------------------------------------------------------ delivery
+def test_delivery_fee_added_to_order_total(client, db, make_product):
+    from app.models import Order, ShopSettings
+
+    p = make_product(price=2890)
+    settings = db.get(ShopSettings, 1) or ShopSettings(id=1)
+    old_fee = settings.delivery_fee or 0
+    settings.delivery_fee = 30
+    db.add(settings)
+    db.commit()
+    try:
+        v = client.post("/api/shop/cart/validate", json={"items": [{"id": p["id"], "qty": 4}]}).json()
+        assert v["delivery_fee"] == 30
+        r = client.post("/api/shop/orders", json=order_payload(p["id"], qty=4))
+        assert r.status_code == 201
+        assert r.json()["total"] == 4 * 2890 + 30 and r.json()["delivery"] == 30
+        db.expire_all()
+        assert db.get(Order, r.json()["id"]).delivery == 30
+    finally:
+        settings = db.get(ShopSettings, 1)
+        settings.delivery_fee = old_fee
+        db.commit()
+
+
+# ------------------------------------------------------------------ characteristic filters
+def test_products_characteristic_filters_and_facets(client, db):
+    from app.models import CategoryAttribute, ProductAttribute, ShopBrand
+
+    cat = ShopCategory(slug=_u("cpu"))
+    db.add(cat)
+    db.flush()
+    socket = CategoryAttribute(category_id=cat.id, key="socket", type="select")
+    cores = CategoryAttribute(category_id=cat.id, key="cores", type="number")
+    amd, intel = ShopBrand(name=_u("AMD")), ShopBrand(name=_u("Intel"))
+    db.add_all([socket, cores, amd, intel])
+    db.flush()
+    for brand, sock, n in ((amd, "AM5", 8), (amd, "AM5", 6), (intel, "LGA1700", 10)):
+        p = Product(slug=_u("p"), category_id=cat.id, price=100 * n, brand_id=brand.id)
+        p.attributes.append(ProductAttribute(attribute_id=socket.id, value=sock))
+        p.attributes.append(ProductAttribute(attribute_id=cores.id, value=str(n), num_value=n))
+        db.add(p)
+    db.commit()
+
+    body = client.get("/api/shop/products", params={"category": cat.slug, "socket": "AM5"}).json()
+    assert body["total"] == 2
+    facets = {f["key"]: [o["value"] for o in f["options"]] for f in body["facets"]["attributes"]}
+    # the socket facet ignores its own filter; cores narrows to the AM5 parts
+    assert facets["socket"] == ["AM5", "LGA1700"]
+    assert facets["cores"] == ["6", "8"]
+    assert [b["slug"] for b in body["facets"]["brands"]] == [amd.slug]
+
+    assert client.get("/api/shop/products", params={"category": cat.slug, "cores": "6,10"}).json()["total"] == 2
+    assert client.get("/api/shop/products", params={"category": cat.slug, "cores_min": 7}).json()["total"] == 2
+
+
+# ------------------------------------------------------------------ pictures
+def test_category_and_service_pictures(client, db):
+    import base64
+
+    c = _catalog(db)
+    _login(client)
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    r = client.post(f"/api/admin/shop/categories/{c['cpu'].id}/image", files={"file": ("cpu.png", png, "image/png")})
+    assert r.status_code == 200, r.text
+    image = r.json()["image"]
+    assert image.startswith("categories/")
+    parent = client.get(f"/api/shop/categories/{c['parent'].slug}").json()
+    assert any(ch["image"] == image for ch in parent["children"])
+
+    r = client.post(f"/api/admin/shop/services/{c['svc'].id}/image", files={"file": ("svc.png", png, "image/png")})
+    assert r.status_code == 200
+    listed = {s["slug"]: s for s in client.get("/api/shop/services").json()["services"]}
+    assert listed[c["svc"].slug]["image"] == r.json()["image"]
+
+    assert client.delete(f"/api/admin/shop/categories/{c['cpu'].id}/image").json()["image"] is None
+    assert client.delete(f"/api/admin/shop/services/{c['svc'].id}/image").json()["image"] is None

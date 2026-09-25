@@ -276,6 +276,7 @@ class ShopSettingsIn(BaseModel):
     hours_ru: str = Field(default="", max_length=128)
     hours_tk: str = Field(default="", max_length=128)
     hours_en: str = Field(default="", max_length=128)
+    delivery_fee: int = Field(default=0, ge=0)
 
 
 # ---- Shop: orders ----

@@ -41,33 +41,49 @@ def _names(ru: str, tk: str, en: str) -> dict:
     return {"ru": ru, "tk": tk, "en": en}
 
 
-# Catalog mirrors the Figma design (nav: Компьютеры / Безопасность / Сетевое
-# оборудование). Each category: slug, names, optional parent, attribute defs,
-# products. Product: slug, price, optional old_price/stock_qty/is_new/brand,
-# title and short (a plain string is used for every language), attrs, and
-# optional body/specs (ru only; tk/en fall back to empty).
+# Catalog mirrors the Figma design: three sections (Компьютеры / Безопасность /
+# Сетевые оборудования), each with the subcategory tiles of its section page.
+# Category: slug, names, optional parent, attribute defs ("По характеристике"
+# filters), products. Product: slug, price, optional old_price/stock_qty/is_new/
+# brand/images, title and short (a plain string is used for every language),
+# attrs, and optional body/specs (ru only; tk/en fall back to empty).
 DATA = [
+    # ---------------------------------------------------------------- computers
     {"slug": "computers", "names": _names("Компьютеры", "Kompýuterler", "Computers"),
      "attributes": [], "products": []},
     {"slug": "cpu", "parent": "computers",
-     "names": _names("Процессоры (CPU)", "Prosessorlar (CPU)", "Processors (CPU)"),
+     "names": _names("Процессоры", "Prosessorlar", "Processors"),
      "attributes": [
+         _attr("generation", "select", "", "Поколение", "Nesil", "Generation"),
          _attr("socket", "select", "", "Сокет", "Soket", "Socket"),
-         _attr("cores", "number", "", "Ядра", "Ýadrolar", "Cores"),
+         _attr("cores", "number", "", "Кол-во ядер", "Ýadrolaryň sany", "Cores"),
+         _attr("tdp", "number", "W", "Тепловыделение (TDP)", "Ýylylyk bölüp çykaryş (TDP)", "TDP"),
+         _attr("igpu", "select", "", "Модель GPU", "GPU modeli", "Integrated GPU"),
      ],
      "products": [
          {"slug": "amd-ryzen-7-7800x3d", "brand": "AMD", "price": 6990, "stock_qty": 4,
           "title": "AMD Ryzen 7 7800X3D", "short": "8 ядер, AM5, 3D V-Cache",
-          "attrs": {"socket": "AM5", "cores": "8"}},
+          "attrs": {"generation": "Ryzen 7000", "socket": "AM5", "cores": "8", "tdp": "120",
+                    "igpu": "Radeon Graphics"}},
+         {"slug": "amd-ryzen-5-7600", "brand": "AMD", "price": 2990,
+          "title": "AMD Ryzen 5 7600", "short": "6 ядер, AM5",
+          "attrs": {"generation": "Ryzen 7000", "socket": "AM5", "cores": "6", "tdp": "65",
+                    "igpu": "Radeon Graphics"}},
          {"slug": "intel-core-i5-13400f", "brand": "Intel", "price": 2890,
           "title": "Intel Core i5-13400F", "short": "10 ядер, LGA1700",
-          "attrs": {"socket": "LGA1700", "cores": "10"}},
-         {"slug": "intel-core-i7-14700k", "brand": "Intel", "price": 5490, "old_price": 5990,
+          "attrs": {"generation": "Intel 13 gen", "socket": "LGA1700", "cores": "10", "tdp": "65",
+                    "igpu": "Нет"}},
+         {"slug": "intel-core-i7-14700k", "brand": "Intel", "price": 5490, "old_price": 5990, "is_new": True,
           "title": "Intel Core i7-14700K", "short": "20 ядер, LGA1700",
-          "attrs": {"socket": "LGA1700", "cores": "20"}},
+          "attrs": {"generation": "Intel 14 gen", "socket": "LGA1700", "cores": "20", "tdp": "125",
+                    "igpu": "Intel UHD 770"}},
+         {"slug": "intel-core-i3-12100", "brand": "Intel", "price": 1490,
+          "title": "Intel Core i3-12100", "short": "4 ядра, LGA1700",
+          "attrs": {"generation": "Intel 12 gen", "socket": "LGA1700", "cores": "4", "tdp": "60",
+                    "igpu": "Intel UHD 730"}},
      ]},
     {"slug": "motherboards", "parent": "computers",
-     "names": _names("Материнские платы", "Ene platalar", "Motherboards"),
+     "names": _names("Материнская плата", "Ene plata", "Motherboards"),
      "attributes": [
          _attr("socket", "select", "", "Сокет", "Soket", "Socket"),
          _attr("form_factor", "select", "", "Форм-фактор", "Forma faktory", "Form factor"),
@@ -79,9 +95,12 @@ DATA = [
          {"slug": "asus-tuf-gaming-b760m-plus", "brand": "ASUS", "price": 2290,
           "title": "ASUS TUF Gaming B760M-Plus", "short": "LGA1700, mATX, DDR5",
           "attrs": {"socket": "LGA1700", "form_factor": "mATX"}},
+         {"slug": "gigabyte-b650m-ds3h", "brand": "Gigabyte", "price": 1790,
+          "title": "Gigabyte B650M DS3H", "short": "AM5, mATX, DDR5",
+          "attrs": {"socket": "AM5", "form_factor": "mATX"}},
      ]},
     {"slug": "ram", "parent": "computers",
-     "names": _names("Оперативная память (RAM)", "Operatiw ýat (RAM)", "Memory (RAM)"),
+     "names": _names("Оперативная память", "Operatiw ýat", "Memory (RAM)"),
      "attributes": [
          _attr("capacity", "number", "GB", "Объём", "Göwrüm", "Capacity"),
          _attr("type", "select", "", "Тип", "Görnüşi", "Type"),
@@ -93,9 +112,43 @@ DATA = [
          {"slug": "kingston-fury-beast-16gb-ddr4-3200", "brand": "Kingston", "price": 890,
           "title": "Kingston Fury Beast 16GB DDR4-3200", "short": "2×8 ГБ, CL16",
           "attrs": {"capacity": "16", "type": "DDR4"}},
+         {"slug": "crucial-pro-32gb-ddr5-5600", "brand": "Crucial", "price": 1490,
+          "title": "Crucial Pro 32GB DDR5-5600", "short": "2×16 ГБ, CL46",
+          "attrs": {"capacity": "32", "type": "DDR5"}},
+     ]},
+    {"slug": "gpu", "parent": "computers",
+     "names": _names("Видеокарты", "Wideokartalar", "Graphics cards"),
+     "attributes": [
+         _attr("chip", "select", "", "Чипсет", "Çipset", "Chipset"),
+         _attr("vram", "number", "GB", "Видеопамять", "Wideo ýady", "VRAM"),
+     ],
+     "products": [
+         {"slug": "asus-dual-rtx-4060-8gb", "brand": "ASUS", "price": 5190, "is_new": True,
+          "title": "ASUS Dual GeForce RTX 4060 OC 8GB", "short": "8 ГБ GDDR6, DLSS 3",
+          "attrs": {"chip": "GeForce RTX 4060", "vram": "8"}},
+         {"slug": "gigabyte-rx-7600-gaming-oc-8gb", "brand": "Gigabyte", "price": 4690, "old_price": 4990,
+          "title": "Gigabyte Radeon RX 7600 Gaming OC 8GB", "short": "8 ГБ GDDR6",
+          "attrs": {"chip": "Radeon RX 7600", "vram": "8"}},
+         {"slug": "msi-rtx-4070-super-ventus-12gb", "brand": "MSI", "price": 9890,
+          "title": "MSI GeForce RTX 4070 SUPER Ventus 2X 12GB", "short": "12 ГБ GDDR6X",
+          "attrs": {"chip": "GeForce RTX 4070 SUPER", "vram": "12"}},
+     ]},
+    {"slug": "psu", "parent": "computers",
+     "names": _names("Блок питания", "Energiýa bloky", "Power supplies"),
+     "attributes": [_attr("power", "number", "W", "Мощность", "Kuwwat", "Power")],
+     "products": [
+         {"slug": "corsair-rm850x", "brand": "Corsair", "price": 2190,
+          "title": "Corsair RM850x", "short": "850 Вт, 80+ Gold, модульный",
+          "attrs": {"power": "850"}},
+         {"slug": "deepcool-pk650d", "brand": "Deepcool", "price": 990,
+          "title": "Deepcool PK650D", "short": "650 Вт, 80+ Bronze",
+          "attrs": {"power": "650"}},
+         {"slug": "be-quiet-pure-power-12-m-750w", "brand": "be quiet!", "price": 1690,
+          "title": "be quiet! Pure Power 12 M 750W", "short": "750 Вт, 80+ Gold, ATX 3.0",
+          "attrs": {"power": "750"}},
      ]},
     {"slug": "ssd", "parent": "computers",
-     "names": _names("Твердотельные накопители (SSD)", "SSD disklar", "Solid-state drives (SSD)"),
+     "names": _names("Твердотельный накопитель (SSD)", "Gaty ýagdaýly disk (SSD)", "Solid-state drives (SSD)"),
      "attributes": [
          _attr("capacity", "number", "GB", "Объём", "Göwrüm", "Capacity"),
          _attr("interface", "select", "", "Интерфейс", "Interfeýs", "Interface"),
@@ -111,19 +164,25 @@ DATA = [
           "title": "Kingston NV2 1TB", "short": "NVMe PCIe 4.0",
           "attrs": {"capacity": "1024", "interface": "NVMe PCIe 4.0"}},
      ]},
-    {"slug": "psu", "parent": "computers",
-     "names": _names("Блоки питания (PSU)", "Energiýa bloklary (PSU)", "Power supplies (PSU)"),
-     "attributes": [_attr("power", "number", "W", "Мощность", "Kuwwat", "Power")],
+    {"slug": "hdd", "parent": "computers",
+     "names": _names("Жесткий диск (HDD)", "Gaty disk (HDD)", "Hard drives (HDD)"),
+     "attributes": [
+         _attr("capacity", "number", "GB", "Объём", "Göwrüm", "Capacity"),
+         _attr("rpm", "number", "rpm", "Скорость вращения", "Aýlanyş tizligi", "Spindle speed"),
+     ],
      "products": [
-         {"slug": "corsair-rm850x", "brand": "Corsair", "price": 2190,
-          "title": "Corsair RM850x", "short": "850 Вт, 80+ Gold, модульный",
-          "attrs": {"power": "850"}},
-         {"slug": "deepcool-pk650d", "brand": "Deepcool", "price": 990,
-          "title": "Deepcool PK650D", "short": "650 Вт, 80+ Bronze",
-          "attrs": {"power": "650"}},
+         {"slug": "seagate-barracuda-2tb", "brand": "Seagate", "price": 1090,
+          "title": "Seagate BarraCuda 2TB", "short": "3.5\", 7200 об/мин, 256 МБ",
+          "attrs": {"capacity": "2048", "rpm": "7200"}},
+         {"slug": "toshiba-p300-1tb", "brand": "Toshiba", "price": 750,
+          "title": "Toshiba P300 1TB", "short": "3.5\", 7200 об/мин",
+          "attrs": {"capacity": "1024", "rpm": "7200"}},
+         {"slug": "wd-purple-4tb", "brand": "WD", "price": 1890,
+          "title": "WD Purple 4TB", "short": "Для видеонаблюдения, 5400 об/мин",
+          "attrs": {"capacity": "4096", "rpm": "5400"}},
      ]},
     {"slug": "cases", "parent": "computers",
-     "names": _names("Корпуса", "Korpuslar", "Cases"),
+     "names": _names("Кейс", "Korpus", "Cases"),
      "attributes": [_attr("form_factor", "select", "", "Форм-фактор", "Forma faktory", "Form factor")],
      "products": [
          {"slug": "lian-li-lancool-216-argb-white", "brand": "LIAN LI", "price": 1800, "is_new": True,
@@ -134,36 +193,25 @@ DATA = [
           "title": "NZXT H5 Flow", "short": "ATX, сетчатая панель",
           "attrs": {"form_factor": "ATX"}},
      ]},
-    {"slug": "builds", "parent": "computers",
-     "names": _names("Готовые сборки", "Taýýar ýygnamalar", "Ready-made PCs"),
-     "attributes": [_attr("cpu", "select", "", "Процессор", "Prosessor", "CPU")],
+    {"slug": "pc-accessories", "parent": "computers",
+     "names": _names("Аксессуары", "Aksessuarlar", "Accessories"),
+     "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
      "products": [
-         {"slug": "km-gamer-ryzen-7-7800x3d", "price": 19000, "is_new": True, "stock_qty": 2,
-          "images": ["seed-lancool-216-white.png"],
-          # Figma "Build" screen: parts + assembly service, 19 000 TMT in total
-          "components": [
-              ("product", "amd-ryzen-7-7800x3d"), ("product", "msi-mag-b650-tomahawk-wifi"),
-              ("product", "gskill-trident-z5-rgb-32gb-ddr5-6400"), ("product", "wd-black-sn850x-2tb"),
-              ("product", "corsair-rm850x"), ("product", "lian-li-lancool-216-argb-white"),
-              ("service", "pc-build"),
-          ],
-          "title": "KM Gamer · Ryzen 7 7800X3D", "short": "Ryzen 7 7800X3D, 32 ГБ DDR5, SSD 2 ТБ",
-          "body": "Готовый компьютер, собранный и протестированный в нашем магазине. "
-                  "Установим систему и драйверы, выдадим с гарантией.",
-          "attrs": {"cpu": "AMD Ryzen 7 7800X3D"}},
-         {"slug": "km-office-core-i5", "price": 9900,
-          "components": [
-              ("product", "intel-core-i5-13400f"), ("product", "asus-tuf-gaming-b760m-plus"),
-              ("product", "kingston-fury-beast-16gb-ddr4-3200"), ("product", "kingston-nv2-1tb"),
-              ("product", "deepcool-pk650d"), ("product", "nzxt-h5-flow"), ("service", "pc-build"),
-          ],
-          "title": "KM Office · Core i5-13400F", "short": "Core i5, 16 ГБ, SSD 1 ТБ",
-          "attrs": {"cpu": "Intel Core i5-13400F"}},
+         {"slug": "logitech-g102-lightsync", "brand": "Logitech", "price": 290,
+          "title": "Logitech G102 Lightsync", "short": "Игровая мышь, 8000 DPI",
+          "attrs": {"type": "Мышь"}},
+         {"slug": "deepcool-ak400", "brand": "Deepcool", "price": 590,
+          "title": "Deepcool AK400", "short": "Кулер для процессора, 220 Вт",
+          "attrs": {"type": "Охлаждение"}},
+         {"slug": "logitech-k120", "brand": "Logitech", "price": 190,
+          "title": "Logitech K120", "short": "Проводная клавиатура",
+          "attrs": {"type": "Клавиатура"}},
      ]},
+    # ----------------------------------------------------------------- security
     {"slug": "security", "names": _names("Безопасность", "Howpsuzlyk", "Security"),
      "attributes": [], "products": []},
     {"slug": "cameras", "parent": "security",
-     "names": _names("Видеокамеры", "Wideokameralar", "Cameras"),
+     "names": _names("Камеры", "Kameralar", "Cameras"),
      "attributes": [
          _attr("resolution", "select", "MP", "Разрешение", "Çözgüt", "Resolution"),
          _attr("type", "select", "", "Тип", "Görnüşi", "Type"),
@@ -179,8 +227,8 @@ DATA = [
           "title": "Hikvision DS-2DE4425IW-DE", "short": "4 МП, PTZ, 25× зум",
           "attrs": {"resolution": "4", "type": "PTZ"}},
      ]},
-    {"slug": "sensors", "parent": "security",
-     "names": _names("Датчики", "Datçikler", "Sensors"),
+    {"slug": "fire-sensors", "parent": "security",
+     "names": _names("Датчики пожарные", "Ýangyn datçikleri", "Fire detectors"),
      "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
      "products": [
          {"slug": "rubezh-ip-212-64-prima", "brand": "Рубеж", "price": 180,
@@ -194,8 +242,19 @@ DATA = [
           "title": "Болид Сигнал-20П", "short": "Прибор приёмно-контрольный, 20 шлейфов",
           "attrs": {"type": "Прибор"}},
      ]},
+    {"slug": "camera-recorders", "parent": "security",
+     "names": _names("Тюнеры для камер", "Kameralar üçin tünerler", "Camera recorders"),
+     "attributes": [_attr("channels", "number", "", "Каналы", "Kanallar", "Channels")],
+     "products": [
+         {"slug": "hikvision-ds-7608ni-k2", "brand": "Hikvision", "price": 1650,
+          "title": "Hikvision DS-7608NI-K2", "short": "IP-регистратор, 8 каналов, 2 HDD",
+          "attrs": {"channels": "8"}},
+         {"slug": "dahua-nvr2104hs-s3", "brand": "Dahua", "price": 890,
+          "title": "Dahua DHI-NVR2104HS-S3", "short": "IP-регистратор, 4 канала",
+          "attrs": {"channels": "4"}},
+     ]},
     {"slug": "face-control", "parent": "security",
-     "names": _names("Терминалы Face Control", "Face Control terminallary", "Face Control terminals"),
+     "names": _names("Face Control", "Face Control", "Face Control"),
      "attributes": [_attr("faces", "number", "", "База лиц", "Ýüz binýady", "Face capacity")],
      "products": [
          {"slug": "hikvision-face-control-hk-043", "brand": "Hikvision", "price": 1200, "old_price": 1990,
@@ -215,10 +274,33 @@ DATA = [
           "title": "Dahua ASI7213X-T1", "short": "Экран 7\", карты, температура",
           "attrs": {"faces": "10000"}},
      ]},
-    {"slug": "network", "names": _names("Сетевое оборудование", "Tor enjamlary", "Networking"),
+    {"slug": "motion-sensors", "parent": "security",
+     "names": _names("Датчики движения", "Hereket datçikleri", "Motion sensors"),
+     "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
+     "products": [
+         {"slug": "bolid-s2000-ik", "brand": "Болид", "price": 140,
+          "title": "Болид С2000-ИК", "short": "Адресный ИК-извещатель, до 12 м",
+          "attrs": {"type": "Инфракрасный"}},
+         {"slug": "rubezh-io-409-40", "brand": "Рубеж", "price": 160,
+          "title": "Рубеж ИО 409-40", "short": "Объёмный ИК-извещатель",
+          "attrs": {"type": "Инфракрасный"}},
+     ]},
+    {"slug": "security-accessories", "parent": "security",
+     "names": _names("Аксессуары", "Aksessuarlar", "Accessories"),
+     "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
+     "products": [
+         {"slug": "hikvision-ds-1280zj-xs", "brand": "Hikvision", "price": 60,
+          "title": "Hikvision DS-1280ZJ-XS", "short": "Монтажная коробка для камер",
+          "attrs": {"type": "Крепление"}},
+         {"slug": "tp-link-tl-poe150s", "brand": "TP-Link", "price": 190,
+          "title": "TP-Link TL-PoE150S", "short": "PoE-инжектор, Gigabit",
+          "attrs": {"type": "Питание"}},
+     ]},
+    # ------------------------------------------------------------------ network
+    {"slug": "network", "names": _names("Сетевые оборудования", "Tor enjamlary", "Networking"),
      "attributes": [], "products": []},
     {"slug": "switches", "parent": "network",
-     "names": _names("Коммутаторы", "Kommutatorlar", "Switches"),
+     "names": _names("Свитчи", "Switçler", "Switches"),
      "attributes": [_attr("ports", "number", "", "Порты", "Portlar", "Ports")],
      "products": [
          {"slug": "tp-link-tl-sg108", "brand": "TP-Link", "price": 350,
@@ -230,6 +312,17 @@ DATA = [
          {"slug": "mikrotik-crs326-24g-2s-in", "brand": "MikroTik", "price": 3200,
           "title": "MikroTik CRS326-24G-2S+IN", "short": "24 порта Gigabit, 2×SFP+",
           "attrs": {"ports": "24"}},
+     ]},
+    {"slug": "repeaters", "parent": "network",
+     "names": _names("Репиторы", "Repiterler", "Range extenders"),
+     "attributes": [_attr("wifi", "select", "", "Wi‑Fi", "Wi‑Fi", "Wi‑Fi")],
+     "products": [
+         {"slug": "tp-link-re315", "brand": "TP-Link", "price": 450,
+          "title": "TP-Link RE315", "short": "Усилитель Wi‑Fi AC1200, Mesh",
+          "attrs": {"wifi": "Wi‑Fi 5"}},
+         {"slug": "mercusys-me30", "brand": "Mercusys", "price": 320,
+          "title": "Mercusys ME30", "short": "Усилитель Wi‑Fi AC1200",
+          "attrs": {"wifi": "Wi‑Fi 5"}},
      ]},
     {"slug": "routers", "parent": "network",
      "names": _names("Роутеры", "Routerler", "Routers"),
@@ -244,6 +337,78 @@ DATA = [
          {"slug": "mikrotik-hap-ax2", "brand": "MikroTik", "price": 1350,
           "title": "MikroTik hAP ax²", "short": "Wi‑Fi 6, 5 портов Gigabit",
           "attrs": {"wifi": "Wi‑Fi 6"}},
+     ]},
+    {"slug": "network-adapters", "parent": "network",
+     "names": _names("Сетевые адаптеры", "Tor adapterleri", "Network adapters"),
+     "attributes": [_attr("interface", "select", "", "Подключение", "Birikdirme", "Interface")],
+     "products": [
+         {"slug": "tp-link-archer-t3u", "brand": "TP-Link", "price": 220,
+          "title": "TP-Link Archer T3U", "short": "USB Wi‑Fi адаптер AC1300",
+          "attrs": {"interface": "USB"}},
+         {"slug": "mercusys-ma30n", "brand": "Mercusys", "price": 240,
+          "title": "Mercusys MA30N", "short": "PCIe Wi‑Fi адаптер AC1200",
+          "attrs": {"interface": "PCIe"}},
+     ]},
+    {"slug": "modems", "parent": "network",
+     "names": _names("Модемы", "Modemler", "Modems"),
+     "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
+     "products": [
+         {"slug": "tp-link-archer-vr300", "brand": "TP-Link", "price": 690,
+          "title": "TP-Link Archer VR300", "short": "VDSL/ADSL модем-роутер AC1200",
+          "attrs": {"type": "DSL"}},
+         {"slug": "tp-link-archer-mr600", "brand": "TP-Link", "price": 1290,
+          "title": "TP-Link Archer MR600", "short": "4G+ роутер Cat6, AC1200",
+          "attrs": {"type": "4G"}},
+     ]},
+    {"slug": "firewalls", "parent": "network",
+     "names": _names("Файерволы", "Faýerwollar", "Firewalls"),
+     "attributes": [_attr("ports", "number", "", "Порты", "Portlar", "Ports")],
+     "products": [
+         {"slug": "mikrotik-rb5009ug-s-in", "brand": "MikroTik", "price": 3800, "is_new": True,
+          "title": "MikroTik RB5009UG+S+IN", "short": "Маршрутизатор-файервол, 2.5G + SFP+",
+          "attrs": {"ports": "9"}},
+         {"slug": "ubiquiti-udm-pro", "brand": "Ubiquiti", "price": 8900,
+          "title": "Ubiquiti UniFi Dream Machine Pro", "short": "Шлюз безопасности, IDS/IPS",
+          "attrs": {"ports": "10"}},
+     ]},
+    {"slug": "network-accessories", "parent": "network",
+     "names": _names("Аксессуары", "Aksessuarlar", "Accessories"),
+     "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
+     "products": [
+         {"slug": "hyperline-pc-lpm-utp-rj45-1m", "brand": "Hyperline", "price": 30,
+          "title": "Hyperline патч-корд UTP Cat5e 1 м", "short": "RJ45–RJ45, серый",
+          "attrs": {"type": "Кабель"}},
+         {"slug": "tlk-rack-12u-600x450", "brand": "TLK", "price": 2400,
+          "title": "TLK шкаф настенный 12U 600×450", "short": "Стеклянная дверь, съёмные стенки",
+          "attrs": {"type": "Шкаф"}},
+     ]},
+    # Ready-made PCs: hidden in the current design but still linked from the
+    # footer ("Наши сборки"); kept as a section of their own.
+    {"slug": "builds",
+     "names": _names("Готовые сборки", "Taýýar ýygnamalar", "Ready-made PCs"),
+     "attributes": [_attr("cpu", "select", "", "Процессор", "Prosessor", "CPU")],
+     "products": [
+         {"slug": "km-gamer-ryzen-7-7800x3d", "price": 19000, "is_new": True, "stock_qty": 2,
+          "images": ["seed-lancool-216-white.png"],
+          # parts + assembly service, 19 000 TMT in total
+          "components": [
+              ("product", "amd-ryzen-7-7800x3d"), ("product", "msi-mag-b650-tomahawk-wifi"),
+              ("product", "gskill-trident-z5-rgb-32gb-ddr5-6400"), ("product", "wd-black-sn850x-2tb"),
+              ("product", "corsair-rm850x"), ("product", "lian-li-lancool-216-argb-white"),
+              ("service", "pc-build"),
+          ],
+          "title": "KM Gamer · Ryzen 7 7800X3D", "short": "Ryzen 7 7800X3D, 32 ГБ DDR5, SSD 2 ТБ",
+          "body": "Готовый компьютер, собранный и протестированный в нашем магазине. "
+                  "Установим систему и драйверы, выдадим с гарантией.",
+          "attrs": {"cpu": "AMD Ryzen 7 7800X3D"}},
+         {"slug": "km-office-core-i5", "price": 9900,
+          "components": [
+              ("product", "intel-core-i5-13400f"), ("product", "asus-tuf-gaming-b760m-plus"),
+              ("product", "kingston-fury-beast-16gb-ddr4-3200"), ("product", "kingston-nv2-1tb"),
+              ("product", "deepcool-pk650d"), ("product", "nzxt-h5-flow"), ("service", "pc-build"),
+          ],
+          "title": "KM Office · Core i5-13400F", "short": "Core i5, 16 ГБ, SSD 1 ТБ",
+          "attrs": {"cpu": "Intel Core i5-13400F"}},
      ]},
 ]
 
@@ -290,11 +455,12 @@ SERVICES = {
                    "en": ["Free diagnostics with repair", "Part replacement", "Data recovery", "Warranty on work"]}},
     ],
     "security": [
-        {"slug": "cam-install", "price": 500, "price_from": True, "icon": "wrench",
-         "titles": _names("Монтаж видеонаблюдения", "Wideo gözegçiligi gurnamak", "CCTV installation"),
-         "short": _names("Проект, монтаж камер и регистраторов, просмотр со смартфона.",
-                         "Taslama, kameralary we registratorlary gurnamak, smartfondan görmek.",
-                         "Design, camera and recorder installation, phone viewing."),
+        {"slug": "cam-install", "price": 400, "price_from": True, "icon": "wrench",
+         "titles": _names("Установка и настройка камеры", "Kamerany gurnamak we sazlamak",
+                          "Camera installation and setup"),
+         "short": _names("Проектирование, установка камер безопасности.",
+                         "Taslama, howpsuzlyk kameralaryny gurnamak.",
+                         "Design and installation of security cameras."),
          "body": {"ru": "Подберём камеры под объект, смонтируем и настроим запись и удалённый просмотр со смартфона.",
                   "en": "Cameras chosen for your site, installed with recording and remote phone viewing set up."},
          "feats": {"ru": ["Выезд и проект", "Монтаж камер и кабеля", "Настройка регистратора", "Просмотр со смартфона"],
@@ -315,6 +481,10 @@ SERVICES = {
                    "en": ["Network design", "Cabling and racks", "Wi‑Fi and VLAN setup", "Administration"]}},
     ],
 }
+
+
+# Order of the flat "Услуги" page in the design (sort_order is global).
+SERVICE_ORDER = ["pc-build", "net-setup", "cam-install", "pc-maintenance", "pc-repair"]
 
 
 # Home hero slides (Figma "Home" screen)
@@ -449,7 +619,6 @@ BRANDS = [
     ("Болид", "bolid"), "Ubiquiti", "Corsair", "MSI", "WD", "Seagate", "Deepcool",
     ("Рубеж", "rubezh"), "MikroTik", "Logitech", "G.Skill", "Gigabyte", "Samsung", "Crucial",
     "Toshiba", "be quiet!", "Seasonic", "NZXT", "Keenetic", "Mercusys", "TLK", "Hyperline",
-    "Keychron", "Dell", "HP",
 ]
 
 SETTINGS = {
@@ -462,6 +631,7 @@ SETTINGS = {
     "hours_ru": "Пн–Сб: 9:00–19:00, Вс — выходной",
     "hours_tk": "Db–Şb: 9:00–19:00, Ýb — dynç güni",
     "hours_en": "Mon–Sat: 9:00–19:00, Sun — closed",
+    "delivery_fee": 30,
 }
 
 
@@ -557,10 +727,10 @@ def seed_shop() -> None:
                 cat.products.append(prod)
                 n_prod += 1
 
-            for s_order, s in enumerate(SERVICES.get(c["slug"], [])):
+            for s in SERVICES.get(c["slug"], []):
                 svc = ShopService(
                     slug=s["slug"], price=s["price"], currency="TMT", price_from=s.get("price_from", False),
-                    icon=s["icon"], enabled=True, sort_order=s_order,
+                    icon=s["icon"], enabled=True, sort_order=SERVICE_ORDER.index(s["slug"]),
                 )
                 for lang in LANGS:
                     svc.translations.append(ShopServiceTranslation(

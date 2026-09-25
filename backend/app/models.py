@@ -105,6 +105,7 @@ class ShopCategory(Base):
     slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    image: Mapped[str | None] = mapped_column(String(128), nullable=True)  # tile picture, media/categories
     parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("shop_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -312,6 +313,7 @@ class ShopService(Base):
     icon: Mapped[str] = mapped_column(String(32), default="wrench")
     # price is a starting price ("от 250 TMT") rather than a fixed one
     price_from: Mapped[bool] = mapped_column(Boolean, default=False)
+    image: Mapped[str | None] = mapped_column(String(128), nullable=True)  # card picture, media/services
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -391,6 +393,7 @@ class ShopSettings(Base):
     hours_ru: Mapped[str] = mapped_column(String(128), default="")
     hours_tk: Mapped[str] = mapped_column(String(128), default="")
     hours_en: Mapped[str] = mapped_column(String(128), default="")
+    delivery_fee: Mapped[int] = mapped_column(Integer, default=0)  # TMT added to every site order
 
 
 class PromoCode(Base):
@@ -424,6 +427,7 @@ class Order(Base):
     total: Mapped[int] = mapped_column(Integer, default=0)
     promo_code: Mapped[str] = mapped_column(String(32), default="")
     discount: Mapped[int] = mapped_column(Integer, default=0)
+    delivery: Mapped[int] = mapped_column(Integer, default=0)  # delivery fee included in total
     # Online-payment slot: unpaid|pending|paid|refunded. Provider/ref are set
     # once a real gateway is wired in (see backend/app/payments/).
     payment_status: Mapped[str] = mapped_column(String(16), default="unpaid")

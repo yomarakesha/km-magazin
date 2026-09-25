@@ -117,6 +117,10 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_orders ADD COLUMN payment_provider VARCHAR(32)"))
             if "payment_ref" not in cols:
                 conn.execute(text("ALTER TABLE shop_orders ADD COLUMN payment_ref VARCHAR(128)"))
+            if "delivery" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_orders ADD COLUMN delivery INTEGER NOT NULL DEFAULT 0"
+                ))
     if "shop_promo_codes" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_promo_codes")}
         if "max_uses" not in cols:
@@ -148,13 +152,24 @@ def _migrate() -> None:
                     conn.execute(text(
                         f"ALTER TABLE shop_settings ADD COLUMN {col} VARCHAR({size}) NOT NULL DEFAULT ''"
                     ))
+            if "delivery_fee" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_settings ADD COLUMN delivery_fee INTEGER NOT NULL DEFAULT 0"
+                ))
     if "shop_services" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_services")}
-        if "price_from" not in cols:
-            with engine.begin() as conn:
+        with engine.begin() as conn:
+            if "price_from" not in cols:
                 conn.execute(text(
                     "ALTER TABLE shop_services ADD COLUMN price_from BOOLEAN NOT NULL DEFAULT 0"
                 ))
+            if "image" not in cols:
+                conn.execute(text("ALTER TABLE shop_services ADD COLUMN image VARCHAR(128)"))
+    if "shop_categories" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_categories")}
+        if "image" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE shop_categories ADD COLUMN image VARCHAR(128)"))
     if "shop_service_translations" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_service_translations")}
         with engine.begin() as conn:

@@ -9,7 +9,8 @@ load_dotenv(BASE_DIR / ".env")
 
 # Storage
 DATA_DIR = BASE_DIR / "data"
-MEDIA_DIR = BASE_DIR / "media"
+# MEDIA_DIR is overridable so tests can upload into a throwaway directory
+MEDIA_DIR = Path(os.getenv("MEDIA_DIR") or BASE_DIR / "media")
 DATA_DIR.mkdir(exist_ok=True)
 (MEDIA_DIR / "img").mkdir(parents=True, exist_ok=True)
 (MEDIA_DIR / "video").mkdir(parents=True, exist_ok=True)

@@ -58,6 +58,8 @@ def sales_report(
     orders_count = db.scalar(select(func.count(Order.id)).where(*in_range)) or 0
     revenue = db.scalar(select(func.coalesce(func.sum(Order.total), 0)).where(*in_range)) or 0
     discounts = db.scalar(select(func.coalesce(func.sum(Order.discount), 0)).where(*in_range)) or 0
+    # delivery fees are part of revenue (Order.total) but not of product margin
+    delivery = db.scalar(select(func.coalesce(func.sum(Order.delivery), 0)).where(*in_range)) or 0
 
     # cost of goods sold over product lines in those orders (cost snapshot at
     # sale time; NULL = cost unknown, counted as 0 and flagged via coverage)
@@ -146,6 +148,7 @@ def sales_report(
         "orders": int(orders_count),
         "revenue": int(revenue),
         "discounts": int(discounts),
+        "delivery": int(delivery),
         "cogs": int(cogs),
         "gross_profit": int(gross_profit),
         "avg_check": avg_check,

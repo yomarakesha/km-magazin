@@ -74,6 +74,23 @@ ORDER_VIEW = Depends(require_role("sales", "warehouse"))
 OWNER = Depends(require_role())
 
 PRODUCTS_SUBDIR = "products"
+CATEGORIES_SUBDIR = "categories"
+SERVICES_SUBDIR = "services"
+
+
+def _replace_picture(obj, upload: UploadFile, subdir: str) -> None:
+    """Store an uploaded picture for a category/service and drop the old file."""
+    (MEDIA_DIR / subdir).mkdir(parents=True, exist_ok=True)
+    old = obj.image
+    obj.image = _save(upload, subdir)
+    if old and old != obj.image:
+        (MEDIA_DIR / subdir / old).unlink(missing_ok=True)
+
+
+def _drop_picture(obj, subdir: str) -> None:
+    if obj.image:
+        (MEDIA_DIR / subdir / obj.image).unlink(missing_ok=True)
+    obj.image = None
 
 
 # --------------------------------------------------------------------------
@@ -100,6 +117,7 @@ def _service(s: ShopService) -> dict:
         "currency": s.currency,
         "icon": s.icon,
         "price_from": s.price_from,
+        "image": f"{SERVICES_SUBDIR}/{s.image}" if s.image else None,
         "enabled": s.enabled,
         "sort_order": s.sort_order,
         "translations": [
@@ -116,6 +134,7 @@ def _cat(c: ShopCategory) -> dict:
         "enabled": c.enabled,
         "sort_order": c.sort_order,
         "parent_id": c.parent_id,
+        "image": f"{CATEGORIES_SUBDIR}/{c.image}" if c.image else None,
         "product_count": len(c.products),
         "translations": [{"lang": t.lang, "name": t.name} for t in c.translations],
         "attributes": [_attr(a) for a in c.attributes],
@@ -209,6 +228,7 @@ def _order(o: Order) -> dict:
         "payment_ref": o.payment_ref,
         "total": o.total,
         "promo_code": o.promo_code,
+        "delivery": o.delivery,
         "discount": o.discount,
         "created_at": o.created_at,
         "items": [
@@ -281,6 +301,26 @@ def update_category(cat_id: int, payload: CategoryUpdateIn, db: Session = Depend
                 c.translations.append(ShopCategoryTranslation(lang=t.lang, name=t.name))
             else:
                 row.name = t.name
+    db.commit()
+    return _cat(c)
+
+
+@router.post("/categories/{cat_id}/image", dependencies=[CONTENT])
+def upload_category_image(cat_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)) -> dict:
+    c = db.get(ShopCategory, cat_id)
+    if not c:
+        raise HTTPException(404, "Category not found")
+    _replace_picture(c, file, CATEGORIES_SUBDIR)
+    db.commit()
+    return _cat(c)
+
+
+@router.delete("/categories/{cat_id}/image", dependencies=[CONTENT])
+def delete_category_image(cat_id: int, db: Session = Depends(get_db)) -> dict:
+    c = db.get(ShopCategory, cat_id)
+    if not c:
+        raise HTTPException(404, "Category not found")
+    _drop_picture(c, CATEGORIES_SUBDIR)
     db.commit()
     return _cat(c)
 
@@ -474,6 +514,26 @@ def update_service(service_id: int, payload: ShopServiceUpdateIn, db: Session = 
     return _service(s)
 
 
+@router.post("/services/{service_id}/image", dependencies=[CONTENT])
+def upload_service_image(service_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)) -> dict:
+    s = db.get(ShopService, service_id)
+    if not s:
+        raise HTTPException(404, "Service not found")
+    _replace_picture(s, file, SERVICES_SUBDIR)
+    db.commit()
+    return _service(s)
+
+
+@router.delete("/services/{service_id}/image", dependencies=[CONTENT])
+def delete_service_image(service_id: int, db: Session = Depends(get_db)) -> dict:
+    s = db.get(ShopService, service_id)
+    if not s:
+        raise HTTPException(404, "Service not found")
+    _drop_picture(s, SERVICES_SUBDIR)
+    db.commit()
+    return _service(s)
+
+
 @router.delete("/services/{service_id}", dependencies=[CONTENT])
 def delete_service(service_id: int, db: Session = Depends(get_db)) -> dict:
     s = db.get(ShopService, service_id)
@@ -632,6 +692,7 @@ def _settings(s: ShopSettings) -> dict:
         "address_ru": s.address_ru, "address_tk": s.address_tk, "address_en": s.address_en,
         "email": s.email,
         "hours_ru": s.hours_ru, "hours_tk": s.hours_tk, "hours_en": s.hours_en,
+        "delivery_fee": s.delivery_fee,
     }
 
 
@@ -652,6 +713,7 @@ def update_settings(payload: ShopSettingsIn, db: Session = Depends(get_db)) -> d
     s.hours_ru = payload.hours_ru
     s.hours_tk = payload.hours_tk
     s.hours_en = payload.hours_en
+    s.delivery_fee = payload.delivery_fee
     db.commit()
     return _settings(s)
 
