@@ -170,27 +170,72 @@ def test_site_content_is_content_role_only(client):
 
 
 # ------------------------------------------------------------------ delivery
-def test_delivery_fee_added_to_order_total(client, db, make_product):
-    from app.models import Order, ShopSettings
+def _zones(client):
+    """Owner creates city (default, free from 5000), regions and pickup."""
+    _login(client)
+    for z in client.get("/api/admin/shop/delivery-zones").json():
+        client.delete(f"/api/admin/shop/delivery-zones/{z['id']}")
 
-    p = make_product(price=2890)
-    settings = db.get(ShopSettings, 1) or ShopSettings(id=1)
-    old_fee = settings.delivery_fee or 0
-    settings.delivery_fee = 30
-    db.add(settings)
-    db.commit()
-    try:
-        v = client.post("/api/shop/cart/validate", json={"items": [{"id": p["id"], "qty": 4}]}).json()
-        assert v["delivery_fee"] == 30
-        r = client.post("/api/shop/orders", json=order_payload(p["id"], qty=4))
-        assert r.status_code == 201
-        assert r.json()["total"] == 4 * 2890 + 30 and r.json()["delivery"] == 30
-        db.expire_all()
-        assert db.get(Order, r.json()["id"]).delivery == 30
-    finally:
-        settings = db.get(ShopSettings, 1)
-        settings.delivery_fee = old_fee
-        db.commit()
+    def make(**body):
+        r = client.post("/api/admin/shop/delivery-zones", json=body)
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    city = make(price=30, free_from=5000, is_default=True, translations=[{"lang": "ru", "name": "Ашхабад"}])
+    region = make(price=100, translations=[{"lang": "ru", "name": "Велаяты"}])
+    pickup = make(price=0, is_pickup=True, translations=[{"lang": "ru", "name": "Самовывоз"}])
+    client.post("/api/auth/logout")
+    return city, region, pickup
+
+
+def test_delivery_zone_fee_added_to_order_total(client, db, make_product):
+    from app.models import Order
+
+    city, region, pickup = _zones(client)
+    p = make_product(price=1000)
+
+    v = client.post("/api/shop/cart/validate", json={"items": [{"id": p["id"], "qty": 2}]}).json()
+    assert v["subtotal"] == 2000 and v["delivery_fee"] == 30
+    assert v["delivery"] == {"zone_id": city["id"], "fee": 30, "free_from": 5000, "to_free": 3000}
+    assert [z["id"] for z in v["zones"]] == [city["id"], region["id"], pickup["id"]]
+
+    # default zone when the checkout sends none
+    r = client.post("/api/shop/orders", json=order_payload(p["id"], qty=2))
+    assert r.json()["total"] == 2030 and r.json()["delivery"] == 30
+    db.expire_all()
+    assert db.get(Order, r.json()["id"]).delivery_zone == "Ашхабад"
+
+    r = client.post("/api/shop/orders", json=order_payload(p["id"], qty=2, delivery_zone_id=region["id"]))
+    assert r.json()["total"] == 2100
+    r = client.post("/api/shop/orders", json=order_payload(p["id"], qty=2, delivery_zone_id=pickup["id"]))
+    assert r.json()["total"] == 2000
+
+
+def test_free_delivery_threshold_and_bad_zone(client, make_product):
+    city, _, _ = _zones(client)
+    p = make_product(price=2500)
+    v = client.post("/api/shop/cart/validate", json={"items": [{"id": p["id"], "qty": 2}]}).json()
+    assert v["delivery"]["fee"] == 0 and v["delivery"]["to_free"] is None
+    r = client.post("/api/shop/orders", json=order_payload(p["id"], qty=2))
+    assert r.json()["total"] == 5000
+    bad = client.post("/api/shop/orders", json=order_payload(p["id"], delivery_zone_id=999999))
+    assert bad.status_code == 400
+
+
+def test_delivery_zone_single_default_and_owner_only(client):
+    city, region, _ = _zones(client)
+    _login(client)
+    r = client.put(f"/api/admin/shop/delivery-zones/{region['id']}", json={
+        "price": 100, "is_default": True, "translations": [{"lang": "ru", "name": "Велаяты"}],
+    })
+    assert r.status_code == 200
+    defaults = [z["id"] for z in client.get("/api/admin/shop/delivery-zones").json() if z["is_default"]]
+    assert defaults == [region["id"]]
+    seller = _u("sales")
+    assert client.post("/api/admin/users", json={"username": seller, "password": "sales-pass-1", "role": "sales"}).status_code == 201
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={"username": seller, "password": "sales-pass-1"}).status_code == 200
+    assert client.post("/api/admin/shop/delivery-zones", json={"price": 1}).status_code == 403
 
 
 # ------------------------------------------------------------------ characteristic filters

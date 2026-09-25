@@ -29,6 +29,7 @@ import Users from "./pages/Users";
 import Services from "./pages/Services";
 import Banners from "./pages/Banners";
 import SitePages, { SitePageEdit } from "./pages/SitePages";
+import Delivery from "./pages/Delivery";
 
 function Gate() {
   const { me, ready } = useAuth();
@@ -62,6 +63,7 @@ function Gate() {
         <Route path="pages" element={<SitePages />} />
         <Route path="pages/new" element={<SitePageEdit />} />
         <Route path="pages/:id" element={<SitePageEdit />} />
+        <Route path="delivery" element={<Delivery />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />

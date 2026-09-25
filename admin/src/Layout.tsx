@@ -51,11 +51,14 @@ export const NAV: { label: string; items: NavItem[] }[] = [
     label: "Управление",
     items: [
       { to: "/reports", label: "Отчёты", roles: ["sales", "warehouse"] },
+      { to: "/delivery", label: "Доставка", roles: [] as Role[] /* owner-only */ },
       { to: "/settings", label: "Контакты магазина", roles: ["content"] },
       { to: "/users", label: "Сотрудники", roles: [] as Role[] /* owner-only, see can() below */ },
     ],
   },
 ];
+
+const OWNER_ONLY = ["/users", "/delivery"];
 
 export default function Layout() {
   const { me, logout, can } = useAuth();
@@ -68,7 +71,8 @@ export default function Layout() {
       .catch(() => {});
   }, []);
 
-  const visible = (it: NavItem) => (it.to === "/users" ? me?.role === "owner" : it.roles.length === 0 || can(...it.roles));
+  const visible = (it: NavItem) =>
+    OWNER_ONLY.includes(it.to) ? me?.role === "owner" : it.roles.length === 0 || can(...it.roles);
 
   return (
     <div className="shell">

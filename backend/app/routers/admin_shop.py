@@ -12,6 +12,8 @@ from ..notify import email_notify, status_message, telegram_notify
 from ..stock import log_movement
 from ..models import (
     CategoryAttribute,
+    DeliveryZone,
+    DeliveryZoneTranslation,
     CategoryAttributeTranslation,
     Order,
     OrderItem,
@@ -35,6 +37,7 @@ from ..schemas import (
     CategoryAttributeUpdateIn,
     CategoryIn,
     CategoryUpdateIn,
+    DeliveryZoneIn,
     OrderPaymentIn,
     OrderStatusIn,
     ProductIn,
@@ -229,6 +232,7 @@ def _order(o: Order) -> dict:
         "total": o.total,
         "promo_code": o.promo_code,
         "delivery": o.delivery,
+        "delivery_zone": o.delivery_zone,
         "discount": o.discount,
         "created_at": o.created_at,
         "items": [
@@ -675,6 +679,80 @@ def delete_review(review_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 # --------------------------------------------------------------------------
+# Delivery zones (checkout options; prices are an owner decision)
+# --------------------------------------------------------------------------
+def _zone(z: DeliveryZone) -> dict:
+    return {
+        "id": z.id, "price": z.price, "free_from": z.free_from, "is_pickup": z.is_pickup,
+        "is_default": z.is_default, "enabled": z.enabled, "sort_order": z.sort_order,
+        "translations": [{"lang": t.lang, "name": t.name, "note": t.note} for t in z.translations],
+    }
+
+
+def _apply_zone(z: DeliveryZone, payload: DeliveryZoneIn, db: Session) -> None:
+    z.price = payload.price
+    z.free_from = payload.free_from
+    z.is_pickup = payload.is_pickup
+    z.enabled = payload.enabled
+    if payload.is_default and not z.is_default:
+        # exactly one default: the zone checkout falls back to
+        db.execute(update(DeliveryZone).values(is_default=False))
+    z.is_default = payload.is_default
+    existing = {t.lang: t for t in z.translations}
+    for t in payload.translations:
+        row = existing.get(t.lang)
+        if row is None:
+            z.translations.append(DeliveryZoneTranslation(lang=t.lang, name=t.name, note=t.note))
+        else:
+            row.name, row.note = t.name, t.note
+
+
+@router.get("/delivery-zones")
+def list_zones(db: Session = Depends(get_db)) -> list[dict]:
+    return [_zone(z) for z in db.scalars(select(DeliveryZone).order_by(DeliveryZone.sort_order)).all()]
+
+
+@router.post("/delivery-zones", status_code=201, dependencies=[OWNER])
+def create_zone(payload: DeliveryZoneIn, db: Session = Depends(get_db)) -> dict:
+    max_order = db.scalar(select(func.max(DeliveryZone.sort_order)))
+    z = DeliveryZone(sort_order=(max_order + 1) if max_order is not None else 0)
+    _apply_zone(z, payload, db)
+    db.add(z)
+    db.commit()
+    return _zone(z)
+
+
+@router.put("/delivery-zones/{zone_id}", dependencies=[OWNER])
+def update_zone(zone_id: int, payload: DeliveryZoneIn, db: Session = Depends(get_db)) -> dict:
+    z = db.get(DeliveryZone, zone_id)
+    if not z:
+        raise HTTPException(404, "Delivery zone not found")
+    _apply_zone(z, payload, db)
+    db.commit()
+    return _zone(z)
+
+
+@router.delete("/delivery-zones/{zone_id}", dependencies=[OWNER])
+def delete_zone(zone_id: int, db: Session = Depends(get_db)) -> dict:
+    z = db.get(DeliveryZone, zone_id)
+    if not z:
+        raise HTTPException(404, "Delivery zone not found")
+    db.delete(z)  # past orders keep their fee and zone name snapshot
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/delivery-zones/reorder", dependencies=[OWNER])
+def reorder_zones(payload: ReorderIn, db: Session = Depends(get_db)) -> dict:
+    for order, zid in enumerate(payload.ids):
+        z = db.get(DeliveryZone, zid)
+        if z:
+            z.sort_order = order
+    db.commit()
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
 # Settings (contacts singleton, id=1)
 # --------------------------------------------------------------------------
 def _get_or_create_settings(db: Session) -> ShopSettings:
@@ -692,7 +770,6 @@ def _settings(s: ShopSettings) -> dict:
         "address_ru": s.address_ru, "address_tk": s.address_tk, "address_en": s.address_en,
         "email": s.email,
         "hours_ru": s.hours_ru, "hours_tk": s.hours_tk, "hours_en": s.hours_en,
-        "delivery_fee": s.delivery_fee,
     }
 
 
@@ -713,7 +790,6 @@ def update_settings(payload: ShopSettingsIn, db: Session = Depends(get_db)) -> d
     s.hours_ru = payload.hours_ru
     s.hours_tk = payload.hours_tk
     s.hours_en = payload.hours_en
-    s.delivery_fee = payload.delivery_fee
     db.commit()
     return _settings(s)
 

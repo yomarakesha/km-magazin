@@ -168,6 +168,13 @@ export const api = {
   updatePage: (id: number, body: SitePageIn) => req<SitePage>(`/api/admin/site/pages/${id}`, json("PUT", body)),
   deletePage: (id: number) => req(`/api/admin/site/pages/${id}`, json("DELETE")),
 
+  // delivery zones
+  zones: () => req<Zone[]>("/api/admin/shop/delivery-zones"),
+  createZone: (body: ZoneIn) => req<Zone>("/api/admin/shop/delivery-zones", json("POST", body)),
+  updateZone: (id: number, body: ZoneIn) => req<Zone>(`/api/admin/shop/delivery-zones/${id}`, json("PUT", body)),
+  deleteZone: (id: number) => req(`/api/admin/shop/delivery-zones/${id}`, json("DELETE")),
+  reorderZones: (ids: number[]) => req("/api/admin/shop/delivery-zones/reorder", json("POST", { ids })),
+
   // settings
   settings: () => req<Settings>("/api/admin/shop/settings"),
   updateSettings: (body: Settings) => req<Settings>("/api/admin/shop/settings", json("PUT", body)),
@@ -249,6 +256,7 @@ export interface Order {
   total: number;
   promo_code: string;
   delivery: number;
+  delivery_zone: string;
   discount: number;
   created_at: string;
   items: { product_id: number | null; service_id: number | null; kind: "product" | "service"; title: string; price: number; qty: number }[];
@@ -436,7 +444,6 @@ export interface Settings {
   hours_ru: string;
   hours_tk: string;
   hours_en: string;
-  delivery_fee: number;
 }
 
 export type LeadStatus = "new" | "read" | "done";
@@ -635,4 +642,22 @@ export interface SitePageIn {
   slug: string;
   enabled: boolean;
   translations: SitePageTr[];
+}
+
+export interface ZoneTr {
+  lang: Lang;
+  name: string;
+  note: string;
+}
+export interface ZoneIn {
+  price: number;
+  free_from: number | null;
+  is_pickup: boolean;
+  is_default: boolean;
+  enabled: boolean;
+  translations: ZoneTr[];
+}
+export interface Zone extends ZoneIn {
+  id: number;
+  sort_order: number;
 }

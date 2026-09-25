@@ -121,6 +121,15 @@ def _migrate() -> None:
                 conn.execute(text(
                     "ALTER TABLE shop_orders ADD COLUMN delivery INTEGER NOT NULL DEFAULT 0"
                 ))
+            if "delivery_zone_id" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_orders ADD COLUMN delivery_zone_id INTEGER "
+                    "REFERENCES shop_delivery_zones(id)"
+                ))
+            if "delivery_zone" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_orders ADD COLUMN delivery_zone VARCHAR(128) NOT NULL DEFAULT ''"
+                ))
     if "shop_promo_codes" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_promo_codes")}
         if "max_uses" not in cols:
@@ -229,6 +238,26 @@ def _seed_ledger_opening() -> None:
             db.commit()
 
 
+def _migrate_flat_delivery_fee() -> None:
+    """Before delivery zones existed a single ShopSettings.delivery_fee applied
+    to every order. Carry a non-zero legacy fee over as the default zone so
+    the checkout keeps charging it until an admin sets zones up."""
+    from .models import DeliveryZone, DeliveryZoneTranslation, ShopSettings
+
+    with SessionLocal() as db:
+        if db.query(DeliveryZone).count() > 0:
+            return
+        s = db.get(ShopSettings, 1)
+        if s is None or not s.delivery_fee:
+            return
+        zone = DeliveryZone(price=s.delivery_fee, is_default=True, enabled=True, sort_order=0)
+        for lang, name in (("ru", "Доставка"), ("tk", "Eltip bermek"), ("en", "Delivery")):
+            zone.translations.append(DeliveryZoneTranslation(lang=lang, name=name))
+        db.add(zone)
+        s.delivery_fee = 0
+        db.commit()
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  (register models)
 
@@ -236,3 +265,4 @@ def init_db() -> None:
     _migrate()
     _seed_owner()
     _seed_ledger_opening()
+    _migrate_flat_delivery_fee()

@@ -14,6 +14,8 @@ from .models import (
     BannerTranslation,
     CategoryAttribute,
     CategoryAttributeTranslation,
+    DeliveryZone,
+    DeliveryZoneTranslation,
     Page,
     PageTranslation,
     Product,
@@ -631,8 +633,23 @@ SETTINGS = {
     "hours_ru": "Пн–Сб: 9:00–19:00, Вс — выходной",
     "hours_tk": "Db–Şb: 9:00–19:00, Ýb — dynç güni",
     "hours_en": "Mon–Sat: 9:00–19:00, Sun — closed",
-    "delivery_fee": 30,
 }
+
+# Checkout delivery options (texts from the "Условия доставки" page).
+# name/note per language; free_from = goods total for free delivery.
+DELIVERY_ZONES = [
+    {"price": 30, "free_from": 5000, "is_default": True,
+     "name": _names("По Ашхабаду", "Aşgabat boýunça", "Ashgabat"),
+     "note": _names("В день заявки или на следующий день", "Şol gün ýa-da ertesi gün", "Same or next day")},
+    {"price": 100, "free_from": None,
+     "name": _names("По регионам", "Welaýatlara", "Regions"),
+     "note": _names("Через транспортные компании, 2–5 дней", "Ulag kompaniýalary arkaly, 2–5 gün",
+                    "By carrier, 2–5 days")},
+    {"price": 0, "free_from": None, "is_pickup": True,
+     "name": _names("Самовывоз", "Dükandan alyp gitmek", "Pickup"),
+     "note": _names("ул. Московская, дом 142, 1-ый этаж", "Moskowskaýa köç., 142-nji jaý, 1-nji gat",
+                    "142 Moskovskaya St., 1st floor")},
+]
 
 
 # sample reviews keyed by product slug: (name, rating, text, status)
@@ -778,6 +795,17 @@ def seed_shop() -> None:
                         lang=lang, title=b["title"][lang], subtitle=b["subtitle"][lang],
                     ))
                 db.add(banner)
+        if db.query(DeliveryZone).count() == 0:
+            for z_order, z in enumerate(DELIVERY_ZONES):
+                zone = DeliveryZone(
+                    price=z["price"], free_from=z["free_from"], is_pickup=z.get("is_pickup", False),
+                    is_default=z.get("is_default", False), enabled=True, sort_order=z_order,
+                )
+                for lang in LANGS:
+                    zone.translations.append(DeliveryZoneTranslation(
+                        lang=lang, name=z["name"][lang], note=z["note"][lang],
+                    ))
+                db.add(zone)
         if db.query(Page).count() == 0:
             for pg_order, pg in enumerate(PAGES):
                 page = Page(slug=pg["slug"], sort_order=pg_order, enabled=True)

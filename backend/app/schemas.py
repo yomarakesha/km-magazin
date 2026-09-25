@@ -276,7 +276,6 @@ class ShopSettingsIn(BaseModel):
     hours_ru: str = Field(default="", max_length=128)
     hours_tk: str = Field(default="", max_length=128)
     hours_en: str = Field(default="", max_length=128)
-    delivery_fee: int = Field(default=0, ge=0)
 
 
 # ---- Shop: orders ----
@@ -299,6 +298,8 @@ class OrderIn(BaseModel):
     payment_method: Literal["cash", "terminal"] = "cash"
     comment: str = Field(default="", max_length=2000)
     promo_code: str = Field(default="", max_length=32)
+    # checkout's delivery choice; omitted = the default zone
+    delivery_zone_id: int | None = None
     items: list[OrderItemIn] = Field(min_length=1)
 
 
@@ -310,6 +311,7 @@ class CartItemRef(BaseModel):
 
 class CartValidateIn(BaseModel):
     items: list[CartItemRef] = Field(min_length=1, max_length=100)
+    delivery_zone_id: int | None = None
 
 
 class OrderStatusIn(BaseModel):
@@ -466,3 +468,19 @@ class PageIn(BaseModel):
     slug: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9-]+$")
     enabled: bool = True
     translations: list[PageTranslationIn] = Field(default_factory=list)
+
+
+# ---- Delivery zones ----
+class DeliveryZoneTranslationIn(BaseModel):
+    lang: Lang
+    name: str = Field(default="", max_length=128)
+    note: str = Field(default="", max_length=256)
+
+
+class DeliveryZoneIn(BaseModel):
+    price: int = Field(default=0, ge=0)
+    free_from: int | None = Field(default=None, ge=1)
+    is_pickup: bool = False
+    is_default: bool = False
+    enabled: bool = True
+    translations: list[DeliveryZoneTranslationIn] = Field(default_factory=list)

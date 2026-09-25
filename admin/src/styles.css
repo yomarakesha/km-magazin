@@ -31,13 +31,13 @@ body {
   font-family: var(--font);
   font-size: 14px;
   color: var(--black);
-  background: var(--bg);
+  background: var(--white); /* Figma pages are white; --bg only tints hovers/placeholders */
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 h1, h2, h3 { margin: 0; color: var(--black); }
-h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; }
+h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.6px; }
 h2 { font-size: 20px; font-weight: 700; }
 h3 { font-size: 16px; font-weight: 600; }
 p { margin: 0; }
@@ -167,12 +167,15 @@ p { margin: 0; }
 .form-actions { display: flex; gap: 12px; justify-content: flex-end; }
 
 /* segmented tabs (language switch, filters) */
-.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 19px; padding: 2px; gap: 2px; }
+/* filter chips, as in the Figma catalog ("Цена", "В наличии", "Со скидкой"…) */
+.tabs { display: inline-flex; flex-wrap: wrap; gap: 8px; }
 .tab {
-  appearance: none; border: none; background: transparent; cursor: pointer; font: inherit;
-  font-size: 13px; font-weight: 500; height: 32px; padding: 0 14px; border-radius: 16px; color: var(--black);
+  appearance: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500;
+  height: 36px; padding: 0 16px; border-radius: 18px; color: var(--black);
+  background: var(--white); border: 1px solid var(--line);
 }
-.tab.active { background: var(--black); color: var(--white); }
+.tab:hover { border-color: var(--black); }
+.tab.active { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 
 /* ---- tables ---- */
 .table-wrap { overflow-x: auto; }

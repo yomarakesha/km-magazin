@@ -393,7 +393,8 @@ class ShopSettings(Base):
     hours_ru: Mapped[str] = mapped_column(String(128), default="")
     hours_tk: Mapped[str] = mapped_column(String(128), default="")
     hours_en: Mapped[str] = mapped_column(String(128), default="")
-    delivery_fee: Mapped[int] = mapped_column(Integer, default=0)  # TMT added to every site order
+    # legacy flat fee, superseded by DeliveryZone; migrated into a zone on startup
+    delivery_fee: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class PromoCode(Base):
@@ -428,6 +429,10 @@ class Order(Base):
     promo_code: Mapped[str] = mapped_column(String(32), default="")
     discount: Mapped[int] = mapped_column(Integer, default=0)
     delivery: Mapped[int] = mapped_column(Integer, default=0)  # delivery fee included in total
+    delivery_zone_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_delivery_zones.id", ondelete="SET NULL"), nullable=True
+    )
+    delivery_zone: Mapped[str] = mapped_column(String(128), default="")  # zone name snapshot (ru)
     # Online-payment slot: unpaid|pending|paid|refunded. Provider/ref are set
     # once a real gateway is wired in (see backend/app/payments/).
     payment_status: Mapped[str] = mapped_column(String(16), default="unpaid")
@@ -680,3 +685,35 @@ class PageTranslation(Base):
     blocks: Mapped[list] = mapped_column(JSON, default=list)
 
     page: Mapped["Page"] = relationship(back_populates="translations")
+
+
+class DeliveryZone(Base):
+    """A delivery option chosen at checkout (Ашхабад, велаяты, самовывоз…).
+    The fee drops to 0 once the goods total reaches free_from."""
+
+    __tablename__ = "shop_delivery_zones"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    price: Mapped[int] = mapped_column(Integer, default=0)  # TMT
+    free_from: Mapped[int | None] = mapped_column(Integer, nullable=True)  # goods total for free delivery
+    is_pickup: Mapped[bool] = mapped_column(Boolean, default=False)  # no address needed
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # used when checkout picks none
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    translations: Mapped[list["DeliveryZoneTranslation"]] = relationship(
+        back_populates="zone", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class DeliveryZoneTranslation(Base):
+    __tablename__ = "shop_delivery_zone_translations"
+    __table_args__ = (UniqueConstraint("zone_id", "lang", name="uq_delivery_zone_lang"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    zone_id: Mapped[int] = mapped_column(ForeignKey("shop_delivery_zones.id", ondelete="CASCADE"))
+    lang: Mapped[str] = mapped_column(String(2))
+    name: Mapped[str] = mapped_column(String(128), default="")
+    note: Mapped[str] = mapped_column(String(256), default="")  # e.g. "в день заявки или на следующий"
+
+    zone: Mapped["DeliveryZone"] = relationship(back_populates="translations")

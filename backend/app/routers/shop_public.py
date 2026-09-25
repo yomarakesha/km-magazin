@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import and_, func, or_, select, union_all, update
 from sqlalchemy.orm import Session
 
+from .. import delivery
 from ..config import PUBLIC_URL
 from ..db import get_db
 from ..models import (
@@ -194,7 +195,6 @@ def settings_dict(db: Session) -> dict:
         "phone": s.phone if s else "",
         "whatsapp": s.whatsapp if s else "",
         "email": s.email if s else "",
-        "delivery_fee": s.delivery_fee if s else 0,
         "address": {
             "ru": s.address_ru if s else "",
             "tk": s.address_tk if s else "",
@@ -905,6 +905,7 @@ def order_status(order_id: int, phone: str = "", db: Session = Depends(get_db)) 
         "payment_method": o.payment_method,
         "payment_status": o.payment_status,
         "delivery": o.delivery,
+        "delivery_zone": o.delivery_zone,
         "total": o.total,
         "created_at": o.created_at,
         "items": [
@@ -966,12 +967,21 @@ def cart_validate(payload: CartValidateIn, db: Session = Depends(get_db)) -> dic
                 "price": p.price if ok else None,
                 "in_stock": _in_stock(p) if ok else None,
             })
-    return {"items": out, "delivery_fee": _delivery_fee(db)}
+    goods = sum(line["price"] * it.qty for line, it in zip(out, payload.items) if line["ok"])
+    quote = delivery.quote(db, payload.delivery_zone_id, goods)
+    return {
+        "items": out,
+        "subtotal": goods,
+        "delivery": quote,
+        "delivery_fee": quote["fee"],  # shorthand for the cart's "Доставка" line
+        "zones": [delivery.zone_view(z) for z in delivery.active_zones(db)],
+    }
 
 
-def _delivery_fee(db: Session) -> int:
-    s = db.get(ShopSettings, 1)
-    return s.delivery_fee if s else 0
+@router.get("/delivery-zones")
+def delivery_zones(db: Session = Depends(get_db)) -> dict:
+    """Delivery options for the checkout (and the "Условия доставки" page)."""
+    return {"zones": [delivery.zone_view(z) for z in delivery.active_zones(db)]}
 
 
 @router.post("/orders", status_code=201, dependencies=[Depends(limiter("orders", 5))])
@@ -989,6 +999,7 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
     ]
     if problems:
         raise HTTPException(409, {"code": "cart_invalid", "problems": problems})
+    zone = delivery.pick_zone(db, payload.delivery_zone_id)  # 400 on a bad zone, before any writes
     order = Order(
         customer_name=payload.customer_name.strip(),
         phone=payload.phone.strip(),
@@ -1066,8 +1077,12 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
         order.promo_code = promo.code
         order.discount = discount
         total -= discount
-    # delivery is added after the promo: a discount never eats into it
-    order.delivery = _delivery_fee(db)
+    # delivery is priced on the discounted goods total and added after the
+    # promo, so a discount never eats into it
+    order.delivery = delivery.fee(zone, total)
+    if zone is not None:
+        order.delivery_zone_id = zone.id
+        order.delivery_zone = delivery.ru_name(zone)
     total += order.delivery
     order.total = total
     db.add(order)
@@ -1083,8 +1098,8 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
     lines = [f"{it.title_snapshot} × {it.qty} = {it.price_snapshot * it.qty} TMT" for it in order.items]
     if promo:
         lines.append(f"Промокод {promo.code}: −{discount} TMT")
-    if order.delivery:
-        lines.append(f"Доставка: {order.delivery} TMT")
+    if order.delivery_zone:
+        lines.append(f"Доставка ({order.delivery_zone}): {order.delivery} TMT")
     background.add_task(
         telegram_notify,
         order_message(order.id, order.customer_name, order.phone, total, lines),

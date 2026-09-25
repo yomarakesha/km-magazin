@@ -27,7 +27,8 @@ from .models import (
     Supplier,
 )
 from .security import hash_password
-from .seed_shop import SETTINGS, seed_shop
+from . import delivery
+from .seed_shop import seed_shop
 
 NOW = datetime.now(timezone.utc)
 
@@ -56,8 +57,6 @@ LEADS = [
     ("Айгуль", "+993 63 222333", "Ноутбук сильно греется.", "pc-maintenance", "done", 6),
     ("Склад «Берк»", "+993 12 998877", "Камеры по периметру, 8 штук.", "cam-install", "new", 1),
 ]
-
-DELIVERY_FEE = SETTINGS["delivery_fee"]
 
 # A product is left "под заказ" (untracked) when its index % 5 == 4.
 UNTRACKED_EVERY = 5
@@ -234,9 +233,13 @@ def seed_demo() -> None:
                 order.discount = discount
                 total -= discount
                 promo.used_count += 1
-            # same rule as checkout: delivery on top of the (discounted) goods
-            order.delivery = DELIVERY_FEE
-            order.total = total + DELIVERY_FEE
+            # same rule as checkout: default zone, priced on the discounted goods
+            zone = delivery.pick_zone(db, None)
+            order.delivery = delivery.fee(zone, total)
+            if zone is not None:
+                order.delivery_zone_id = zone.id
+                order.delivery_zone = delivery.ru_name(zone)
+            order.total = total + order.delivery
             db.add(order)
             db.flush()  # order.id
             for m in move_rows:

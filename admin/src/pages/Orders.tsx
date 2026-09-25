@@ -168,9 +168,9 @@ function OrderModal({ order, onClose, onChanged, onDeleted }: { order: Order; on
           </span>
         </div>
       )}
-      {order.delivery > 0 && (
+      {(order.delivery > 0 || order.delivery_zone) && (
         <div className="row between">
-          <span>Доставка</span>
+          <span>Доставка{order.delivery_zone && <span className="muted"> · {order.delivery_zone}</span>}</span>
           <b className="mono">{money(order.delivery)}</b>
         </div>
       )}
