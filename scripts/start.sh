@@ -6,7 +6,8 @@
 #   1. Создаёт backend/.env с случайными ключами (если нет)
 #   2. Создаёт Python venv и ставит зависимости (если нет)
 #   3. Заполняет БД демо-данными (если нет km.db)
-#   4. Запускает backend :8000
+#   4. Собирает админ-панель (если нет сборки или исходники изменились)
+#   5. Запускает backend :8000 (админка на /admin)
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,10 +21,20 @@ REQ_STAMP="$VENV/.requirements.sha"
 
 # Hash of requirements.txt, so a venv built before a dependency was added gets
 # topped up instead of silently running against stale packages.
-req_hash() {
-    if command -v sha256sum &>/dev/null; then sha256sum "$REQ" | cut -d' ' -f1
-    else shasum -a 256 "$REQ" | cut -d' ' -f1
+sha() {
+    if command -v sha256sum &>/dev/null; then sha256sum "$@"
+    else shasum -a 256 "$@"
     fi
+}
+req_hash() { sha "$REQ" | cut -d' ' -f1; }
+
+# Hash of everything the admin build is made from: a pulled change to the
+# admin sources or dependencies triggers a rebuild instead of serving a stale dist.
+ADMIN="$ROOT/admin"
+ADMIN_STAMP="$ADMIN/dist/.build.sha"
+admin_hash() {
+    (cd "$ADMIN" && find src public index.html package.json package-lock.json vite.config.ts tsconfig.json \
+        -type f 2>/dev/null | LC_ALL=C sort | while read -r f; do sha "$f"; done) | sha | cut -d' ' -f1
 }
 
 echo ""
@@ -34,7 +45,7 @@ echo ""
 
 # ── 1. backend/.env ───────────────────────────────────────────────────────────
 if [ ! -f "$ENV_FILE" ]; then
-    echo "[1/4] Создаём backend/.env..."
+    echo "[1/5] Создаём backend/.env..."
 
     # Открытый пароль по умолчанию — задай свой в backend/.env перед продакшном.
     ADMIN_PWD=admin
@@ -55,7 +66,7 @@ EOF
     echo "  ВНИМАНИЕ: пароль по умолчанию 'admin' — СМЕНИТЕ в backend/.env перед публикацией!"
     echo ""
 else
-    echo "[1/4] backend/.env уже есть — пропускаем"
+    echo "[1/5] backend/.env уже есть — пропускаем"
     ADMIN_PWD=$(grep '^ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
     [ -n "$ADMIN_PWD" ] && echo "  Текущий пароль admin: $ADMIN_PWD"
 fi
@@ -70,7 +81,7 @@ done
 
 # ── 2. Python venv + зависимости ─────────────────────────────────────────────
 if [ ! -f "$PY" ]; then
-    echo "[2/4] Создаём Python venv..."
+    echo "[2/5] Создаём Python venv..."
 
     # Ищем python3
     PY_CMD=""
@@ -96,43 +107,60 @@ if [ ! -f "$PY" ]; then
         exit 1
     fi
     req_hash > "$REQ_STAMP"
-    echo "[2/4] Python зависимости установлены."
+    echo "[2/5] Python зависимости установлены."
 elif [ ! -f "$REQ_STAMP" ] || [ "$(cat "$REQ_STAMP")" != "$(req_hash)" ]; then
-    echo "[2/4] requirements.txt изменился — доставляем зависимости..."
+    echo "[2/5] requirements.txt изменился — доставляем зависимости..."
     if ! "$PY" -m pip install -r "$REQ"; then
         echo "Ошибка установки Python-зависимостей. Venv оставлен как есть."
         echo "Проверьте сеть и перезапустите."
         exit 1
     fi
     req_hash > "$REQ_STAMP"
-    echo "[2/4] Python зависимости обновлены."
+    echo "[2/5] Python зависимости обновлены."
 else
-    echo "[2/4] Python venv актуален — пропускаем"
+    echo "[2/5] Python venv актуален — пропускаем"
 fi
 
 # ── 3. Seed демо-данных ───────────────────────────────────────────────────────
 if [ ! -f "$DB" ]; then
-    echo "[3/4] Заполняем БД демо-данными..."
+    echo "[3/5] Заполняем БД демо-данными..."
     mkdir -p "$BACKEND/data"
     cd "$BACKEND" && "$PY" -m app.seed_demo
-    echo "[3/4] БД создана с демо-данными."
+    echo "[3/5] БД создана с демо-данными."
 else
-    echo "[3/4] БД уже существует — пропускаем seed"
+    echo "[3/5] БД уже существует — пропускаем seed"
 fi
 
-# ── Админ-панель (admin/) — собираем, если есть npm и нет готовой сборки ──────
-if [ ! -f "$ROOT/admin/dist/index.html" ]; then
-    if command -v npm &>/dev/null; then
-        echo "      Собираем админ-панель..."
-        (cd "$ROOT/admin" && npm install --no-audit --no-fund && npm run build) \
-            || echo "      ВНИМАНИЕ: сборка админки не удалась — API работает, /admin нет."
+# ── 4. Админ-панель (admin/) ─────────────────────────────────────────────────
+ADMIN_NOW=$(admin_hash)
+if [ -f "$ADMIN/dist/index.html" ] && [ -f "$ADMIN_STAMP" ] && [ "$(cat "$ADMIN_STAMP")" = "$ADMIN_NOW" ]; then
+    echo "[4/5] Админ-панель собрана и актуальна — пропускаем"
+elif command -v npm &>/dev/null; then
+    echo "[4/5] Собираем админ-панель..."
+    if (cd "$ADMIN" && npm install --no-audit --no-fund && npm run build); then
+        echo "$ADMIN_NOW" > "$ADMIN_STAMP"
+        echo "[4/5] Админ-панель собрана."
+    elif [ -f "$ADMIN/dist/index.html" ]; then
+        echo "      ВНИМАНИЕ: сборка не удалась — остаётся предыдущая версия админки."
     else
-        echo "      npm не найден — админ-панель не собрана (нужен Node.js 20+)."
+        echo "      ВНИМАНИЕ: сборка не удалась — API работает, /admin недоступна."
     fi
+elif [ -f "$ADMIN/dist/index.html" ]; then
+    echo "[4/5] npm не найден — используем имеющуюся (возможно устаревшую) сборку админки."
+else
+    echo "[4/5] npm не найден — админ-панель не собрана (нужен Node.js 20+). API работает."
 fi
 
-# ── 4. Запуск сервера ────────────────────────────────────────────────────────
-echo "[4/4] Запускаем backend..."
+# ── 5. Запуск сервера ────────────────────────────────────────────────────────
+# Занятый порт — частая причина «ложного OK»: проверка ниже достучалась бы до
+# чужого процесса. Проверяем заранее.
+if ! "$PY" -c "import socket; s = socket.socket(); s.bind(('127.0.0.1', 8000))" 2>/dev/null; then
+    echo "ОШИБКА: порт 8000 уже занят (возможно, backend уже запущен)."
+    echo "Остановите тот процесс и запустите скрипт снова."
+    exit 1
+fi
+
+echo "[5/5] Запускаем backend..."
 echo ""
 
 # Запуск в фоне с выводом в консоль
@@ -141,11 +169,12 @@ BACKEND_PID=$!
 
 # Гасим сервер при Ctrl+C или завершении скрипта
 cleanup() {
+    local code="${1:-0}"
     trap - INT TERM EXIT
     echo ''
     echo 'Остановка сервера...'
     kill "$BACKEND_PID" 2>/dev/null
-    exit 0
+    exit "$code"
 }
 trap cleanup INT TERM EXIT
 
@@ -172,7 +201,7 @@ if command -v curl &>/dev/null; then
     if ! wait_for "http://localhost:8000/docs" "backend"; then
         echo ""
         echo "Запуск не удался — смотрите ошибки выше."
-        cleanup
+        cleanup 1
     fi
 else
     echo "  curl не найден — пропускаем проверку"
@@ -187,5 +216,5 @@ echo ""
 echo "Нажмите Ctrl+C чтобы остановить сервер."
 echo ""
 
-wait "$BACKEND_PID"
-cleanup
+# Сервер сам завершился (упал) — выходим с его кодом, а не «успехом».
+wait "$BACKEND_PID" && cleanup 0 || cleanup $?
