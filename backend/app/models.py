@@ -5,6 +5,7 @@ Content mirrors the TS `Content`/`Section` contract in the frontend's
 `ContentBlock` (one JSON blob per (key, lang)); services are normalized into
 `Service` + `ServiceTranslation`, and gallery media into `Media`.
 """
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -196,6 +197,10 @@ class Product(Base):
     cost_price: Mapped[int | None] = mapped_column(Integer, nullable=True)  # last purchase cost, TMT
     sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
     barcode: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # EAN/UPC for POS scan
+    brand_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_brands.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    is_new: Mapped[bool] = mapped_column(Boolean, default=False)  # "Новое" badge / new-arrivals list
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # feeds sitemap <lastmod>; NULL for rows predating the column
@@ -204,6 +209,7 @@ class Product(Base):
     )
 
     category: Mapped["ShopCategory"] = relationship(back_populates="products")
+    brand: Mapped["ShopBrand | None"] = relationship("ShopBrand", lazy="selectin")
     translations: Mapped[list["ProductTranslation"]] = relationship(
         back_populates="product", cascade="all, delete-orphan", lazy="selectin"
     )
@@ -312,13 +318,25 @@ class ProductReview(Base):
     product: Mapped["Product"] = relationship("Product")
 
 
+def slugify(text: str) -> str:
+    """ASCII url slug: lowercase, runs of anything else collapsed to "-"."""
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def _brand_slug_default(ctx) -> str:
+    return slugify(ctx.get_current_parameters().get("name") or "")
+
+
 class ShopBrand(Base):
-    """A brand/partner shown in the storefront brands strip."""
+    """A product manufacturer; products link to it via Product.brand_id."""
 
     __tablename__ = "shop_brands"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(64))
+    slug: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True, nullable=True, default=_brand_slug_default
+    )
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -334,6 +352,10 @@ class ShopSettings(Base):
     address_ru: Mapped[str] = mapped_column(String(256), default="")
     address_tk: Mapped[str] = mapped_column(String(256), default="")
     address_en: Mapped[str] = mapped_column(String(256), default="")
+    email: Mapped[str] = mapped_column(String(128), default="")
+    hours_ru: Mapped[str] = mapped_column(String(128), default="")
+    hours_tk: Mapped[str] = mapped_column(String(128), default="")
+    hours_en: Mapped[str] = mapped_column(String(128), default="")
 
 
 class PromoCode(Base):

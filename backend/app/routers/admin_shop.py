@@ -27,6 +27,7 @@ from ..models import (
     ShopService,
     ShopServiceTranslation,
     ShopSettings,
+    slugify,
 )
 from ..schemas import (
     CategoryAttributeIn,
@@ -128,6 +129,8 @@ def _product(p: Product) -> dict:
         "stock_qty": p.stock_qty,
         "sku": p.sku or "",
         "barcode": p.barcode,
+        "brand_id": p.brand_id,
+        "is_new": p.is_new,
         "enabled": p.enabled,
         "sort_order": p.sort_order,
         "image_count": len(p.images),
@@ -437,7 +440,14 @@ def reorder_services(cat_id: int, payload: ReorderIn, db: Session = Depends(get_
 # Brands (storefront brands strip)
 # --------------------------------------------------------------------------
 def _brand(b: ShopBrand) -> dict:
-    return {"id": b.id, "name": b.name, "enabled": b.enabled, "sort_order": b.sort_order}
+    return {"id": b.id, "slug": b.slug, "name": b.name, "enabled": b.enabled, "sort_order": b.sort_order}
+
+
+def _brand_slug_taken(db: Session, slug: str, exclude_id: int | None = None) -> bool:
+    stmt = select(ShopBrand.id).where(ShopBrand.slug == slug)
+    if exclude_id is not None:
+        stmt = stmt.where(ShopBrand.id != exclude_id)
+    return db.scalar(stmt) is not None
 
 
 @router.get("/brands")
@@ -448,9 +458,14 @@ def list_brands(db: Session = Depends(get_db)) -> list[dict]:
 
 @router.post("/brands", status_code=201, dependencies=[CONTENT])
 def create_brand(payload: ShopBrandIn, db: Session = Depends(get_db)) -> dict:
+    slug = payload.slug or slugify(payload.name)
+    if not slug:
+        raise HTTPException(422, "Brand slug is empty — pass one explicitly")
+    if _brand_slug_taken(db, slug):
+        raise HTTPException(409, "Brand slug already exists")
     max_order = db.scalar(select(func.max(ShopBrand.sort_order)))
     b = ShopBrand(
-        name=payload.name, enabled=payload.enabled,
+        name=payload.name, slug=slug, enabled=payload.enabled,
         sort_order=(max_order + 1) if max_order is not None else 0,
     )
     db.add(b)
@@ -463,6 +478,10 @@ def update_brand(brand_id: int, payload: ShopBrandUpdateIn, db: Session = Depend
     b = db.get(ShopBrand, brand_id)
     if not b:
         raise HTTPException(404, "Brand not found")
+    if payload.slug is not None and payload.slug != b.slug:
+        if _brand_slug_taken(db, payload.slug, exclude_id=b.id):
+            raise HTTPException(409, "Brand slug already exists")
+        b.slug = payload.slug
     if payload.name is not None:
         b.name = payload.name
     if payload.enabled is not None:
@@ -553,6 +572,8 @@ def _settings(s: ShopSettings) -> dict:
     return {
         "phone": s.phone, "whatsapp": s.whatsapp,
         "address_ru": s.address_ru, "address_tk": s.address_tk, "address_en": s.address_en,
+        "email": s.email,
+        "hours_ru": s.hours_ru, "hours_tk": s.hours_tk, "hours_en": s.hours_en,
     }
 
 
@@ -569,6 +590,10 @@ def update_settings(payload: ShopSettingsIn, db: Session = Depends(get_db)) -> d
     s.address_ru = payload.address_ru
     s.address_tk = payload.address_tk
     s.address_en = payload.address_en
+    s.email = payload.email
+    s.hours_ru = payload.hours_ru
+    s.hours_tk = payload.hours_tk
+    s.hours_en = payload.hours_en
     db.commit()
     return _settings(s)
 
@@ -621,6 +646,8 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
         raise HTTPException(409, "Slug already exists")
     if not db.get(ShopCategory, payload.category_id):
         raise HTTPException(400, "Category not found")
+    if payload.brand_id is not None and not db.get(ShopBrand, payload.brand_id):
+        raise HTTPException(400, "Brand not found")
     if payload.barcode:
         # create is open to content+warehouse, but the barcode lane holds here too
         if user["role"] not in ("owner", "warehouse"):
@@ -640,6 +667,8 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
         stock_qty=payload.stock_qty,
         sku=payload.sku or None,
         barcode=payload.barcode or None,
+        brand_id=payload.brand_id,
+        is_new=payload.is_new,
         enabled=payload.enabled,
         sort_order=(max_order + 1) if max_order is not None else 0,
     )
@@ -692,6 +721,8 @@ def update_product(
         payload.in_stock is not None,
         payload.sku is not None,
         payload.enabled is not None,
+        "brand_id" in payload.model_fields_set,
+        payload.is_new is not None,
         payload.translations is not None,
         payload.attributes is not None,
     ))
@@ -741,6 +772,12 @@ def update_product(
         p.sku = payload.sku or None
     if payload.enabled is not None:
         p.enabled = payload.enabled
+    if "brand_id" in payload.model_fields_set:
+        if payload.brand_id is not None and not db.get(ShopBrand, payload.brand_id):
+            raise HTTPException(400, "Brand not found")
+        p.brand_id = payload.brand_id
+    if payload.is_new is not None:
+        p.is_new = payload.is_new
     if payload.translations is not None:
         existing = {t.lang: t for t in p.translations}
         for t in payload.translations:

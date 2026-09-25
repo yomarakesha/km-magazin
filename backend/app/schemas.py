@@ -161,6 +161,8 @@ class ProductIn(BaseModel):
     stock_qty: int | None = Field(default=None, ge=0)
     sku: str = ""
     barcode: str | None = Field(default=None, max_length=64)
+    brand_id: int | None = None
+    is_new: bool = False
     enabled: bool = True
     translations: list[ProductTranslationIn] = Field(default_factory=list)
     attributes: list[ProductAttributeIn] = Field(default_factory=list)
@@ -179,6 +181,9 @@ class ProductUpdateIn(BaseModel):
     sku: str | None = None
     # present-with-null clears the barcode; missing key = no change
     barcode: str | None = Field(default=None, max_length=64)
+    # present-with-null unlinks the brand; missing key = no change
+    brand_id: int | None = None
+    is_new: bool | None = None
     enabled: bool | None = None
     translations: list[ProductTranslationIn] | None = None
     attributes: list[ProductAttributeIn] | None = None
@@ -223,11 +228,14 @@ class ReviewStatusIn(BaseModel):
 # ---- Shop: brands ----
 class ShopBrandIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
+    # empty = derived from the name
+    slug: str = Field(default="", max_length=64, pattern=r"^[a-z0-9-]*$")
     enabled: bool = True
 
 
 class ShopBrandUpdateIn(BaseModel):
     name: str | None = None
+    slug: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[a-z0-9-]+$")
     enabled: bool | None = None
 
 
@@ -238,6 +246,10 @@ class ShopSettingsIn(BaseModel):
     address_ru: str = Field(default="", max_length=256)
     address_tk: str = Field(default="", max_length=256)
     address_en: str = Field(default="", max_length=256)
+    email: str = Field(default="", max_length=128)
+    hours_ru: str = Field(default="", max_length=128)
+    hours_tk: str = Field(default="", max_length=128)
+    hours_en: str = Field(default="", max_length=128)
 
 
 # ---- Shop: orders ----

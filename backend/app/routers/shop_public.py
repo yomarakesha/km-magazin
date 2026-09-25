@@ -7,7 +7,7 @@ switch language client-side, mirroring how the landing handles i18n.
 import hmac
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from ..config import PUBLIC_URL
@@ -95,11 +95,17 @@ def _in_stock(p: Product) -> bool:
     return p.in_stock and (p.stock_qty is None or p.stock_qty > 0)
 
 
+def _brand_ref(b: ShopBrand | None) -> dict | None:
+    return {"slug": b.slug, "name": b.name} if b and b.enabled else None
+
+
 def _card(p: Product) -> dict:
     return {
         "id": p.id,
         "slug": p.slug,
         "category_id": p.category_id,
+        "brand": _brand_ref(p.brand),
+        "is_new": p.is_new,
         "price": p.price,
         "old_price": p.old_price,
         "currency": p.currency,
@@ -159,10 +165,16 @@ def settings_dict(db: Session) -> dict:
     return {
         "phone": s.phone if s else "",
         "whatsapp": s.whatsapp if s else "",
+        "email": s.email if s else "",
         "address": {
             "ru": s.address_ru if s else "",
             "tk": s.address_tk if s else "",
             "en": s.address_en if s else "",
+        },
+        "hours": {
+            "ru": s.hours_ru if s else "",
+            "tk": s.hours_tk if s else "",
+            "en": s.hours_en if s else "",
         },
     }
 
@@ -200,7 +212,7 @@ def catalog(request: Request, db: Session = Depends(get_db)) -> dict:
         "products": _attach_ratings([_card(p) for p in featured], db),
         "total": int(total or 0),
         "services": [_service_card(s) for s in services],
-        "brands": [{"id": b.id, "name": b.name} for b in brands],
+        "brands": [{"id": b.id, "slug": b.slug, "name": b.name} for b in brands],
         "settings": settings_dict(db),
     }
 
@@ -347,6 +359,169 @@ def search(request: Request, db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.get("/brands")
+def brands(db: Session = Depends(get_db)) -> dict:
+    """Brands page: every enabled brand with its enabled-product count."""
+    counts = dict(
+        db.execute(
+            select(Product.brand_id, func.count())
+            .where(Product.enabled == True, Product.brand_id.is_not(None))  # noqa: E712
+            .group_by(Product.brand_id)
+        ).all()
+    )
+    rows = db.scalars(
+        select(ShopBrand).where(ShopBrand.enabled == True).order_by(ShopBrand.sort_order)  # noqa: E712
+    ).all()
+    return {
+        "brands": [
+            {"id": b.id, "slug": b.slug, "name": b.name, "product_count": int(counts.get(b.id, 0))}
+            for b in rows
+        ]
+    }
+
+
+def _descendant_ids(db: Session, root_id: int) -> list[int]:
+    """root_id plus every category below it (any depth, cycle-safe)."""
+    children: dict[int | None, list[int]] = {}
+    for cid, pid in db.execute(select(ShopCategory.id, ShopCategory.parent_id)).all():
+        children.setdefault(pid, []).append(cid)
+    out, seen = [root_id], {root_id}
+    for cid in out:
+        for kid in children.get(cid, []):
+            if kid not in seen:
+                seen.add(kid)
+                out.append(kid)
+    return out
+
+
+_IN_STOCK_SQL = and_(
+    Product.in_stock == True,  # noqa: E712
+    or_(Product.stock_qty.is_(None), Product.stock_qty > 0),
+)
+
+
+@router.get("/products", dependencies=[Depends(limiter("products", 60))])
+def products(request: Request, db: Session = Depends(get_db)) -> dict:
+    """Cross-category product listing behind the catalog, discount, new-arrivals
+    and search pages.
+
+    Query: q, category (slug, includes subcategories), brand (comma-separated
+    slugs), price_min, price_max, in_stock=1, discount=1, new=1, sort
+    (price_asc|price_desc|new), limit, offset.
+
+    Facets (categories, brands, price range) are computed with every filter
+    applied except their own, so picking one brand still lists the others.
+    """
+    params = request.query_params
+    base = [Product.enabled == True]  # noqa: E712
+    q = (params.get("q") or "").strip()
+    if q:
+        like = f"%{_like_escape(q)}%"
+        text_match = select(ProductTranslation.product_id).where(
+            or_(
+                ProductTranslation.title.ilike(like, escape="\\"),
+                ProductTranslation.short.ilike(like, escape="\\"),
+            )
+        )
+        base.append(or_(Product.id.in_(text_match), Product.sku.ilike(like, escape="\\")))
+    if params.get("in_stock"):
+        base.append(_IN_STOCK_SQL)
+    if params.get("discount"):
+        base.append(and_(Product.old_price.is_not(None), Product.old_price > Product.price))
+    if params.get("new"):
+        base.append(Product.is_new == True)  # noqa: E712
+
+    # facet-owned filters: key -> conditions
+    own: dict[str, list] = {"category": [], "brand": [], "price": []}
+    cat_slug = params.get("category")
+    if cat_slug:
+        cat = db.scalar(select(ShopCategory).where(ShopCategory.slug == cat_slug))
+        if not cat or not cat.enabled:
+            raise HTTPException(404, "Category not found")
+        own["category"].append(Product.category_id.in_(_descendant_ids(db, cat.id)))
+    brand_slugs = [b for b in (params.get("brand") or "").split(",") if b]
+    if brand_slugs:
+        own["brand"].append(
+            Product.brand_id.in_(select(ShopBrand.id).where(ShopBrand.slug.in_(brand_slugs)))
+        )
+    price_min = _num(params.get("price_min"), int)
+    if price_min is not None:
+        own["price"].append(Product.price >= price_min)
+    price_max = _num(params.get("price_max"), int)
+    if price_max is not None:
+        own["price"].append(Product.price <= price_max)
+
+    def where_except(skip: str | None = None) -> list:
+        return base + [c for k, conds in own.items() if k != skip for c in conds]
+
+    conds = where_except()
+    total = db.scalar(select(func.count()).select_from(Product).where(*conds))
+    limit, offset = _page_params(params)
+    page = db.scalars(
+        _apply_sort(select(Product).where(*conds), params.get("sort")).offset(offset).limit(limit)
+    ).all()
+
+    cat_counts = db.execute(
+        select(Product.category_id, func.count())
+        .where(*where_except("category"))
+        .group_by(Product.category_id)
+    ).all()
+    cats = {
+        c.id: c
+        for c in db.scalars(
+            select(ShopCategory).where(ShopCategory.id.in_([cid for cid, _ in cat_counts]))
+        ).all()
+    }
+    brand_counts = db.execute(
+        select(Product.brand_id, func.count())
+        .where(*where_except("brand"), Product.brand_id.is_not(None))
+        .group_by(Product.brand_id)
+    ).all()
+    brand_rows = {
+        b.id: b
+        for b in db.scalars(
+            select(ShopBrand).where(
+                ShopBrand.id.in_([bid for bid, _ in brand_counts]),
+                ShopBrand.enabled == True,  # noqa: E712
+            )
+        ).all()
+    }
+    pmin, pmax = db.execute(
+        select(func.min(Product.price), func.max(Product.price)).where(*where_except("price"))
+    ).first()
+
+    return {
+        "mediaBase": f"{PUBLIC_URL}/media",
+        "query": q,
+        "products": _attach_ratings([_card(p) for p in page], db),
+        "total": int(total or 0),
+        "facets": {
+            "categories": sorted(
+                (
+                    {
+                        "slug": cats[cid].slug,
+                        "parent_id": cats[cid].parent_id,
+                        "name": _imap(cats[cid].translations, "name"),
+                        "count": int(n),
+                    }
+                    for cid, n in cat_counts
+                    if cid in cats and cats[cid].enabled
+                ),
+                key=lambda c: c["slug"],
+            ),
+            "brands": sorted(
+                (
+                    {"slug": brand_rows[bid].slug, "name": brand_rows[bid].name, "count": int(n)}
+                    for bid, n in brand_counts
+                    if bid in brand_rows
+                ),
+                key=lambda b: b["name"].lower(),
+            ),
+            "price": {"min": pmin, "max": pmax},
+        },
+    }
+
+
 @router.get("/sitemap")
 def sitemap(db: Session = Depends(get_db)) -> dict:
     """Slugs (+ product lastmod) for the frontend sitemap.xml."""
@@ -389,6 +564,8 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
         "slug": p.slug,
         "category": p.category.slug,
         "category_id": p.category_id,
+        "brand": _brand_ref(p.brand),
+        "is_new": p.is_new,
         "price": p.price,
         "old_price": p.old_price,
         "currency": p.currency,

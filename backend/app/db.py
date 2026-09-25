@@ -65,6 +65,17 @@ def _migrate() -> None:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN cost_price INTEGER"))
             if "barcode" not in cols:
                 conn.execute(text("ALTER TABLE shop_products ADD COLUMN barcode VARCHAR(64)"))
+            if "brand_id" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_products ADD COLUMN brand_id INTEGER REFERENCES shop_brands(id)"
+                ))
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_shop_products_brand_id ON shop_products(brand_id)"
+                ))
+            if "is_new" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_products ADD COLUMN is_new BOOLEAN NOT NULL DEFAULT 0"
+                ))
         # DB-level uniqueness is the backstop for the app-level check, which has
         # a TOCTOU race (two PUTs both pass the SELECT before either INSERTs).
         # Partial index so the many products without a barcode (NULL) don't clash.
@@ -111,6 +122,32 @@ def _migrate() -> None:
         if "max_uses" not in cols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE shop_promo_codes ADD COLUMN max_uses INTEGER"))
+    if "shop_brands" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_brands")}
+        if "slug" not in cols:
+            from .models import slugify
+
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE shop_brands ADD COLUMN slug VARCHAR(64)"))
+                # backfill from the name; a clash (e.g. "HP" vs "hp") gets the id appended
+                seen: set[str] = set()
+                for bid, name in conn.execute(text("SELECT id, name FROM shop_brands ORDER BY id")).all():
+                    slug = slugify(name) or f"brand-{bid}"
+                    if slug in seen:
+                        slug = f"{slug}-{bid}"
+                    seen.add(slug)
+                    conn.execute(text("UPDATE shop_brands SET slug = :s WHERE id = :i"), {"s": slug, "i": bid})
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_shop_brands_slug ON shop_brands(slug)"
+                ))
+    if "shop_settings" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_settings")}
+        with engine.begin() as conn:
+            for col, size in (("email", 128), ("hours_ru", 128), ("hours_tk", 128), ("hours_en", 128)):
+                if col not in cols:
+                    conn.execute(text(
+                        f"ALTER TABLE shop_settings ADD COLUMN {col} VARCHAR({size}) NOT NULL DEFAULT ''"
+                    ))
     if "shop_stock_movements" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_stock_movements")}
         if "sale_id" not in cols:

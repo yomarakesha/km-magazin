@@ -1,21 +1,17 @@
-# KM Site
+# KM Site — Backend
 
-Полнофункциональный сайт с CMS-панелью администратора.
+API интернет-магазина Kanagatly Mahabat (компьютерная техника, системы
+безопасности, сетевое оборудование) и CRM для администраторов.
 
-- **Frontend** — Next.js + React (папка корневая)
-- **Backend** — Python FastAPI + SQLite (`backend/`)
-- **Админ** — `/admin` (RBAC: owner / warehouse / sales / content)
-- **Касса (POS)** — `/admin/pos` (продажа, скидки, долги, чек A4)
+- **Стек** — Python FastAPI + SQLite (`backend/`)
+- **Витрина (публичный API)** — `/api/shop/*`, `/api/leads`
+- **Админ API** — `/api/admin/*` (RBAC: owner / warehouse / sales / content)
+- **Касса (POS)** — `/api/admin/pos/*`
+- **Макет** — Figma, фронтенд делается отдельно
 
 ---
 
 ## Быстрый старт
-
-### Windows
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\start.ps1
-```
 
 ### Linux / macOS
 
@@ -23,24 +19,21 @@ powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 bash scripts/start.sh
 ```
 
-Скрипт делает всё автоматически:
-1. Создаёт `backend/.env` с случайным паролем (выведет его в консоли)
+### Windows
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start.ps1
+```
+
+Скрипт:
+1. Создаёт `backend/.env` со случайным `SECRET_KEY` (пароль admin по умолчанию — `admin`, смените)
 2. Ставит Python-зависимости в venv (и доставляет их, если `requirements.txt` изменился)
-3. Ставит npm-пакеты
-4. Заполняет БД демо-данными (каталог, заказы, склад, POS-продажи)
-5. Запускает оба сервера и ждёт, пока они реально ответят
+3. Заполняет БД демо-данными, если `backend/data/km.db` нет
+4. Запускает backend на :8000 и ждёт, пока он ответит
 
-**Требования:** Python 3.10+, Node.js 20.9+
+**Требования:** Python 3.10+
 
----
-
-## Адреса после запуска
-
-| Что | URL |
-|-----|-----|
-| Сайт (витрина) | http://localhost:3000 |
-| Админ-панель | http://localhost:3000/admin |
-| API (документация) | http://localhost:8000/docs |
+Документация API: http://localhost:8000/docs
 
 ---
 
@@ -48,47 +41,56 @@ bash scripts/start.sh
 
 | Логин | Пароль | Роль |
 |-------|--------|------|
-| admin | *из консоли / backend/.env* | Владелец (полный доступ) |
+| admin | *из backend/.env* | Владелец (полный доступ) |
 | sklad | sklad12345 | Склад |
 | operator | operator12345 | Продавец (касса) |
 | kontent | kontent12345 | Контент |
 
 ---
 
-## Структура проекта
+## Публичный API витрины
+
+| Эндпоинт | Экран в макете |
+|----------|----------------|
+| `GET /api/shop/catalog` | Главная, Каталог (категории, бренды, контакты) |
+| `GET /api/shop/products` | Каталог / Скидки / Новинки / Поиск — фильтры и фасеты |
+| `GET /api/shop/categories/{slug}` | Категория с фильтрами по характеристикам |
+| `GET /api/shop/products/{slug}` | Карточка товара |
+| `GET /api/shop/brands` | Бренды (с количеством товаров) |
+| `POST /api/shop/cart/validate` | Корзина |
+| `POST /api/shop/orders` | Оформление заявки |
+| `POST /api/leads` | Заявка на услугу |
+
+`GET /api/shop/products` принимает: `q`, `category` (slug, с подкатегориями),
+`brand` (slug через запятую), `price_min`, `price_max`, `in_stock=1`,
+`discount=1`, `new=1`, `sort` (`price_asc` | `price_desc` | `new`), `limit`, `offset`.
+
+---
+
+## Структура
 
 ```
-km-site/
-├── app/                  # Next.js страницы (App Router)
-│   ├── admin/            # Админ-панель
-│   │   ├── pos/          # Касса, продажи, чеки
-│   │   ├── shop/         # Каталог товаров
-│   │   ├── warehouse/    # Склад, закупки
-│   │   └── reports/      # Отчёты
-│   └── [slug]/           # Публичные страницы
-├── backend/
-│   ├── app/              # FastAPI приложение
-│   │   ├── routers/      # API эндпоинты
-│   │   ├── models.py     # SQLAlchemy модели
-│   │   ├── seed_demo.py  # Демо-данные
-│   │   └── ...
-│   ├── data/             # SQLite БД (не в git)
-│   ├── media/            # Загруженные файлы (не в git)
-│   ├── requirements.txt
-│   └── .env              # Секреты (не в git, создаётся скриптом)
-├── lib/                  # Общие утилиты (TypeScript)
-├── scripts/
-│   ├── start.ps1         # Запуск (Windows)
-│   ├── start.sh          # Запуск (Linux/macOS)
-│   └── create-admin.ps1  # Смена пароля admin
-└── tests/                # E2E тесты (Playwright)
+backend/
+├── app/
+│   ├── routers/      # API эндпоинты
+│   ├── models.py     # SQLAlchemy модели
+│   ├── db.py         # движок + лёгкие миграции SQLite (без Alembic)
+│   ├── seed_demo.py  # демо-данные
+│   └── ...
+├── data/km.db        # SQLite БД (в git — репозиторий приватный)
+├── media/            # медиафайлы
+├── tests/            # pytest
+├── requirements.txt
+└── .env              # секреты (не в git, создаётся скриптом)
+scripts/
+├── start.sh / start.ps1  # запуск
+├── create-admin.ps1      # смена пароля admin
+└── backup-db.ps1         # бэкап БД
 ```
 
 ---
 
-## Ручной запуск (по частям)
-
-### Backend
+## Ручной запуск
 
 ```bash
 cd backend
@@ -96,25 +98,13 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Заполнить БД демо-данными (первый раз):
-python -m app.seed_demo
-
-# Запустить:
+python -m app.seed_demo            # демо-данные (первый раз)
 python -m uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-npm install
-npm run dev
 ```
 
 ---
 
-## Переменные окружения
-
-### backend/.env (создаётся автоматически)
+## Переменные окружения (`backend/.env`)
 
 | Переменная | Описание |
 |-----------|---------|
@@ -123,21 +113,14 @@ npm run dev
 | `FRONTEND_ORIGIN` | CORS origin фронтенда (default: http://localhost:3000) |
 | `PUBLIC_URL` | Публичный URL backend (default: http://localhost:8000) |
 
-Полный список см. в `backend/.env.example`.
+Полный список — `backend/.env.example`.
 
 ---
 
 ## Тесты
 
 ```bash
-# Backend (pytest)
 cd backend
-.venv/Scripts/python.exe -m pytest          # Windows
-source .venv/bin/activate && pytest         # Linux/Mac
-
-# Frontend (vitest)
-npm test
-
-# E2E (Playwright)
-npm run test:e2e
+pip install -r requirements-dev.txt
+python -m pytest tests -q
 ```
