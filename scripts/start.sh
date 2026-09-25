@@ -120,6 +120,17 @@ else
     echo "[3/4] БД уже существует — пропускаем seed"
 fi
 
+# ── Админ-панель (admin/) — собираем, если есть npm и нет готовой сборки ──────
+if [ ! -f "$ROOT/admin/dist/index.html" ]; then
+    if command -v npm &>/dev/null; then
+        echo "      Собираем админ-панель..."
+        (cd "$ROOT/admin" && npm install --no-audit --no-fund && npm run build) \
+            || echo "      ВНИМАНИЕ: сборка админки не удалась — API работает, /admin нет."
+    else
+        echo "      npm не найден — админ-панель не собрана (нужен Node.js 20+)."
+    fi
+fi
+
 # ── 4. Запуск сервера ────────────────────────────────────────────────────────
 echo "[4/4] Запускаем backend..."
 echo ""
@@ -169,6 +180,7 @@ fi
 
 echo ""
 echo "========================================"
+echo "  Админ:  http://localhost:8000/admin"
 echo "  API:    http://localhost:8000/docs"
 echo "========================================"
 echo ""

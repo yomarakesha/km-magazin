@@ -135,6 +135,22 @@ if (-not (Test-Path $db)) {
     Write-Host "[3/4] BD uzhe sushchestvuet - propuskaem seed" -ForegroundColor DarkGray
 }
 
+# ── Admin-panel (admin\) - sobiraem, esli est npm i net gotovoj sborki ───────
+if (-not (Test-Path (Join-Path $root "admin\dist\index.html"))) {
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        Write-Host "      Sobiraem admin-panel..." -ForegroundColor Cyan
+        Push-Location (Join-Path $root "admin")
+        npm install --no-audit --no-fund
+        if ($LASTEXITCODE -eq 0) { npm run build }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "      VNIMANIE: sborka admin ne udalas - API rabotaet, /admin net." -ForegroundColor Yellow
+        }
+        Pop-Location
+    } else {
+        Write-Host "      npm ne najden - admin-panel ne sobrana (nuzhen Node.js 20+)." -ForegroundColor Yellow
+    }
+}
+
 # ── 4. Zapusk servera ────────────────────────────────────────────────────────
 Write-Host "[4/4] Zapuskaem backend..." -ForegroundColor Cyan
 
@@ -172,6 +188,7 @@ if (-not $backendOk) {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
+Write-Host "  Admin:  http://localhost:8000/admin"    -ForegroundColor Green
 Write-Host "  API:    http://localhost:8000/docs"     -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""

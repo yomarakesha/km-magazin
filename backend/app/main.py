@@ -1,8 +1,10 @@
 """FastAPI application entrypoint for the KM site backend."""
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import FRONTEND_ORIGIN, MEDIA_DIR, SENTRY_DSN
@@ -99,3 +101,19 @@ app.include_router(shop_public.router)
 @app.get("/health")
 def health() -> dict:
     return {"ok": True}
+
+
+# Admin panel SPA (admin/, built with `npm run build`). Assets are served as
+# files; any other /admin/* path falls back to index.html for client routing.
+ADMIN_DIST = Path(__file__).resolve().parents[2] / "admin" / "dist"
+
+
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/{path:path}", include_in_schema=False)
+def admin_spa(path: str = ""):
+    if not ADMIN_DIST.is_dir():
+        raise HTTPException(404, "Admin panel is not built: cd admin && npm run build")
+    target = (ADMIN_DIST / path).resolve()
+    if path and target.is_file() and target.is_relative_to(ADMIN_DIST):
+        return FileResponse(target)
+    return FileResponse(ADMIN_DIST / "index.html")

@@ -7,6 +7,7 @@ API интернет-магазина Kanagatly Mahabat (компьютерна�
 - **Витрина (публичный API)** — `/api/shop/*`, `/api/leads`
 - **Админ API** — `/api/admin/*` (RBAC: owner / warehouse / sales / content)
 - **Касса (POS)** — `/api/admin/pos/*`
+- **Админ-панель** — `admin/` (Vite + React + TypeScript), открывается на `/admin`
 - **Макет** — Figma, фронтенд делается отдельно
 
 ---
@@ -29,11 +30,13 @@ powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 1. Создаёт `backend/.env` со случайным `SECRET_KEY` (пароль admin по умолчанию — `admin`, смените)
 2. Ставит Python-зависимости в venv (и доставляет их, если `requirements.txt` изменился)
 3. Заполняет БД демо-данными, если `backend/data/km.db` нет
-4. Запускает backend на :8000 и ждёт, пока он ответит
+4. Собирает админ-панель, если есть npm и нет `admin/dist`
+5. Запускает backend на :8000 и ждёт, пока он ответит
 
-**Требования:** Python 3.10+
+**Требования:** Python 3.10+, Node.js 20+ (только для сборки админки)
 
-Документация API: http://localhost:8000/docs
+- Админ-панель: http://localhost:8000/admin
+- Документация API: http://localhost:8000/docs
 
 ---
 
@@ -70,6 +73,9 @@ powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 ## Структура
 
 ```
+admin/                # админ-панель (Vite + React), см. раздел выше
+├── src/pages/        # экраны: заказы, товары, касса, склад, отчёты…
+└── src/api.ts        # клиент админ API + типы
 backend/
 ├── app/
 │   ├── routers/      # API эндпоинты
@@ -101,6 +107,22 @@ pip install -r requirements.txt
 python -m app.seed_demo            # демо-данные (первый раз)
 python -m uvicorn app.main:app --reload --port 8000
 ```
+
+---
+
+## Админ-панель
+
+Стиль — по макету витрины в Figma (цвета, шрифт, поля, кнопки-«таблетки»).
+Меню зависит от роли: владелец видит всё, остальные — свои разделы.
+
+```bash
+cd admin
+npm install
+npm run dev      # http://localhost:5173/admin/ — /api проксируется на :8000
+npm run build    # admin/dist, backend отдаёт её на /admin
+```
+
+Бэкенд для dev-сервера берётся из `API_URL` (по умолчанию http://localhost:8000).
 
 ---
 
