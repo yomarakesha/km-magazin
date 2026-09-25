@@ -17,6 +17,7 @@ from ..models import (
     OrderItem,
     Product,
     ProductAttribute,
+    ProductComponent,
     ProductImage,
     ProductReview,
     ProductTranslation,
@@ -98,9 +99,13 @@ def _service(s: ShopService) -> dict:
         "price": s.price,
         "currency": s.currency,
         "icon": s.icon,
+        "price_from": s.price_from,
         "enabled": s.enabled,
         "sort_order": s.sort_order,
-        "translations": [{"lang": t.lang, "title": t.title, "short": t.short} for t in s.translations],
+        "translations": [
+            {"lang": t.lang, "title": t.title, "short": t.short, "body": t.body or "", "feats": t.feats or []}
+            for t in s.translations
+        ],
     }
 
 
@@ -148,7 +153,42 @@ def _product(p: Product) -> dict:
             {"attribute_id": a.attribute_id, "value": a.value, "num_value": a.num_value}
             for a in p.attributes
         ],
+        "components": [_component(c) for c in p.components],
     }
+
+
+def _component(c: ProductComponent) -> dict:
+    """Build line with the part's live title/price for the admin editor."""
+    if c.service is not None:
+        title = next((t.title for t in c.service.translations if t.lang == "ru"), None) or c.service.slug
+        price = c.service.price
+    elif c.product is not None:
+        title = next((t.title for t in c.product.translations if t.lang == "ru"), None) or c.product.slug
+        price = c.product.price
+    else:  # referenced item was deleted
+        title, price = "(удалено)", 0
+    return {
+        "product_id": c.product_id, "service_id": c.service_id, "qty": c.qty,
+        "title": title, "price": price,
+    }
+
+
+def _apply_components(p: Product, items: list, db: Session) -> None:
+    """Replace a build's component lines wholesale, validating every reference."""
+    for it in items:
+        if it.product_id is not None:
+            if it.product_id == p.id:
+                raise HTTPException(400, "A build cannot contain itself")
+            if not db.get(Product, it.product_id):
+                raise HTTPException(400, f"Product {it.product_id} not found")
+        elif not db.get(ShopService, it.service_id):
+            raise HTTPException(400, f"Service {it.service_id} not found")
+    p.components.clear()
+    db.flush()
+    for order, it in enumerate(items):
+        p.components.append(ProductComponent(
+            product_id=it.product_id, service_id=it.service_id, qty=it.qty, sort_order=order,
+        ))
 
 
 def _image(im: ProductImage) -> dict:
@@ -377,14 +417,24 @@ def create_service(cat_id: int, payload: ShopServiceIn, db: Session = Depends(ge
         price=payload.price,
         currency=payload.currency,
         icon=payload.icon,
+        price_from=payload.price_from,
         enabled=payload.enabled,
         sort_order=(max_order + 1) if max_order is not None else 0,
     )
     for t in payload.translations:
-        s.translations.append(ShopServiceTranslation(lang=t.lang, title=t.title, short=t.short))
+        s.translations.append(ShopServiceTranslation(
+            lang=t.lang, title=t.title, short=t.short, body=t.body, feats=t.feats,
+        ))
     db.add(s)
     db.commit()
     return _service(s)
+
+
+@router.get("/services")
+def list_all_services(db: Session = Depends(get_db)) -> list[dict]:
+    """Every service across categories (the storefront "Услуги" page)."""
+    rows = db.scalars(select(ShopService).order_by(ShopService.category_id, ShopService.sort_order)).all()
+    return [_service(s) for s in rows]
 
 
 @router.put("/services/{service_id}", dependencies=[CONTENT])
@@ -402,6 +452,12 @@ def update_service(service_id: int, payload: ShopServiceUpdateIn, db: Session = 
         s.currency = payload.currency
     if payload.icon is not None:
         s.icon = payload.icon
+    if payload.price_from is not None:
+        s.price_from = payload.price_from
+    if payload.category_id is not None and payload.category_id != s.category_id:
+        if not db.get(ShopCategory, payload.category_id):
+            raise HTTPException(400, "Category not found")
+        s.category_id = payload.category_id
     if payload.enabled is not None:
         s.enabled = payload.enabled
     if payload.translations is not None:
@@ -409,9 +465,11 @@ def update_service(service_id: int, payload: ShopServiceUpdateIn, db: Session = 
         for t in payload.translations:
             row = existing.get(t.lang)
             if row is None:
-                s.translations.append(ShopServiceTranslation(lang=t.lang, title=t.title, short=t.short))
+                s.translations.append(ShopServiceTranslation(
+                    lang=t.lang, title=t.title, short=t.short, body=t.body, feats=t.feats,
+                ))
             else:
-                row.title, row.short = t.title, t.short
+                row.title, row.short, row.body, row.feats = t.title, t.short, t.body, t.feats
     db.commit()
     return _service(s)
 
@@ -681,6 +739,9 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
             ProductAttribute(attribute_id=a.attribute_id, value=a.value, num_value=a.num_value)
         )
     db.add(p)
+    if payload.components:
+        db.flush()  # p.id for the self-reference check
+        _apply_components(p, payload.components, db)
     if payload.stock_qty is not None:
         db.flush()  # p.id for the ledger row
         log_movement(
@@ -725,6 +786,7 @@ def update_product(
         payload.is_new is not None,
         payload.translations is not None,
         payload.attributes is not None,
+        payload.components is not None,
     ))
     if price_touched and not owns():
         raise HTTPException(403, "price changes are owner-only")
@@ -792,6 +854,8 @@ def update_product(
                 row.title, row.short, row.body, row.specs = t.title, t.short, t.body, t.specs
     if payload.attributes is not None:
         _apply_attributes(p, payload.attributes, db)
+    if payload.components is not None:
+        _apply_components(p, payload.components, db)
     _commit_or_barcode_conflict(db, barcode_touched)
     return _product(p)
 

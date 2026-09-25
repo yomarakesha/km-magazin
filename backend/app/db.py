@@ -148,6 +148,31 @@ def _migrate() -> None:
                     conn.execute(text(
                         f"ALTER TABLE shop_settings ADD COLUMN {col} VARCHAR({size}) NOT NULL DEFAULT ''"
                     ))
+    if "shop_services" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_services")}
+        if "price_from" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE shop_services ADD COLUMN price_from BOOLEAN NOT NULL DEFAULT 0"
+                ))
+    if "shop_service_translations" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_service_translations")}
+        with engine.begin() as conn:
+            if "body" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_service_translations ADD COLUMN body TEXT NOT NULL DEFAULT ''"
+                ))
+            if "feats" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE shop_service_translations ADD COLUMN feats JSON NOT NULL DEFAULT '[]'"
+                ))
+    if "leads" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("leads")}
+        if "service_id" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE leads ADD COLUMN service_id INTEGER REFERENCES shop_services(id)"
+                ))
     if "shop_stock_movements" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_stock_movements")}
         if "sale_id" not in cols:

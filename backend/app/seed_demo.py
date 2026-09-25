@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from .db import SessionLocal, init_db
 from .models import (
     AdminUser,
+    Lead,
     Order,
     OrderItem,
     Product,
@@ -48,6 +49,14 @@ SUPPLIERS = [
     ("Ашгабат Техно", "+993 65 909090", "сетевое оборудование"),
 ]
 
+# Service requests: (name, phone, message, service slug | None, status, days ago)
+LEADS = [
+    ("Мердан", "+993 65 111111", "Нужна игровая сборка до 15 000 TMT.", "pc-build", "new", 0),
+    ("Офис «Ак Ýol»", "+993 12 334455", "Сеть на 12 рабочих мест и Wi‑Fi.", "net-setup", "read", 2),
+    ("Айгуль", "+993 63 222333", "Ноутбук сильно греется.", "pc-maintenance", "done", 6),
+    ("Склад «Берк»", "+993 12 998877", "Камеры по периметру, 8 штук.", "cam-install", "new", 1),
+]
+
 # A product is left "под заказ" (untracked) when its index % 5 == 4.
 UNTRACKED_EVERY = 5
 DEFAULT_QTY = 12          # units received per product
@@ -75,6 +84,7 @@ def _wipe_demo(db) -> None:
     db.query(PurchaseDoc).delete()
     db.query(Supplier).delete()
     db.query(PromoCode).delete()
+    db.query(Lead).delete()
     db.query(AdminUser).filter(AdminUser.role != "owner").delete()
     db.commit()
 
@@ -270,6 +280,15 @@ def seed_demo() -> None:
         for p in tracked:
             p.stock_qty = stock[p.id]
 
+        # ---- service requests (leads) from the service pages ----
+        svc_by_slug = {s.slug: s for s in db.query(ShopService).all()}
+        for name, phone, message, svc_slug, status, days in LEADS:
+            svc = svc_by_slug.get(svc_slug) if svc_slug else None
+            db.add(Lead(
+                name=name, phone=phone, message=message, status=status,
+                service_id=svc.id if svc else None, created_at=_days_ago(days),
+            ))
+
         db.commit()
 
         # ---- report ----
@@ -282,6 +301,7 @@ def seed_demo() -> None:
         print(f"  orders:     {len(recipes)} (delivered/confirmed/new/cancelled), promo SALE10")
         print(f"  pos sales:  {pos_count} (наличные/терминал/1 долг)")
         print(f"  movements:  {db.query(StockMovement).count()} ledger rows")
+        print(f"  leads:      {len(LEADS)} service requests")
         print("\n  Staff logins (username / password):")
         for u, pw, role in STAFF:
             print(f"    {u:9} / {pw:16} [{role}]")

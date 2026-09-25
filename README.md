@@ -55,6 +55,28 @@ powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 
 | Эндпоинт | Экран в макете |
 |----------|----------------|
+| `GET /api/shop/home` | Главная: баннеры, скидки, новинки, готовые сборки, бренды |
+| `GET /api/shop/catalog` | Каталог: категории, бренды, контакты |
+| `GET /api/shop/products` | Каталог / Скидки / Новинки / Поиск / Наши сборки — фильтры и фасеты |
+| `GET /api/shop/categories/{slug}` | Категория с фильтрами по характеристикам |
+| `GET /api/shop/products/{slug}` | Товар; для сборки — состав (`components`) |
+| `GET /api/shop/products/{slug}/similar` | Похожие товары |
+| `GET /api/shop/brands` | Бренды (с количеством товаров) |
+| `GET /api/shop/services`, `/services/{slug}` | Услуги, страница услуги («Что входит», другие услуги) |
+| `GET /api/shop/pages`, `/pages/{slug}` | О магазине, FAQ, Гарантия, Доставка, Установка |
+| `GET /api/shop/banners` | Слайдер главной |
+| `POST /api/shop/cart/validate` | Корзина |
+| `POST /api/shop/orders` | Оформление заявки |
+| `POST /api/leads` | Заявка на услугу (`service` — slug услуги) |
+
+`GET /api/shop/products` принимает: `q`, `category` (slug, с подкатегориями),
+`brand` (slug через запятую), `price_min`, `price_max`, `in_stock=1`,
+`discount=1`, `new=1`, `build=1`, `sort` (`popular` | `price_asc` | `price_desc` | `new`),
+`limit`, `offset`.
+
+Тексты приходят картами по языкам `{ru, tk, en}`; пути к медиа — относительно `mediaBase`.
+
+----------|----------------|
 | `GET /api/shop/catalog` | Главная, Каталог (категории, бренды, контакты) |
 | `GET /api/shop/products` | Каталог / Скидки / Новинки / Поиск — фильтры и фасеты |
 | `GET /api/shop/categories/{slug}` | Категория с фильтрами по характеристикам |

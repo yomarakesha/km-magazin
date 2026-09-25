@@ -7,20 +7,24 @@ switch language client-side, mirroring how the landing handles i18n.
 import hmac
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, union_all, update
 from sqlalchemy.orm import Session
 
 from ..config import PUBLIC_URL
 from ..db import get_db
 from ..models import (
+    Banner,
     CategoryAttribute,
     Order,
     OrderItem,
+    Page,
     Product,
     ProductAttribute,
+    ProductComponent,
     ProductReview,
     ProductTranslation,
     PromoCode,
+    SaleItem,
     ShopBrand,
     ShopCategory,
     ShopService,
@@ -69,8 +73,27 @@ def _like_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _sold_subquery():
+    """product_id → units sold (site orders not cancelled + POS receipts)."""
+    online = (
+        select(OrderItem.product_id.label("pid"), OrderItem.qty.label("qty"))
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(Order.status != "cancelled", OrderItem.product_id.is_not(None))
+    )
+    pos = select(SaleItem.product_id.label("pid"), SaleItem.qty.label("qty")).where(
+        SaleItem.product_id.is_not(None)
+    )
+    rows = union_all(online, pos).subquery()
+    return select(rows.c.pid, func.sum(rows.c.qty).label("sold")).group_by(rows.c.pid).subquery()
+
+
 def _apply_sort(stmt, sort: str | None):
     """Order a Product select by the requested key."""
+    if sort == "popular":
+        sold = _sold_subquery()
+        return stmt.outerjoin(sold, sold.c.pid == Product.id).order_by(
+            func.coalesce(sold.c.sold, 0).desc(), Product.sort_order
+        )
     if sort == "price_asc":
         return stmt.order_by(Product.price.asc())
     if sort == "price_desc":
@@ -106,6 +129,7 @@ def _card(p: Product) -> dict:
         "category_id": p.category_id,
         "brand": _brand_ref(p.brand),
         "is_new": p.is_new,
+        "is_build": bool(p.components),
         "price": p.price,
         "old_price": p.old_price,
         "currency": p.currency,
@@ -142,6 +166,7 @@ def _service_card(s: ShopService) -> dict:
         "slug": s.slug,
         "category_id": s.category_id,
         "price": s.price,
+        "price_from": s.price_from,
         "currency": s.currency,
         "icon": s.icon,
         "title": _imap(s.translations, "title"),
@@ -406,8 +431,8 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
     and search pages.
 
     Query: q, category (slug, includes subcategories), brand (comma-separated
-    slugs), price_min, price_max, in_stock=1, discount=1, new=1, sort
-    (price_asc|price_desc|new), limit, offset.
+    slugs), price_min, price_max, in_stock=1, discount=1, new=1, build=1
+    (ready-made PCs), sort (popular|price_asc|price_desc|new), limit, offset.
 
     Facets (categories, brands, price range) are computed with every filter
     applied except their own, so picking one brand still lists the others.
@@ -430,6 +455,8 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
         base.append(and_(Product.old_price.is_not(None), Product.old_price > Product.price))
     if params.get("new"):
         base.append(Product.is_new == True)  # noqa: E712
+    if params.get("build"):
+        base.append(Product.id.in_(select(ProductComponent.build_id)))
 
     # facet-owned filters: key -> conditions
     own: dict[str, list] = {"category": [], "brand": [], "price": []}
@@ -522,6 +549,111 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
     }
 
 
+# --------------------------------------------------------------------------
+# Services ("Услуги" page and service detail with request form)
+# --------------------------------------------------------------------------
+@router.get("/services")
+def services(db: Session = Depends(get_db)) -> dict:
+    rows = db.scalars(
+        select(ShopService)
+        .join(ShopCategory, ShopCategory.id == ShopService.category_id)
+        .where(ShopService.enabled == True)  # noqa: E712
+        .order_by(ShopCategory.sort_order, ShopService.sort_order)
+    ).all()
+    return {"services": [_service_card(s) for s in rows], "settings": settings_dict(db)}
+
+
+@router.get("/services/{slug}")
+def service_detail(slug: str, db: Session = Depends(get_db)) -> dict:
+    s = db.scalar(select(ShopService).where(ShopService.slug == slug))
+    if not s or not s.enabled:
+        raise HTTPException(404, "Service not found")
+    others = db.scalars(
+        select(ShopService)
+        .join(ShopCategory, ShopCategory.id == ShopService.category_id)
+        .where(ShopService.enabled == True, ShopService.id != s.id)  # noqa: E712
+        .order_by(ShopCategory.sort_order, ShopService.sort_order)
+    ).all()
+    return {
+        **_service_card(s),
+        "body": _imap(s.translations, "body"),
+        "feats": {t.lang: (t.feats or []) for t in s.translations},
+        "others": [_service_card(o) for o in others],
+        "settings": settings_dict(db),
+    }
+
+
+# --------------------------------------------------------------------------
+# Site content: banners, static pages, home aggregate
+# --------------------------------------------------------------------------
+def _banners(db: Session) -> list[dict]:
+    rows = db.scalars(select(Banner).where(Banner.enabled == True).order_by(Banner.sort_order)).all()  # noqa: E712
+    return [
+        {
+            "id": b.id,
+            "image": f"banners/{b.image}" if b.image else None,
+            "link": b.link,
+            "title": _imap(b.translations, "title"),
+            "subtitle": _imap(b.translations, "subtitle"),
+        }
+        for b in rows
+    ]
+
+
+@router.get("/banners")
+def banners(db: Session = Depends(get_db)) -> dict:
+    return {"mediaBase": f"{PUBLIC_URL}/media", "banners": _banners(db)}
+
+
+@router.get("/pages")
+def pages(db: Session = Depends(get_db)) -> dict:
+    """Slugs and titles of the info pages (footer links)."""
+    rows = db.scalars(select(Page).where(Page.enabled == True).order_by(Page.sort_order)).all()  # noqa: E712
+    return {"pages": [{"slug": p.slug, "title": _imap(p.translations, "title")} for p in rows]}
+
+
+@router.get("/pages/{slug}")
+def page(slug: str, db: Session = Depends(get_db)) -> dict:
+    p = db.scalar(select(Page).where(Page.slug == slug))
+    if not p or not p.enabled:
+        raise HTTPException(404, "Page not found")
+    return {
+        "slug": p.slug,
+        "title": _imap(p.translations, "title"),
+        "lead": _imap(p.translations, "lead"),
+        "blocks": {t.lang: (t.blocks or []) for t in p.translations},
+        "settings": settings_dict(db),
+    }
+
+
+HOME_ROW = 10
+
+
+@router.get("/home")
+def home(db: Session = Depends(get_db)) -> dict:
+    """Everything the home page shows in one call: hero banners, discounted,
+    new and ready-made builds rows, and the brands strip. Category rows
+    (e.g. "Датчики") come from /products?category=<slug>."""
+
+    def row(*conds) -> list[dict]:
+        stmt = select(Product).where(Product.enabled == True, *conds)  # noqa: E712
+        cards = [_card(p) for p in db.scalars(_apply_sort(stmt, "popular").limit(HOME_ROW)).all()]
+        return _attach_ratings(cards, db)
+
+    brand_rows = db.scalars(
+        select(ShopBrand).where(ShopBrand.enabled == True).order_by(ShopBrand.sort_order)  # noqa: E712
+    ).all()
+    return {
+        "mediaBase": f"{PUBLIC_URL}/media",
+        "banners": _banners(db),
+        "discount": row(Product.old_price.is_not(None), Product.old_price > Product.price),
+        "new": row(Product.is_new == True),  # noqa: E712
+        "builds": row(Product.id.in_(select(ProductComponent.build_id))),
+        "brands": [{"id": b.id, "slug": b.slug, "name": b.name} for b in brand_rows],
+        "settings": settings_dict(db),
+    }
+
+
 @router.get("/sitemap")
 def sitemap(db: Session = Depends(get_db)) -> dict:
     """Slugs (+ product lastmod) for the frontend sitemap.xml."""
@@ -578,6 +710,7 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
         "specs": {t.lang: (t.specs or []) for t in p.translations},
         "images": [f"{PRODUCTS_SUBDIR}/{im.filename}" for im in sorted(p.images, key=lambda x: x.sort_order)],
         "attributes": attributes,
+        "components": [v for v in (_component_view(c) for c in p.components) if v],
         "services": _category_services(p.category, db),
         "rating": rating[0] if rating else None,
         "rating_count": rating[1] if rating else 0,
@@ -586,6 +719,49 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
             for r in reviews
         ],
     }
+
+
+def _component_view(c: ProductComponent) -> dict | None:
+    """Build line for the storefront, with the part's live title and price."""
+    if c.service is not None:
+        s = c.service
+        return {
+            "kind": "service", "slug": s.slug, "qty": c.qty, "price": s.price,
+            "title": _imap(s.translations, "title"), "short": _imap(s.translations, "short"),
+            "category": None, "in_stock": s.enabled,
+        }
+    if c.product is not None:
+        p = c.product
+        return {
+            "kind": "product", "slug": p.slug if p.enabled else None, "qty": c.qty, "price": p.price,
+            "title": _imap(p.translations, "title"), "short": _imap(p.translations, "short"),
+            "category": _imap(p.category.translations, "name"), "in_stock": _in_stock(p),
+        }
+    return None
+
+
+@router.get("/products/{slug}/similar")
+def similar(slug: str, limit: int = 8, db: Session = Depends(get_db)) -> dict:
+    """"Похожие товары": same category first, then the rest of its parent's
+    branch, most popular first."""
+    p = db.scalar(select(Product).where(Product.slug == slug))
+    if not p or not p.enabled:
+        raise HTTPException(404, "Product not found")
+    limit = min(max(limit, 1), 24)
+    scopes = [[p.category_id]]
+    if p.category.parent_id is not None:
+        scopes.append(_descendant_ids(db, p.category.parent_id))
+    picked: list[Product] = []
+    for scope in scopes:
+        stmt = select(Product).where(
+            Product.enabled == True,  # noqa: E712
+            Product.category_id.in_(scope),
+            Product.id.not_in([p.id, *(x.id for x in picked)]),
+        )
+        picked.extend(db.scalars(_apply_sort(stmt, "popular").limit(limit - len(picked))).all())
+        if len(picked) >= limit:
+            break
+    return {"mediaBase": f"{PUBLIC_URL}/media", "products": _attach_ratings([_card(x) for x in picked], db)}
 
 
 @router.post("/products/{slug}/reviews", status_code=201, dependencies=[Depends(limiter("reviews", 3))])

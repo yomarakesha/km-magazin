@@ -1,17 +1,24 @@
 """Seed demo shop data: categories, filter attributes and products.
 
-Idempotent — wipes existing shop catalog (categories/products/attributes), keeps
-orders. No image files are seeded, so product cards show the "KM" placeholder
-until photos are uploaded in /admin/shop/products/{id}/images.
+Idempotent — wipes existing shop catalog (categories/products/attributes/
+services/brands), keeps orders. Photos for a few products reference files
+committed in media/products (seed-*.png, taken from the Figma mockups); the rest
+show the storefront placeholder. Banners, info pages and contacts are seeded
+only when absent, so admin edits survive a catalog re-seed.
 
 Run from backend/:  python -m app.seed_shop
 """
 from .db import SessionLocal, init_db
 from .models import (
+    Banner,
+    BannerTranslation,
     CategoryAttribute,
     CategoryAttributeTranslation,
+    Page,
+    PageTranslation,
     Product,
     ProductAttribute,
+    ProductComponent,
     ProductImage,
     ProductReview,
     ProductTranslation,
@@ -120,6 +127,7 @@ DATA = [
      "attributes": [_attr("form_factor", "select", "", "Форм-фактор", "Forma faktory", "Form factor")],
      "products": [
          {"slug": "lian-li-lancool-216-argb-white", "brand": "LIAN LI", "price": 1800, "is_new": True,
+          "images": ["seed-lancool-216-white.png"],
           "title": "LIAN LI Lancool 216 ARGB White", "short": "ATX, 2×160 мм ARGB",
           "attrs": {"form_factor": "ATX"}},
          {"slug": "nzxt-h5-flow", "brand": "NZXT", "price": 1590,
@@ -131,11 +139,24 @@ DATA = [
      "attributes": [_attr("cpu", "select", "", "Процессор", "Prosessor", "CPU")],
      "products": [
          {"slug": "km-gamer-ryzen-7-7800x3d", "price": 19000, "is_new": True, "stock_qty": 2,
+          "images": ["seed-lancool-216-white.png"],
+          # Figma "Build" screen: parts + assembly service, 19 000 TMT in total
+          "components": [
+              ("product", "amd-ryzen-7-7800x3d"), ("product", "msi-mag-b650-tomahawk-wifi"),
+              ("product", "gskill-trident-z5-rgb-32gb-ddr5-6400"), ("product", "wd-black-sn850x-2tb"),
+              ("product", "corsair-rm850x"), ("product", "lian-li-lancool-216-argb-white"),
+              ("service", "pc-build"),
+          ],
           "title": "KM Gamer · Ryzen 7 7800X3D", "short": "Ryzen 7 7800X3D, 32 ГБ DDR5, SSD 2 ТБ",
           "body": "Готовый компьютер, собранный и протестированный в нашем магазине. "
                   "Установим систему и драйверы, выдадим с гарантией.",
           "attrs": {"cpu": "AMD Ryzen 7 7800X3D"}},
-         {"slug": "km-office-core-i5", "price": 7500,
+         {"slug": "km-office-core-i5", "price": 9900,
+          "components": [
+              ("product", "intel-core-i5-13400f"), ("product", "asus-tuf-gaming-b760m-plus"),
+              ("product", "kingston-fury-beast-16gb-ddr4-3200"), ("product", "kingston-nv2-1tb"),
+              ("product", "deepcool-pk650d"), ("product", "nzxt-h5-flow"), ("service", "pc-build"),
+          ],
           "title": "KM Office · Core i5-13400F", "short": "Core i5, 16 ГБ, SSD 1 ТБ",
           "attrs": {"cpu": "Intel Core i5-13400F"}},
      ]},
@@ -163,6 +184,7 @@ DATA = [
      "attributes": [_attr("type", "select", "", "Тип", "Görnüşi", "Type")],
      "products": [
          {"slug": "rubezh-ip-212-64-prima", "brand": "Рубеж", "price": 180,
+          "images": ["seed-fire-sensors.png"],
           "title": "Рубеж ИП 212-64 Прима", "short": "Дымовой извещатель, адресный",
           "attrs": {"type": "Дымовой"}},
          {"slug": "bolid-s2000-ip", "brand": "Болид", "price": 150,
@@ -177,6 +199,7 @@ DATA = [
      "attributes": [_attr("faces", "number", "", "База лиц", "Ýüz binýady", "Face capacity")],
      "products": [
          {"slug": "hikvision-face-control-hk-043", "brand": "Hikvision", "price": 1200, "old_price": 1990,
+          "images": ["seed-face-control-hk043.png"],
           "title": "HIKVISION Face Control HK-043", "short": "Экран 4.3\", Wi‑Fi, IP65",
           "body": "Терминал распознавания лиц для учёта рабочего времени и контроля доступа. "
                   "Быстрое распознавание, работа с картами.",
@@ -225,37 +248,198 @@ DATA = [
 ]
 
 
-# Category-attached services (priced add-ons). Keyed by category slug.
-# service: slug, price, icon, titles{lang}, short{lang}.
+# Services (Figma "Услуги" / "Сервис" screens), keyed by category slug.
+# price_from → shown as "от N TMT"; body/feats fill the service page (ru/en).
 SERVICES = {
     "computers": [
-        {"slug": "pc-build", "price": 250, "icon": "wrench",
+        {"slug": "pc-build", "price": 250, "price_from": True, "icon": "wrench",
          "titles": _names("Сборка ПК", "Kompýuter ýygnamak", "PC assembly"),
-         "short": _names("Сборка, установка ОС и тестирование", "Ýygnamak, OS gurnamak we barlag",
-                         "Assembly, OS install and testing")},
-        {"slug": "pc-maintenance", "price": 150, "icon": "refresh",
+         "short": _names("Подбор комплектующих, сборка, установка ОС и стресс-тест.",
+                         "Bölekleri saýlamak, ýygnamak, OS gurnamak we stres-test.",
+                         "Parts selection, assembly, OS install and stress test."),
+         "body": {"ru": "Соберём компьютер для работы, учёбы или игр — из наших комплектующих или из ваших. "
+                        "Аккуратно проложим кабели, обновим BIOS, установим систему и проверим стабильность под нагрузкой.",
+                  "en": "We build a PC for work, study or gaming — from our parts or yours. Neat cable management, "
+                        "BIOS update, OS install and a stability check under load."},
+         "feats": {"ru": ["Подбор совместимых комплектующих под бюджет", "Сборка и кабель-менеджмент",
+                          "Установка Windows и драйверов", "Нагрузочное тестирование"],
+                   "en": ["Compatible parts for your budget", "Assembly and cable management",
+                          "Windows and drivers installed", "Stress testing"]}},
+        {"slug": "pc-maintenance", "price": 150, "price_from": True, "icon": "refresh",
          "titles": _names("Профилактика", "Profilaktika", "Maintenance"),
-         "short": _names("Чистка, замена термопасты, проверка", "Arassalamak, termopasta çalyşmak",
-                         "Cleaning, thermal paste, check-up")},
-        {"slug": "pc-repair", "price": 100, "icon": "wrench",
+         "short": _names("Чистка, замена термопасты, проверка и обновление.",
+                         "Arassalamak, termopastany çalyşmak, barlamak we täzelemek.",
+                         "Cleaning, thermal paste, check-up and updates."),
+         "body": {"ru": "Вернём компьютеру или ноутбуку тишину и прохладу: почистим от пыли, заменим термопасту, "
+                        "проверим диски и обновим драйверы.",
+                  "en": "Make your PC or laptop quiet and cool again: dust cleaning, fresh thermal paste, "
+                        "disk health check and driver updates."},
+         "feats": {"ru": ["Чистка от пыли", "Замена термопасты", "Проверка дисков и памяти", "Обновление драйверов и BIOS"],
+                   "en": ["Dust cleaning", "Thermal paste replacement", "Disk and memory check", "Driver and BIOS updates"]}},
+        {"slug": "pc-repair", "price": 100, "price_from": True, "icon": "wrench",
          "titles": _names("Ремонт", "Abatlamak", "Repair"),
-         "short": _names("Диагностика и замена комплектующих", "Diagnostika we bölekleri çalyşmak",
-                         "Diagnostics and part replacement")},
+         "short": _names("Диагностика, замена комплектующих, восстановление данных.",
+                         "Diagnostika, bölekleri çalyşmak, maglumatlary dikeltmek.",
+                         "Diagnostics, part replacement, data recovery."),
+         "body": {"ru": "Найдём причину неисправности, согласуем стоимость и сроки, заменим неисправные детали. "
+                        "Поможем восстановить данные с повреждённых дисков.",
+                  "en": "We find the fault, agree on price and timing, and replace failed parts. "
+                        "Data recovery from damaged drives."},
+         "feats": {"ru": ["Бесплатная диагностика при ремонте", "Замена комплектующих", "Восстановление данных",
+                          "Гарантия на работы"],
+                   "en": ["Free diagnostics with repair", "Part replacement", "Data recovery", "Warranty on work"]}},
     ],
     "security": [
-        {"slug": "cam-install", "price": 500, "icon": "wrench",
+        {"slug": "cam-install", "price": 500, "price_from": True, "icon": "wrench",
          "titles": _names("Монтаж видеонаблюдения", "Wideo gözegçiligi gurnamak", "CCTV installation"),
-         "short": _names("Камеры, регистратор, просмотр со смартфона", "Kameralar, registrator, smartfondan görmek",
-                         "Cameras, recorder, phone viewing")},
+         "short": _names("Проект, монтаж камер и регистраторов, просмотр со смартфона.",
+                         "Taslama, kameralary we registratorlary gurnamak, smartfondan görmek.",
+                         "Design, camera and recorder installation, phone viewing."),
+         "body": {"ru": "Подберём камеры под объект, смонтируем и настроим запись и удалённый просмотр со смартфона.",
+                  "en": "Cameras chosen for your site, installed with recording and remote phone viewing set up."},
+         "feats": {"ru": ["Выезд и проект", "Монтаж камер и кабеля", "Настройка регистратора", "Просмотр со смартфона"],
+                   "en": ["Site visit and design", "Cameras and cabling", "Recorder setup", "Phone viewing"]}},
     ],
     "network": [
-        {"slug": "net-setup", "price": 400, "icon": "settings",
+        {"slug": "net-setup", "price": 400, "price_from": True, "icon": "settings",
          "titles": _names("Установка и настройка сетевого оборудования", "Tor enjamlaryny gurnamak we sazlamak",
                           "Network equipment setup"),
-         "short": _names("Проектирование, монтаж и администрирование сетей", "Tor taslamasy, gurnamak we dolandyrmak",
-                         "Network design, installation and administration")},
+         "short": _names("Проектирование, монтаж и администрирование сетей.",
+                         "Tor taslamasy, gurnamak we dolandyrmak.",
+                         "Network design, installation and administration."),
+         "body": {"ru": "Спроектируем и смонтируем сеть для офиса, магазина или склада: кабельные линии, шкафы, Wi‑Fi, "
+                        "настройка коммутаторов и роутеров.",
+                  "en": "Networks for offices, shops and warehouses: cabling, racks, Wi‑Fi, switch and router setup."},
+         "feats": {"ru": ["Проект сети", "Прокладка кабеля и монтаж шкафов", "Настройка Wi‑Fi и VLAN",
+                          "Администрирование"],
+                   "en": ["Network design", "Cabling and racks", "Wi‑Fi and VLAN setup", "Administration"]}},
     ],
 }
+
+
+# Home hero slides (Figma "Home" screen)
+BANNERS = [
+    {"image": "hero-computer-store.png", "link": "/catalog/computers",
+     "title": _names("Техника для твоих целей", "Maksatlaryňyz üçin tehnika", "Tech for your goals"),
+     "subtitle": _names("Компьютеры · Комплектующие · Периферия", "Kompýuterler · Bölekler · Periferiýa",
+                        "Computers · Components · Peripherals")},
+    {"image": "hero-computer-store.png", "link": "/catalog/builds",
+     "title": _names("Готовые сборки", "Taýýar ýygnamalar", "Ready-made PCs"),
+     "subtitle": _names("Собираем, тестируем и настраиваем перед выдачей", "Ýygnaýarys, barlaýarys we sazlaýarys",
+                        "Assembled, tested and set up before hand-over")},
+]
+
+
+def _block(title: str, body: str) -> dict:
+    return {"title": title, "body": body}
+
+
+# Info pages (Figma: About, FAQ, Guarantee, Delivery, Install). ru + en texts;
+# tk carries the title only until a translation is provided.
+PAGES = [
+    {"slug": "about",
+     "title": _names("Наш магазин", "Biziň dükanymyz", "About us"),
+     "lead": {"ru": "Kanagatly Mahabat — магазин компьютерной техники, систем безопасности и сетевого оборудования в Ашхабаде.",
+              "en": "Kanagatly Mahabat is a computer, security and networking store in Ashgabat."},
+     "blocks": {
+         "ru": [
+             _block("Что мы продаём", "Комплектующие для ПК и готовые сборки, видеокамеры, датчики, терминалы Face Control, "
+                                      "коммутаторы и роутеры. Все товары на сайте есть в нашем магазине — их можно посмотреть вживую."),
+             _block("Не только продажа", "Собираем компьютеры, монтируем сети и системы безопасности, проводим профилактику и ремонт."),
+             _block("Как купить", "Добавьте товары в корзину и отправьте заявку — менеджер перезвонит и подтвердит детали. "
+                                  "Или просто позвоните нам."),
+         ],
+         "en": [
+             _block("What we sell", "PC components and ready-made builds, cameras, sensors, Face Control terminals, switches "
+                                    "and routers. Everything on the site is in our store — come and see it."),
+             _block("More than sales", "We build PCs, install networks and security systems, and do maintenance and repair."),
+             _block("How to buy", "Add items to the cart and send a request — a manager will call you back. Or just call us."),
+         ]}},
+    {"slug": "faq",
+     "title": _names("Частые вопросы", "Köp soralýan soraglar", "FAQ"),
+     "lead": {"ru": "Ответы на вопросы, которые нам задают чаще всего.",
+              "en": "Answers to the questions we hear most often."},
+     "blocks": {
+         "ru": [
+             _block("Нужно ли регистрироваться, чтобы сделать заказ?",
+                    "Нет. Добавьте товары в корзину и отправьте заявку с именем и телефоном — менеджер перезвонит."),
+             _block("Как оплатить заказ?", "Наличными или картой при получении. Оплата на сайте не требуется."),
+             _block("Все товары на сайте есть в наличии?",
+                    "Да, на сайте только то, что есть в магазине. Если товар закончился, он помечен «под заказ»."),
+             _block("Можно ли посмотреть товар вживую?",
+                    "Конечно — приходите в магазин: г. Ашхабад, ул. Московская, дом 142, 1-ый этаж."),
+             _block("Соберёте компьютер из моих комплектующих?",
+                    "Да. Проверим совместимость, соберём, установим систему и протестируем под нагрузкой."),
+             _block("Устанавливаете ли вы камеры и сигнализацию?",
+                    "Да, монтируем видеонаблюдение, пожарную и охранную сигнализацию, контроль доступа и сети."),
+             _block("Какая гарантия на товары?",
+                    "Гарантия производителя — от 12 до 36 месяцев, на готовые сборки — 24 месяца."),
+         ],
+         "en": [
+             _block("Do I need an account to order?", "No. Add items to the cart and send your name and phone — we'll call back."),
+             _block("How do I pay?", "Cash or card on delivery. No online payment is required."),
+             _block("Is everything on the site in stock?", "Yes. Items that ran out are marked \"to order\"."),
+             _block("Can I see an item in person?", "Of course — visit us at 142 Moskovskaya St., 1st floor, Ashgabat."),
+             _block("Will you build a PC from my parts?", "Yes. We check compatibility, assemble, install the OS and stress-test it."),
+             _block("Do you install cameras and alarms?", "Yes: CCTV, fire and security alarms, access control and networks."),
+             _block("What warranty do you give?", "Manufacturer warranty, 12 to 36 months; ready-made builds — 24 months."),
+         ]}},
+    {"slug": "guarantee",
+     "title": _names("Гарантия и возврат", "Kepillik we yzyna gaýtarmak", "Warranty and returns"),
+     "lead": {"ru": "На все товары действует гарантия производителя. Срок указан в характеристиках каждого товара.",
+              "en": "All goods carry the manufacturer's warranty; the term is listed in each product's specs."},
+     "blocks": {
+         "ru": [
+             _block("Гарантия", "От 12 до 36 месяцев в зависимости от товара. На готовые сборки — 24 месяца."),
+             _block("Возврат", "Товар надлежащего качества можно вернуть в течение 14 дней, если сохранены упаковка и товарный вид."),
+             _block("Гарантийный случай", "1. Принесите товар и документ о покупке в магазин.\n"
+                                          "2. Проведём диагностику — обычно до 3 рабочих дней.\n"
+                                          "3. Отремонтируем, заменим или вернём деньги."),
+             _block("Не гарантийный случай", "Механические повреждения, следы вскрытия, попадание влаги и нарушение условий эксплуатации."),
+         ],
+         "en": [
+             _block("Warranty", "12 to 36 months depending on the item. Ready-made builds — 24 months."),
+             _block("Returns", "Items in proper condition can be returned within 14 days with original packaging."),
+             _block("Warranty claim", "1. Bring the item and the receipt to the store.\n"
+                                      "2. We run diagnostics — usually up to 3 business days.\n"
+                                      "3. We repair, replace or refund."),
+             _block("Not covered", "Physical damage, signs of tampering, liquid damage or misuse."),
+         ]}},
+    {"slug": "delivery",
+     "title": _names("Условия доставки", "Eltip bermek şertleri", "Delivery"),
+     "lead": {"ru": "Доставляем по Ашхабаду и всему Туркменистану. Условия согласует менеджер при подтверждении заявки.",
+              "en": "We deliver across Ashgabat and all of Turkmenistan; a manager confirms the terms."},
+     "blocks": {
+         "ru": [
+             _block("По Ашхабаду", "В день заявки или на следующий день. Стоимость зависит от района и объёма заказа."),
+             _block("По регионам", "Отправляем в велаяты через транспортные компании. Срок — от 2 до 5 дней."),
+             _block("Самовывоз", "Бесплатно из магазина: г. Ашхабад, ул. Московская, дом 142, 1-ый этаж."),
+             _block("Оплата", "Наличными или картой при получении. Оплата на сайте не требуется."),
+         ],
+         "en": [
+             _block("Ashgabat", "Same or next day. The price depends on the district and order size."),
+             _block("Regions", "Shipped to the velayats by carriers within 2 to 5 days."),
+             _block("Pickup", "Free from the store: 142 Moskovskaya St., 1st floor, Ashgabat."),
+             _block("Payment", "Cash or card on delivery. No online payment is required."),
+         ]}},
+    {"slug": "install",
+     "title": _names("Установка", "Gurnamak", "Installation"),
+     "lead": {"ru": "Устанавливаем и настраиваем всё, что продаём, — в офисах, магазинах, складах и домах.",
+              "en": "We install and set up everything we sell — in offices, shops, warehouses and homes."},
+     "blocks": {
+         "ru": [
+             _block("Видеонаблюдение", "Проект, монтаж камер и регистраторов, настройка просмотра со смартфона."),
+             _block("Пожарная и охранная сигнализация", "Датчики Рубеж и Болид, приборы, подключение к пульту."),
+             _block("Контроль доступа и Face Control", "Терминалы распознавания лиц, учёт рабочего времени, замки."),
+             _block("Компьютерные сети", "Кабельные линии, шкафы, Wi‑Fi, настройка оборудования."),
+         ],
+         "en": [
+             _block("CCTV", "Design, camera and recorder installation, phone viewing setup."),
+             _block("Fire and security alarms", "Rubezh and Bolid sensors, control panels, monitoring hookup."),
+             _block("Access control and Face Control", "Face recognition terminals, time tracking, locks."),
+             _block("Computer networks", "Cabling, racks, Wi‑Fi, equipment setup."),
+         ]}},
+]
 
 
 # Brands strip / brands page, in the order the design shows them. Cyrillic
@@ -301,7 +485,7 @@ def _per_lang(v) -> dict:
 
 def _wipe(db) -> None:
     for model in (
-        ProductReview,
+        ProductReview, ProductComponent,
         ProductAttribute, ProductImage, ProductTranslation, Product,
         ShopServiceTranslation, ShopService,
         CategoryAttributeTranslation, CategoryAttribute,
@@ -368,17 +552,20 @@ def seed_shop() -> None:
                         except ValueError:
                             num = None
                     prod.attributes.append(ProductAttribute(attribute=attr, value=value, num_value=num))
+                for i_order, filename in enumerate(p.get("images", [])):
+                    prod.images.append(ProductImage(filename=filename, sort_order=i_order))
                 cat.products.append(prod)
                 n_prod += 1
 
             for s_order, s in enumerate(SERVICES.get(c["slug"], [])):
                 svc = ShopService(
-                    slug=s["slug"], price=s["price"], currency="TMT",
+                    slug=s["slug"], price=s["price"], currency="TMT", price_from=s.get("price_from", False),
                     icon=s["icon"], enabled=True, sort_order=s_order,
                 )
                 for lang in LANGS:
                     svc.translations.append(ShopServiceTranslation(
                         lang=lang, title=s["titles"][lang], short=s["short"][lang],
+                        body=s.get("body", {}).get(lang, ""), feats=s.get("feats", {}).get(lang, []),
                     ))
                 cat.services.append(svc)
 
@@ -399,6 +586,37 @@ def seed_shop() -> None:
                 continue
             for name, rating, text, status in items:
                 db.add(ProductReview(product_id=p.id, name=name, rating=rating, text=text, status=status))
+
+        # ready-made builds: component lines point at products/services by slug
+        svc_by_slug = {s.slug: s for cat in by_slug.values() for s in cat.services}
+        for c in DATA:
+            for p in c["products"]:
+                for order, (kind, ref) in enumerate(p.get("components", [])):
+                    line = ProductComponent(sort_order=order, qty=1)
+                    if kind == "service":
+                        line.service_id = svc_by_slug[ref].id
+                    else:
+                        line.product_id = prod_by_slug[ref].id
+                    prod_by_slug[p["slug"]].components.append(line)
+
+        # site content — only when absent, like the contacts below
+        if db.query(Banner).count() == 0:
+            for b_order, b in enumerate(BANNERS):
+                banner = Banner(image=b["image"], link=b["link"], sort_order=b_order, enabled=True)
+                for lang in LANGS:
+                    banner.translations.append(BannerTranslation(
+                        lang=lang, title=b["title"][lang], subtitle=b["subtitle"][lang],
+                    ))
+                db.add(banner)
+        if db.query(Page).count() == 0:
+            for pg_order, pg in enumerate(PAGES):
+                page = Page(slug=pg["slug"], sort_order=pg_order, enabled=True)
+                for lang in LANGS:
+                    page.translations.append(PageTranslation(
+                        lang=lang, title=pg["title"][lang], lead=pg["lead"].get(lang, ""),
+                        blocks=pg["blocks"].get(lang, []),
+                    ))
+                db.add(page)
 
         # contacts singleton (id=1) — only seed defaults if absent, so re-seeding
         # the catalog doesn't clobber contacts an admin has already edited

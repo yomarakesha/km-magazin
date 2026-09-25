@@ -36,6 +36,8 @@ class LeadIn(BaseModel):
     phone: str = Field(default="", max_length=64)
     email: str = Field(default="", max_length=128)
     message: str = Field(default="", max_length=4000)
+    # slug of the service whose page the request was sent from
+    service: str = Field(default="", max_length=64)
 
 
 class LeadStatusIn(BaseModel):
@@ -49,6 +51,8 @@ class LeadOut(BaseModel):
     phone: str
     email: str
     message: str
+    service_id: int | None = None
+    service_title: str = ""
     status: str
     created_at: datetime
 
@@ -151,6 +155,20 @@ class ProductAttributeIn(BaseModel):
     num_value: float | None = None
 
 
+class ProductComponentIn(BaseModel):
+    """A build line: exactly one of product_id / service_id."""
+
+    product_id: int | None = None
+    service_id: int | None = None
+    qty: int = Field(default=1, ge=1, le=99)
+
+    @model_validator(mode="after")
+    def _one_ref(self):
+        if (self.product_id is None) == (self.service_id is None):
+            raise ValueError("set exactly one of product_id or service_id")
+        return self
+
+
 class ProductIn(BaseModel):
     slug: str = Field(min_length=1, max_length=64)
     category_id: int
@@ -166,6 +184,7 @@ class ProductIn(BaseModel):
     enabled: bool = True
     translations: list[ProductTranslationIn] = Field(default_factory=list)
     attributes: list[ProductAttributeIn] = Field(default_factory=list)
+    components: list[ProductComponentIn] = Field(default_factory=list)
 
 
 class ProductUpdateIn(BaseModel):
@@ -187,6 +206,7 @@ class ProductUpdateIn(BaseModel):
     enabled: bool | None = None
     translations: list[ProductTranslationIn] | None = None
     attributes: list[ProductAttributeIn] | None = None
+    components: list[ProductComponentIn] | None = None
 
 
 # ---- Shop: category services ----
@@ -194,6 +214,8 @@ class ShopServiceTranslationIn(BaseModel):
     lang: Lang
     title: str = ""
     short: str = ""
+    body: str = ""
+    feats: list[str] = Field(default_factory=list)
 
 
 class ShopServiceIn(BaseModel):
@@ -201,6 +223,7 @@ class ShopServiceIn(BaseModel):
     price: int = 0
     currency: str = "TMT"
     icon: str = "wrench"
+    price_from: bool = False
     enabled: bool = True
     translations: list[ShopServiceTranslationIn] = Field(default_factory=list)
 
@@ -210,6 +233,9 @@ class ShopServiceUpdateIn(BaseModel):
     price: int | None = None
     currency: str | None = None
     icon: str | None = None
+    price_from: bool | None = None
+    # move the service to another category
+    category_id: int | None = None
     enabled: bool | None = None
     translations: list[ShopServiceTranslationIn] | None = None
 
@@ -407,3 +433,35 @@ class SaleIn(BaseModel):
         ):
             raise ValueError("debtor_name and debtor_phone are required for a debt sale")
         return self
+
+
+# ---- Home banners ----
+class BannerTranslationIn(BaseModel):
+    lang: Lang
+    title: str = Field(default="", max_length=256)
+    subtitle: str = Field(default="", max_length=256)
+
+
+class BannerIn(BaseModel):
+    link: str = Field(default="", max_length=256)
+    enabled: bool = True
+    translations: list[BannerTranslationIn] = Field(default_factory=list)
+
+
+# ---- Static pages ----
+class PageBlockIn(BaseModel):
+    title: str = Field(default="", max_length=256)
+    body: str = Field(default="", max_length=8000)
+
+
+class PageTranslationIn(BaseModel):
+    lang: Lang
+    title: str = Field(default="", max_length=256)
+    lead: str = Field(default="", max_length=4000)
+    blocks: list[PageBlockIn] = Field(default_factory=list, max_length=100)
+
+
+class PageIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9-]+$")
+    enabled: bool = True
+    translations: list[PageTranslationIn] = Field(default_factory=list)

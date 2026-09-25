@@ -19,6 +19,7 @@ from .routers import (
     admin_reports,
     admin_services,
     admin_shop,
+    admin_site,
     admin_users,
     admin_warehouse,
     auth,
@@ -91,6 +92,7 @@ app.include_router(admin_services.router)
 app.include_router(admin_media.router)
 app.include_router(admin_leads.router)
 app.include_router(admin_shop.router)
+app.include_router(admin_site.router)
 app.include_router(admin_users.router)
 app.include_router(admin_warehouse.router)
 app.include_router(admin_pos.router)

@@ -222,6 +222,36 @@ class Product(Base):
     attributes: Mapped[list["ProductAttribute"]] = relationship(
         back_populates="product", cascade="all, delete-orphan", lazy="selectin"
     )
+    # set only on ready-made PC builds: the parts (and assembly service) it is made of
+    components: Mapped[list["ProductComponent"]] = relationship(
+        foreign_keys="ProductComponent.build_id",
+        back_populates="build",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="ProductComponent.sort_order",
+    )
+
+
+class ProductComponent(Base):
+    """One line of a ready-made build: a catalog product or a service, shown
+    with its live title/price on the build page (Figma "Build" screen)."""
+
+    __tablename__ = "shop_product_components"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    build_id: Mapped[int] = mapped_column(ForeignKey("shop_products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_products.id", ondelete="SET NULL"), nullable=True
+    )
+    service_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_services.id", ondelete="SET NULL"), nullable=True
+    )
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    build: Mapped["Product"] = relationship(foreign_keys=[build_id], back_populates="components")
+    product: Mapped["Product | None"] = relationship(foreign_keys=[product_id], lazy="selectin")
+    service: Mapped["ShopService | None"] = relationship(lazy="selectin")
 
 
 class ProductTranslation(Base):
@@ -280,6 +310,8 @@ class ShopService(Base):
     price: Mapped[int] = mapped_column(Integer, default=0)  # whole manat
     currency: Mapped[str] = mapped_column(String(8), default="TMT")
     icon: Mapped[str] = mapped_column(String(32), default="wrench")
+    # price is a starting price ("от 250 TMT") rather than a fixed one
+    price_from: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -298,6 +330,8 @@ class ShopServiceTranslation(Base):
     lang: Mapped[str] = mapped_column(String(2))
     title: Mapped[str] = mapped_column(String(256), default="")
     short: Mapped[str] = mapped_column(String(256), default="")
+    body: Mapped[str] = mapped_column(Text, default="")  # service page description
+    feats: Mapped[list] = mapped_column(JSON, default=list)  # "Что входит" bullet list
 
     service: Mapped["ShopService"] = relationship(back_populates="translations")
 
@@ -577,5 +611,68 @@ class Lead(Base):
     phone: Mapped[str] = mapped_column(String(64), default="")
     email: Mapped[str] = mapped_column(String(128), default="")
     message: Mapped[str] = mapped_column(Text, default="")
+    # set when the request came from a service page ("Оставить заявку")
+    service_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shop_services.id", ondelete="SET NULL"), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(8), default="new")  # new|read|done
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class Banner(Base):
+    """Home-page hero slide."""
+
+    __tablename__ = "shop_banners"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    image: Mapped[str | None] = mapped_column(String(128), nullable=True)  # file in media/banners
+    link: Mapped[str] = mapped_column(String(256), default="")  # site path, e.g. /catalog/builds
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    translations: Mapped[list["BannerTranslation"]] = relationship(
+        back_populates="banner", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class BannerTranslation(Base):
+    __tablename__ = "shop_banner_translations"
+    __table_args__ = (UniqueConstraint("banner_id", "lang", name="uq_banner_lang"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    banner_id: Mapped[int] = mapped_column(ForeignKey("shop_banners.id", ondelete="CASCADE"))
+    lang: Mapped[str] = mapped_column(String(2))
+    title: Mapped[str] = mapped_column(String(256), default="")
+    subtitle: Mapped[str] = mapped_column(String(256), default="")
+
+    banner: Mapped["Banner"] = relationship(back_populates="translations")
+
+
+class Page(Base):
+    """Static info page (About, FAQ, Delivery, Guarantee, Install…)."""
+
+    __tablename__ = "shop_pages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    translations: Mapped[list["PageTranslation"]] = relationship(
+        back_populates="page", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class PageTranslation(Base):
+    __tablename__ = "shop_page_translations"
+    __table_args__ = (UniqueConstraint("page_id", "lang", name="uq_page_lang"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    page_id: Mapped[int] = mapped_column(ForeignKey("shop_pages.id", ondelete="CASCADE"))
+    lang: Mapped[str] = mapped_column(String(2))
+    title: Mapped[str] = mapped_column(String(256), default="")
+    lead: Mapped[str] = mapped_column(Text, default="")  # intro under the title
+    # ordered sections: [{title, body}] — FAQ uses title=question, body=answer
+    blocks: Mapped[list] = mapped_column(JSON, default=list)
+
+    page: Mapped["Page"] = relationship(back_populates="translations")
