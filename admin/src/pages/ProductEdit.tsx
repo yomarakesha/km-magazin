@@ -8,6 +8,7 @@ import {
   type Category,
   type Lang,
   type Product,
+  type ComponentIn,
   type ProductAttr,
   type ProductImage,
   type ProductIn,
@@ -26,6 +27,7 @@ import {
   Loaded,
   NumInput,
   PageHead,
+  Qty,
   Select,
   Textarea,
   confirmAction,
@@ -54,6 +56,7 @@ function toForm(p: Product | null, cats: Category[]): ProductIn {
       enabled: true,
       translations: LANGS.map(emptyTr),
       attributes: [],
+      components: [],
     };
   }
   return {
@@ -70,6 +73,7 @@ function toForm(p: Product | null, cats: Category[]): ProductIn {
     enabled: p.enabled,
     translations: LANGS.map((l) => p.translations.find((t) => t.lang === l) ?? emptyTr(l)),
     attributes: p.attributes,
+    components: p.components.map(({ product_id, service_id, qty }) => ({ product_id, service_id, qty })),
   };
 }
 
@@ -217,6 +221,15 @@ function Editor({ product, cats, brands, onSaved }: { product: Product | null; c
               </div>
             </Card>
           )}
+
+          <BuildEditor
+            value={f.components}
+            selfId={product?.id ?? null}
+            disabled={!canText}
+            price={f.price}
+            onSetPrice={canPrice ? (v) => set("price", v) : undefined}
+            onChange={(components) => set("components", components)}
+          />
 
           {product ? <Images productId={product.id} canEdit={canContent} /> : <p className="muted small">Фото можно добавить после создания товара.</p>}
         </div>
@@ -389,6 +402,136 @@ function Images({ productId, canEdit }: { productId: number; canEdit: boolean })
             </div>
           ))}
         </div>
+      )}
+    </Card>
+  );
+}
+
+/** Parts list of a ready-made build (Figma "Build" screen). Lines show live
+ * catalog titles/prices; the build's own price is set separately. */
+function BuildEditor({
+  value,
+  selfId,
+  disabled,
+  price,
+  onSetPrice,
+  onChange,
+}: {
+  value: ComponentIn[];
+  selfId: number | null;
+  disabled: boolean;
+  price: number;
+  onSetPrice?: (v: number) => void;
+  onChange: (v: ComponentIn[]) => void;
+}) {
+  const state = useLoad(() => Promise.all([api.products(), api.allServices(), api.categories()]));
+  const [pick, setPick] = useState("");
+  if (!state.data) return null;
+  const [products, services, cats] = state.data;
+  const prodById = new Map(products.map((p) => [p.id, p]));
+  const svcById = new Map(services.map((s) => [s.id, s]));
+  const catById = new Map(cats.map((c) => [c.id, c]));
+
+  const info = (c: ComponentIn) => {
+    if (c.service_id !== null) {
+      const s = svcById.get(c.service_id);
+      return { title: s ? s.translations.find((t) => t.lang === "ru")?.title || s.slug : "(удалено)", label: "Сервис", price: s?.price ?? 0 };
+    }
+    const p = c.product_id !== null ? prodById.get(c.product_id) : undefined;
+    const cat = p ? catById.get(p.category_id) : undefined;
+    return {
+      title: p ? p.translations.find((t) => t.lang === "ru")?.title || p.slug : "(удалено)",
+      label: cat ? catName(cat) : "",
+      price: p?.price ?? 0,
+    };
+  };
+  const sum = value.reduce((n, c) => n + info(c).price * c.qty, 0);
+  const upd = (i: number, patch: Partial<ComponentIn>) => onChange(value.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= value.length) return;
+    const next = [...value];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+  const add = (v: string) => {
+    if (!v) return;
+    const [kind, id] = v.split(":");
+    onChange([...value, kind === "s" ? { product_id: null, service_id: Number(id), qty: 1 } : { product_id: Number(id), service_id: null, qty: 1 }]);
+    setPick("");
+  };
+
+  return (
+    <Card title="Состав сборки" actions={<span className="muted small">для готовых ПК</span>}>
+      {value.length === 0 ? (
+        <p className="muted small">Пусто — обычный товар. Добавьте комплектующие и услугу сборки, чтобы товар стал «готовой сборкой».</p>
+      ) : (
+        <div>
+          {value.map((c, i) => {
+            const it = info(c);
+            return (
+              <div className="list-row" key={i}>
+                <div style={{ flex: 1 }}>
+                  <div className="muted small">{it.label}</div>
+                  <div style={{ fontWeight: 500 }}>{it.title}</div>
+                </div>
+                {!disabled && <Qty value={c.qty} onChange={(qty) => upd(i, { qty })} />}
+                <b className="mono" style={{ minWidth: 100, textAlign: "right" }}>
+                  {money(it.price * c.qty)}
+                </b>
+                {!disabled && (
+                  <span className="nowrap">
+                    <button className="icon-btn" onClick={() => move(i, -1)} aria-label="Выше">
+                      ↑
+                    </button>
+                    <button className="icon-btn" onClick={() => move(i, 1)} aria-label="Ниже">
+                      ↓
+                    </button>
+                    <button className="icon-btn" onClick={() => onChange(value.filter((_, j) => j !== i))} aria-label="Убрать">
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          <div className="total-line">
+            <span>
+              Сумма частей
+              {sum !== price && <span className="muted small"> · цена сборки {money(price)}</span>}
+            </span>
+            <b>{money(sum)}</b>
+          </div>
+          {onSetPrice && sum !== price && (
+            <Button variant="ghost" size="sm" onClick={() => onSetPrice(sum)}>
+              Поставить цену = {money(sum)}
+            </Button>
+          )}
+        </div>
+      )}
+      {!disabled && (
+        <Select value={pick} onChange={(e) => add(e.target.value)}>
+          <option value="">+ Добавить комплектующую или услугу…</option>
+          {categoryTree(cats).map(({ cat }) => {
+            const items = products.filter((p) => p.category_id === cat.id && p.id !== selfId);
+            return items.length ? (
+              <optgroup key={cat.id} label={catName(cat)}>
+                {items.map((p) => (
+                  <option key={p.id} value={`p:${p.id}`}>
+                    {p.translations.find((t) => t.lang === "ru")?.title || p.slug} — {money(p.price)}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null;
+          })}
+          <optgroup label="Услуги">
+            {services.map((sv) => (
+              <option key={sv.id} value={`s:${sv.id}`}>
+                {sv.translations.find((t) => t.lang === "ru")?.title || sv.slug} — {money(sv.price)}
+              </option>
+            ))}
+          </optgroup>
+        </Select>
       )}
     </Card>
   );

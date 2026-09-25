@@ -26,6 +26,9 @@ import Purchases from "./pages/Purchases";
 import Suppliers from "./pages/Suppliers";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
+import Services from "./pages/Services";
+import Banners from "./pages/Banners";
+import SitePages, { SitePageEdit } from "./pages/SitePages";
 
 function Gate() {
   const { me, ready } = useAuth();
@@ -54,6 +57,11 @@ function Gate() {
         <Route path="purchases" element={<Purchases />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="services" element={<Services />} />
+        <Route path="banners" element={<Banners />} />
+        <Route path="pages" element={<SitePages />} />
+        <Route path="pages/new" element={<SitePageEdit />} />
+        <Route path="pages/:id" element={<SitePageEdit />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />

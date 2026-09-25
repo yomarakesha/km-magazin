@@ -40,6 +40,7 @@ export default function Leads() {
                         {l.phone && <a href={`tel:${l.phone}`}>{l.phone}</a>}
                         {l.email && <a href={`mailto:${l.email}`}>{l.email}</a>}
                         <Badge tone={STATUS[l.status].tone}>{STATUS[l.status].label}</Badge>
+                        {l.service_title && <Badge tone="soft-blue">{l.service_title}</Badge>}
                       </div>
                       {l.message && <p style={{ whiteSpace: "pre-wrap" }}>{l.message}</p>}
                       <p className="muted small">{dateTime(l.created_at)}</p>

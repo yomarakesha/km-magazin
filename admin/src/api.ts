@@ -94,11 +94,13 @@ export const api = {
   reorderAttributes: (catId: number, ids: number[]) =>
     req(`/api/admin/shop/categories/${catId}/attributes/reorder`, json("POST", { ids })),
 
-  // category services
+  // services
+  allServices: () => req<ShopService[]>("/api/admin/shop/services"),
   services: (catId: number) => req<ShopService[]>(`/api/admin/shop/categories/${catId}/services`),
   createService: (catId: number, body: ShopServiceIn) =>
     req<ShopService>(`/api/admin/shop/categories/${catId}/services`, json("POST", body)),
-  updateService: (id: number, body: ShopServiceIn) => req<ShopService>(`/api/admin/shop/services/${id}`, json("PUT", body)),
+  updateService: (id: number, body: Partial<ShopServiceIn> & { category_id?: number }) =>
+    req<ShopService>(`/api/admin/shop/services/${id}`, json("PUT", body)),
   deleteService: (id: number) => req(`/api/admin/shop/services/${id}`, json("DELETE")),
 
   // products
@@ -137,6 +139,23 @@ export const api = {
   createPromo: (body: PromoIn) => req<Promo>("/api/admin/shop/promos", json("POST", body)),
   updatePromo: (id: number, body: Partial<PromoIn>) => req<Promo>(`/api/admin/shop/promos/${id}`, json("PUT", body)),
   deletePromo: (id: number) => req(`/api/admin/shop/promos/${id}`, json("DELETE")),
+
+  // site: banners + info pages
+  banners: () => req<Banner[]>("/api/admin/site/banners"),
+  createBanner: (body: BannerIn) => req<Banner>("/api/admin/site/banners", json("POST", body)),
+  updateBanner: (id: number, body: BannerIn) => req<Banner>(`/api/admin/site/banners/${id}`, json("PUT", body)),
+  deleteBanner: (id: number) => req(`/api/admin/site/banners/${id}`, json("DELETE")),
+  reorderBanners: (ids: number[]) => req("/api/admin/site/banners/reorder", json("POST", { ids })),
+  uploadBannerImage: (id: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return req<Banner>(`/api/admin/site/banners/${id}/image`, { method: "POST", body: form });
+  },
+  pages: () => req<SitePage[]>("/api/admin/site/pages"),
+  page: (id: number) => req<SitePage>(`/api/admin/site/pages/${id}`),
+  createPage: (body: SitePageIn) => req<SitePage>("/api/admin/site/pages", json("POST", body)),
+  updatePage: (id: number, body: SitePageIn) => req<SitePage>(`/api/admin/site/pages/${id}`, json("PUT", body)),
+  deletePage: (id: number) => req(`/api/admin/site/pages/${id}`, json("DELETE")),
 
   // settings
   settings: () => req<Settings>("/api/admin/shop/settings"),
@@ -255,23 +274,32 @@ export interface CategoryIn {
   parent_id: number | null;
   translations: { lang: Lang; name: string }[];
 }
+export interface ShopServiceTr {
+  lang: Lang;
+  title: string;
+  short: string;
+  body: string;
+  feats: string[];
+}
 export interface ShopService {
   id: number;
   slug: string;
   category_id: number;
   price: number;
+  price_from: boolean;
   currency: string;
   icon: string;
   enabled: boolean;
   sort_order: number;
-  translations: { lang: Lang; title: string; short: string }[];
+  translations: ShopServiceTr[];
 }
 export interface ShopServiceIn {
   slug: string;
   price: number;
+  price_from: boolean;
   icon: string;
   enabled: boolean;
-  translations: { lang: Lang; title: string; short: string }[];
+  translations: ShopServiceTr[];
 }
 
 export interface Spec {
@@ -284,6 +312,15 @@ export interface ProductTr {
   short: string;
   body: string;
   specs: Spec[];
+}
+export interface ComponentIn {
+  product_id: number | null;
+  service_id: number | null;
+  qty: number;
+}
+export interface Component extends ComponentIn {
+  title: string;
+  price: number;
 }
 export interface ProductAttr {
   attribute_id: number;
@@ -308,6 +345,7 @@ export interface Product {
   image_count: number;
   translations: ProductTr[];
   attributes: ProductAttr[];
+  components: Component[];
 }
 export interface ProductIn {
   slug: string;
@@ -323,6 +361,7 @@ export interface ProductIn {
   enabled: boolean;
   translations: ProductTr[];
   attributes: ProductAttr[];
+  components: ComponentIn[];
 }
 export interface ProductImage {
   id: number;
@@ -392,6 +431,8 @@ export interface Lead {
   phone: string;
   email: string;
   message: string;
+  service_id: number | null;
+  service_title: string;
   status: LeadStatus;
   created_at: string;
 }
@@ -536,4 +577,46 @@ export interface User {
   role: Role;
   active: boolean;
   created_at: string | null;
+}
+
+export interface BannerTr {
+  lang: Lang;
+  title: string;
+  subtitle: string;
+}
+export interface Banner {
+  id: number;
+  image: string | null;
+  link: string;
+  enabled: boolean;
+  sort_order: number;
+  translations: BannerTr[];
+}
+export interface BannerIn {
+  link: string;
+  enabled: boolean;
+  translations: BannerTr[];
+}
+
+export interface PageBlock {
+  title: string;
+  body: string;
+}
+export interface SitePageTr {
+  lang: Lang;
+  title: string;
+  lead: string;
+  blocks: PageBlock[];
+}
+export interface SitePage {
+  id: number;
+  slug: string;
+  enabled: boolean;
+  sort_order: number;
+  translations: SitePageTr[];
+}
+export interface SitePageIn {
+  slug: string;
+  enabled: boolean;
+  translations: SitePageTr[];
 }

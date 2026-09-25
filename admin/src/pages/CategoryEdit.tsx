@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { LANGS, api, type Attribute, type AttributeIn, type Category, type CategoryIn, type Lang, type ShopService, type ShopServiceIn } from "../api";
+import { LANGS, api, type Attribute, type AttributeIn, type Category, type CategoryIn, type Lang, type ShopService } from "../api";
 import {
   Badge,
   Button,
@@ -12,15 +12,14 @@ import {
   Input,
   Loaded,
   Modal,
-  NumInput,
   PageHead,
   Select,
   confirmAction,
-  money,
   useAction,
   useLoad,
 } from "../ui";
 import { catName, categoryTree } from "./Products";
+import { ServiceModal, servicePrice } from "./Services";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 
@@ -294,7 +293,7 @@ function Services({ cat }: { cat: Category }) {
                     <div className="muted small">{s.translations.find((t) => t.lang === "ru")?.short}</div>
                   </div>
                   {!s.enabled && <Badge>Скрыта</Badge>}
-                  <span className="price">{money(s.price, s.currency)}</span>
+                  <span className="price">{servicePrice(s)}</span>
                   <Button variant="ghost" size="sm" onClick={() => setEdit(s)}>
                     Изменить
                   </Button>
@@ -306,7 +305,7 @@ function Services({ cat }: { cat: Category }) {
       </Loaded>
       {edit && (
         <ServiceModal
-          catId={cat.id}
+          categoryId={cat.id}
           svc={edit === "new" ? null : edit}
           onClose={() => setEdit(null)}
           onDone={() => {
@@ -316,70 +315,5 @@ function Services({ cat }: { cat: Category }) {
         />
       )}
     </Card>
-  );
-}
-
-function ServiceModal({ catId, svc, onClose, onDone }: { catId: number; svc: ShopService | null; onClose: () => void; onDone: () => void }) {
-  const { busy, error, run } = useAction();
-  const [f, setF] = useState<ShopServiceIn>(() => ({
-    slug: svc?.slug ?? "",
-    price: svc?.price ?? 0,
-    icon: svc?.icon ?? "wrench",
-    enabled: svc?.enabled ?? true,
-    translations: LANGS.map((l) => {
-      const t = svc?.translations.find((x) => x.lang === l);
-      return { lang: l, title: t?.title ?? "", short: t?.short ?? "" };
-    }),
-  }));
-  const setTr = (lang: Lang, patch: Partial<{ title: string; short: string }>) =>
-    setF({ ...f, translations: f.translations.map((t) => (t.lang === lang ? { ...t, ...patch } : t)) });
-  const save = async () => {
-    if (await run(() => (svc ? api.updateService(svc.id, f) : api.createService(catId, f)), "Сохранено")) onDone();
-  };
-  const remove = async () => {
-    if (svc && confirmAction("Удалить услугу?") && (await run(() => api.deleteService(svc.id), "Удалено"))) onDone();
-  };
-  return (
-    <Modal title={svc ? "Услуга" : "Новая услуга"} onClose={onClose} wide>
-      {f.translations.map((t) => (
-        <div className="grid2" key={t.lang}>
-          <Field label={`Название ${t.lang.toUpperCase()}`}>
-            <Input value={t.title} onChange={(e) => setTr(t.lang, { title: e.target.value })} />
-          </Field>
-          <Field label={`Кратко ${t.lang.toUpperCase()}`}>
-            <Input value={t.short} onChange={(e) => setTr(t.lang, { short: e.target.value })} />
-          </Field>
-        </div>
-      ))}
-      <div className="grid3">
-        <Field label="Slug">
-          <Input value={f.slug} onChange={(e) => setF({ ...f, slug: slugify(e.target.value) })} />
-        </Field>
-        <Field label="Цена, TMT">
-          <NumInput value={f.price} min={0} onChange={(v) => setF({ ...f, price: v ?? 0 })} />
-        </Field>
-        <Field label="Иконка">
-          <Select value={f.icon} onChange={(e) => setF({ ...f, icon: e.target.value })}>
-            <option value="wrench">Ключ</option>
-            <option value="settings">Настройка</option>
-            <option value="refresh">Обновление</option>
-          </Select>
-        </Field>
-      </div>
-      <Check checked={f.enabled} onChange={(v) => setF({ ...f, enabled: v })}>
-        Показывать на сайте
-      </Check>
-      <ErrorBox error={error} />
-      <div className="form-actions">
-        {svc && (
-          <Button variant="danger" onClick={remove} disabled={busy}>
-            Удалить
-          </Button>
-        )}
-        <Button onClick={save} disabled={busy || !f.slug}>
-          Сохранить
-        </Button>
-      </div>
-    </Modal>
   );
 }

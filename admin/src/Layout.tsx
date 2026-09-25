@@ -31,6 +31,14 @@ export const NAV: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: "Сайт",
+    items: [
+      { to: "/services", label: "Услуги", roles: ["content"] },
+      { to: "/banners", label: "Баннеры", roles: ["content"] },
+      { to: "/pages", label: "Страницы", roles: ["content"] },
+    ],
+  },
+  {
     label: "Склад",
     items: [
       { to: "/stock", label: "Остатки", roles: ["warehouse", "sales"] },

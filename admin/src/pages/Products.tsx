@@ -81,6 +81,7 @@ export default function Products() {
                   <option value="new">Новинки</option>
                   <option value="hidden">Скрытые</option>
                   <option value="nophoto">Без фото</option>
+                  <option value="build">Готовые сборки</option>
                 </Select>
               </div>
             }
@@ -127,6 +128,7 @@ function ProductTable({
       if (filters.flag === "new" && !p.is_new) return false;
       if (filters.flag === "hidden" && p.enabled) return false;
       if (filters.flag === "nophoto" && p.image_count > 0) return false;
+      if (filters.flag === "build" && p.components.length === 0) return false;
       if (needle) {
         const hay = [p.slug, p.sku, p.barcode, ...p.translations.map((t) => t.title)].join(" ").toLowerCase();
         if (!hay.includes(needle)) return false;
@@ -180,6 +182,7 @@ function ProductTable({
                         <div className="row" style={{ gap: 6 }}>
                           {pct > 0 && <Badge tone="red">-{pct}%</Badge>}
                           {p.is_new && <Badge tone="blue">Новое</Badge>}
+                          {p.components.length > 0 && <Badge tone="soft-blue">Сборка</Badge>}
                           {!p.enabled && <Badge>Скрыт</Badge>}
                           {!p.in_stock && <Badge tone="soft-amber">Под заказ</Badge>}
                         </div>
