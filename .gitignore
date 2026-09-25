@@ -53,7 +53,7 @@ yarn-error.log*
 !.env.example
 !backend/.env.example
 
-# sqlite snapshots from scripts/backup-db.ps1
+# sqlite snapshots from scripts/backup-db.sh
 /backup/
 
 # python backend

@@ -14,16 +14,8 @@ API интернет-магазина Kanagatly Mahabat (компьютерна�
 
 ## Быстрый старт
 
-### Linux / macOS
-
 ```bash
 bash scripts/start.sh
-```
-
-### Windows
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 ```
 
 Скрипт:
@@ -34,8 +26,7 @@ powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 5. Проверяет, что порт 8000 свободен, запускает backend и ждёт, пока он ответит
 
 Повторный запуск пропускает готовые шаги. `Ctrl+C` останавливает сервер.
-Автоперезагрузка при правке кода: `KM_RELOAD=1 bash scripts/start.sh`
-(Windows: `$env:KM_RELOAD = "1"` перед запуском).
+Автоперезагрузка при правке кода: `KM_RELOAD=1 bash scripts/start.sh`.
 
 **Требования:** Python 3.10+, Node.js 20+ (только для сборки админки)
 
@@ -147,9 +138,9 @@ backend/
 ├── requirements.txt
 └── .env              # секреты (не в git, создаётся скриптом)
 scripts/
-├── start.sh / start.ps1  # запуск
-├── create-admin.ps1      # смена пароля admin
-└── backup-db.ps1         # бэкап БД
+├── start.sh          # запуск
+├── create-admin.sh   # смена пароля admin (в .env и в БД)
+└── backup-db.sh      # бэкап БД (VACUUM INTO, хранение 14 дней)
 ```
 
 ---
@@ -159,7 +150,7 @@ scripts/
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 
 python -m app.seed_demo            # демо-данные (первый раз)
@@ -194,6 +185,17 @@ npm run build    # admin/dist, backend отдаёт её на /admin
 | `PUBLIC_URL` | Публичный URL backend (default: http://localhost:8000) |
 
 Полный список — `backend/.env.example`.
+
+---
+
+## Обслуживание
+
+```bash
+bash scripts/create-admin.sh          # новый пароль admin, затем перезапустить backend
+bash scripts/backup-db.sh             # снимок БД в backup/, старше 14 дней удаляются
+# ежедневно в 03:00 (crontab -e):
+# 0 3 * * * bash /путь/к/km-magazin/scripts/backup-db.sh
+```
 
 ---
 
