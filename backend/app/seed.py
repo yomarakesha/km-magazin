@@ -1,10 +1,8 @@
-"""Seed the database from seed_data.json and copy existing media files.
+"""Seed the database from seed_data.json (media files live in backend/media).
 
 Run from the project root:  python -m backend.app.seed
-Regenerate seed_data.json first with:  npm run dump:seed
 """
 import json
-import shutil
 from pathlib import Path
 
 from .config import BASE_DIR, MEDIA_DIR
@@ -12,23 +10,18 @@ from .db import SessionLocal, init_db
 from .models import ContentBlock, Media, Service, ServiceTranslation
 
 SEED_FILE = BASE_DIR / "app" / "seed_data.json"
-FRONTEND_ASSETS = BASE_DIR.parent / "public" / "assets"  # km-site/public/assets
 
 
-def _copy_media_file(subdir: str, name: str | None) -> None:
+def _check_media_file(subdir: str, name: str | None) -> None:
     if not name:
         return
-    src = FRONTEND_ASSETS / subdir / name
-    dst = MEDIA_DIR / subdir / name
-    if src.exists():
-        shutil.copy2(src, dst)
-    else:
-        print(f"  ! missing source media: {src}")
+    if not (MEDIA_DIR / subdir / name).exists():
+        print(f"  ! missing media: {subdir}/{name}")
 
 
 def seed() -> None:
     if not SEED_FILE.exists():
-        raise SystemExit(f"{SEED_FILE} not found. Run `npm run dump:seed` first.")
+        raise SystemExit(f"{SEED_FILE} not found.")
 
     data = json.loads(SEED_FILE.read_text(encoding="utf-8"))
     init_db()
@@ -64,8 +57,8 @@ def seed() -> None:
                 )
             for order, m in enumerate(s["media"]):
                 subdir = "video" if m["kind"] == "video" else "img"
-                _copy_media_file(subdir, m["filename"])
-                _copy_media_file("img", m.get("poster"))
+                _check_media_file(subdir, m["filename"])
+                _check_media_file("img", m.get("poster"))
                 svc.media.append(
                     Media(
                         kind=m["kind"],

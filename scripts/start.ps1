@@ -5,9 +5,8 @@
 # Script:
 #   1. Sozdaet backend\.env s sluchajnymi klyuchami (esli net)
 #   2. Sozdaet Python venv i stavit zavisimosti
-#   3. Stavit npm pakety
-#   4. Zapolnyaet BD demo-dannymi (esli net km.db)
-#   5. Zapuskaet backend :8000 i frontend :3000
+#   3. Zapolnyaet BD demo-dannymi (esli net km.db)
+#   4. Zapuskaet backend :8000
 
 $ErrorActionPreference = "Stop"
 $root    = Split-Path -Parent $PSScriptRoot
@@ -28,7 +27,7 @@ Write-Host ""
 
 # ── 1. backend/.env ───────────────────────────────────────────────────────────
 if (-not (Test-Path $envFile)) {
-    Write-Host "[1/5] Sozdaem backend\.env..." -ForegroundColor Cyan
+    Write-Host "[1/4] Sozdaem backend\.env..." -ForegroundColor Cyan
 
     $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
 
@@ -39,36 +38,17 @@ if (-not (Test-Path $envFile)) {
     $rng.GetBytes($skBytes)
     $secretKey = [Convert]::ToBase64String($skBytes)
 
-    # Obshij sekret dlya myagnovennogo obnovleniya lendinga posle pravok v admin.
-    # Dolzhen sovpadat v backend\.env i frontend .env.local (nizhe).
-    $revBytes = New-Object byte[] 24
-    $rng.GetBytes($revBytes)
-    $revSecret = ([Convert]::ToBase64String($revBytes) -replace '[+/=]', '')
 
     $lines = @(
         "ADMIN_PASSWORD=$adminPwd",
         "SECRET_KEY=$secretKey",
         "FRONTEND_ORIGIN=http://localhost:3000",
         "PUBLIC_URL=http://localhost:8000",
-        "COOKIE_SECURE=false",
-        "REVALIDATE_SECRET=$revSecret"
+        "COOKIE_SECURE=false"
     )
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllLines($envFile, $lines, $utf8NoBom)
 
-    # frontend .env.local s tem zhe REVALIDATE_SECRET (esli net)
-    $envLocal = Join-Path $root ".env.local"
-    if (-not (Test-Path $envLocal)) {
-        $localLines = @(
-            "API_URL=http://localhost:8000",
-            "NEXT_PUBLIC_API_URL=http://localhost:8000",
-            "NEXT_PUBLIC_SITE_URL=http://localhost:3000",
-            "NEXT_PUBLIC_SHOP_ENABLED=0",
-            "REVALIDATE_SECRET=$revSecret"
-        )
-        [System.IO.File]::WriteAllLines($envLocal, $localLines, $utf8NoBom)
-        Write-Host "  Sozdan .env.local (frontend)" -ForegroundColor DarkGray
-    }
 
     Write-Host ""
     Write-Host "  *** PAROL ADMINISTRATORA: $adminPwd ***" -ForegroundColor Yellow
@@ -77,7 +57,7 @@ if (-not (Test-Path $envFile)) {
     Write-Host "  VNIMANIE: parol po umolchaniyu 'admin' - SMENITE v backend\.env pered publikatsiej!" -ForegroundColor Red
     Write-Host ""
 } else {
-    Write-Host "[1/5] backend\.env uzhe est - propuskaem" -ForegroundColor DarkGray
+    Write-Host "[1/4] backend\.env uzhe est - propuskaem" -ForegroundColor DarkGray
     $existingPwd = Get-Content $envFile | Where-Object { $_ -match '^ADMIN_PASSWORD=' }
     if ($existingPwd) {
         $existingPwd = $existingPwd -replace '^ADMIN_PASSWORD=', ''
@@ -96,7 +76,7 @@ foreach ($key in @("ADMIN_PASSWORD", "SECRET_KEY")) {
 
 # ── 2. Python venv + zavisimosti ─────────────────────────────────────────────
 if (-not (Test-Path $py)) {
-    Write-Host "[2/5] Sozdaem Python venv..." -ForegroundColor Cyan
+    Write-Host "[2/4] Sozdaem Python venv..." -ForegroundColor Cyan
 
     $pyCmd = $null
     foreach ($candidate in @("py", "python3", "python")) {
@@ -125,11 +105,11 @@ if (-not (Test-Path $py)) {
         exit 1
     }
     (Get-FileHash $req -Algorithm SHA256).Hash | Set-Content $reqStamp -Encoding utf8
-    Write-Host "[2/5] Python zavisimosti ustanovleny." -ForegroundColor Green
+    Write-Host "[2/4] Python zavisimosti ustanovleny." -ForegroundColor Green
 } elseif ((-not (Test-Path $reqStamp)) -or
           ((Get-Content $reqStamp -Raw).Trim() -ne (Get-FileHash $req -Algorithm SHA256).Hash)) {
     # venv sobran do togo, kak v requirements.txt dobavili paket - dostavlyaem
-    Write-Host "[2/5] requirements.txt izmenilsya - dostavlyaem zavisimosti..." -ForegroundColor Cyan
+    Write-Host "[2/4] requirements.txt izmenilsya - dostavlyaem zavisimosti..." -ForegroundColor Cyan
     & $py -m pip install -r $req
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Oshibka ustanovki Python-zavisimostej. Venv ostavlen kak est." -ForegroundColor Red
@@ -137,48 +117,30 @@ if (-not (Test-Path $py)) {
         exit 1
     }
     (Get-FileHash $req -Algorithm SHA256).Hash | Set-Content $reqStamp -Encoding utf8
-    Write-Host "[2/5] Python zavisimosti obnovleny." -ForegroundColor Green
+    Write-Host "[2/4] Python zavisimosti obnovleny." -ForegroundColor Green
 } else {
-    Write-Host "[2/5] Python venv aktualen - propuskaem" -ForegroundColor DarkGray
+    Write-Host "[2/4] Python venv aktualen - propuskaem" -ForegroundColor DarkGray
 }
 
-# ── 3. npm zavisimosti ────────────────────────────────────────────────────────
-if (-not (Test-Path (Join-Path $root "node_modules"))) {
-    Write-Host "[3/5] Ustanavlivaem npm pakety..." -ForegroundColor Cyan
-    Push-Location $root
-    npm install
-    Pop-Location
-    Write-Host "[3/5] npm pakety ustanovleny." -ForegroundColor Green
-} else {
-    Write-Host "[3/5] node_modules uzhe est - propuskaem" -ForegroundColor DarkGray
-}
-
-# ── 4. Seed demo-dannyh ───────────────────────────────────────────────────────
+# ── 3. Seed demo-dannyh ───────────────────────────────────────────────────────
 if (-not (Test-Path $db)) {
-    Write-Host "[4/5] Zapolnyaem BD demo-dannymi..." -ForegroundColor Cyan
+    Write-Host "[3/4] Zapolnyaem BD demo-dannymi..." -ForegroundColor Cyan
     $dataDir = Join-Path $backend "data"
     if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir | Out-Null }
     Push-Location $backend
     & $py -m app.seed_demo
     Pop-Location
-    Write-Host "[4/5] BD sozdana s demo-dannymi." -ForegroundColor Green
+    Write-Host "[3/4] BD sozdana s demo-dannymi." -ForegroundColor Green
 } else {
-    Write-Host "[4/5] BD uzhe sushchestvuet - propuskaem seed" -ForegroundColor DarkGray
+    Write-Host "[3/4] BD uzhe sushchestvuet - propuskaem seed" -ForegroundColor DarkGray
 }
 
-# ── 5. Zapusk serverov ────────────────────────────────────────────────────────
-Write-Host "[5/5] Zapuskaem servery..." -ForegroundColor Cyan
+# ── 4. Zapusk servera ────────────────────────────────────────────────────────
+Write-Host "[4/4] Zapuskaem backend..." -ForegroundColor Cyan
 
 Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
     "Write-Host 'Backend :8000' -ForegroundColor Green; Set-Location '$backend'; & '$py' -m uvicorn app.main:app --reload --port 8000"
-)
-
-Start-Sleep -Seconds 2
-
-Start-Process powershell -ArgumentList @(
-    "-NoExit", "-Command",
-    "Write-Host 'Frontend :3000' -ForegroundColor Green; Set-Location '$root'; npm run dev"
 )
 
 # ── Smoke: zhdem zhivoj otvet, a ne prosto zapushchennyj process ─────────────
@@ -199,22 +161,19 @@ function Wait-For {
 }
 
 Write-Host ""
-Write-Host "Proveryaem, chto servery podnyalis..." -ForegroundColor Cyan
+Write-Host "Proveryaem, chto backend podnyalsya..." -ForegroundColor Cyan
 $backendOk  = Wait-For -Url "http://localhost:8000/docs" -Name "backend"
-$frontendOk = Wait-For -Url "http://localhost:3000/"     -Name "frontend"
 
-if (-not $backendOk -or -not $frontendOk) {
+if (-not $backendOk) {
     Write-Host ""
-    Write-Host "Zapusk ne udalsya - smotrite oshibki v otkrytyh oknah." -ForegroundColor Red
+    Write-Host "Zapusk ne udalsya - smotrite oshibki v okne backend." -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Sajt:   http://localhost:3000"          -ForegroundColor Green
-Write-Host "  Admin:  http://localhost:3000/admin"    -ForegroundColor Green
 Write-Host "  API:    http://localhost:8000/docs"     -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Otkryty dva okna. Zakrojte ih chtoby ostanovit servery." -ForegroundColor DarkGray
+Write-Host "Backend zapushchen v otdelnom okne. Zakrojte ego chtoby ostanovit server." -ForegroundColor DarkGray
 Write-Host ""
