@@ -197,6 +197,17 @@ def _migrate() -> None:
                 conn.execute(text(
                     "ALTER TABLE leads ADD COLUMN service_id INTEGER REFERENCES shop_services(id)"
                 ))
+    # who took a lead / an order into work, and when
+    for table in ("leads", "shop_orders"):
+        if table in insp.get_table_names():
+            cols = {c["name"] for c in insp.get_columns(table)}
+            with engine.begin() as conn:
+                if "taken_by" not in cols:
+                    conn.execute(text(
+                        f"ALTER TABLE {table} ADD COLUMN taken_by VARCHAR(64) NOT NULL DEFAULT ''"
+                    ))
+                if "taken_at" not in cols:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN taken_at DATETIME"))
     if "shop_stock_movements" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_stock_movements")}
         if "sale_id" not in cols:

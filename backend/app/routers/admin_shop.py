@@ -1,6 +1,8 @@
 """Admin CRUD for the tech shop: categories, filter attributes, products,
 product images and customer orders. Mirrors the services/media/leads routers."""
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -8,9 +10,9 @@ from sqlalchemy.orm import Session
 from ..auth import require_admin, require_role
 from ..config import MEDIA_DIR
 from ..db import get_db
-from ..notify import email_notify, status_message, telegram_notify
 from ..stock import log_movement
 from ..models import (
+    Lead,
     CategoryAttribute,
     DeliveryZone,
     DeliveryZoneTranslation,
@@ -217,6 +219,23 @@ def _image(im: ProductImage) -> dict:
     return {"id": im.id, "filename": im.filename, "sort_order": im.sort_order}
 
 
+# Allowed status changes. Delivered only goes to cancelled (a return, which
+# gives the stock back); cancelled can be reopened as new.
+ORDER_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "new": ("confirmed", "delivered", "cancelled"),
+    "confirmed": ("new", "delivered", "cancelled"),
+    "delivered": ("cancelled",),
+    "cancelled": ("new",),
+}
+
+
+def _take_order(o: Order, username: str) -> None:
+    """Record the first manager who started working on the order."""
+    if not o.taken_by:
+        o.taken_by = username
+        o.taken_at = datetime.now(timezone.utc)
+
+
 def _order(o: Order) -> dict:
     return {
         "id": o.id,
@@ -226,6 +245,9 @@ def _order(o: Order) -> dict:
         "payment_method": o.payment_method,
         "comment": o.comment,
         "status": o.status,
+        "next_statuses": list(ORDER_TRANSITIONS.get(o.status, ())),
+        "taken_by": o.taken_by,
+        "taken_at": o.taken_at,
         "payment_status": o.payment_status,
         "payment_provider": o.payment_provider,
         "payment_ref": o.payment_ref,
@@ -1198,7 +1220,7 @@ def list_orders(
 
 @router.get("/stats")
 def shop_stats(db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
 
     # Orders store aware-UTC created_at (models._now); compare in the same frame.
     now = datetime.now(timezone.utc)
@@ -1224,6 +1246,7 @@ def shop_stats(db: Session = Depends(get_db), user: dict = Depends(require_admin
             )
         ) or 0
     ) if sees_money else None
+    leads_new = db.scalar(select(func.count(Lead.id)).where(Lead.status == "new")) or 0
     reviews_pending = db.scalar(
         select(func.count(ProductReview.id)).where(ProductReview.status == "pending")
     ) or 0
@@ -1271,6 +1294,7 @@ def shop_stats(db: Session = Depends(get_db), user: dict = Depends(require_admin
         "orders_week": orders_week,
         "revenue_week": int(revenue_week) if revenue_week is not None else None,
         "reviews_pending": reviews_pending,
+        "leads_new": leads_new,
         "top_products": top_products,
         "low_stock": low_stock,
     }
@@ -1335,7 +1359,6 @@ def _reserve_stock_and_promo(db: Session, order: Order, username: str = "") -> N
 def set_order_status(
     order_id: int,
     payload: OrderStatusIn,
-    background: BackgroundTasks,
     db: Session = Depends(get_db),
     user: dict = Depends(require_admin),
 ) -> dict:
@@ -1343,7 +1366,18 @@ def set_order_status(
     if not o:
         raise HTTPException(404, "Order not found")
     changed = o.status != payload.status
+    if changed and payload.status not in ORDER_TRANSITIONS.get(o.status, ()):
+        raise HTTPException(409, f"Order status cannot change from {o.status} to {payload.status}")
     if changed:
+        if payload.status in ("confirmed", "delivered"):
+            _take_order(o, user["username"])
+        # payment is taken on hand-over (cash or card), so a delivered order is paid
+        if payload.status == "delivered" and o.payment_status == "unpaid":
+            o.payment_status = "paid"
+            o.payment_provider = o.payment_provider or "manual"
+        # cancelling a handed-over order is a return: the money goes back too
+        if o.status == "delivered" and payload.status == "cancelled" and o.payment_status == "paid":
+            o.payment_status = "refunded"
         if payload.status == "cancelled":
             _restore_stock_and_promo(db, o, user["username"])
         elif o.status == "cancelled":
@@ -1351,10 +1385,21 @@ def set_order_status(
             _reserve_stock_and_promo(db, o, user["username"])
     o.status = payload.status
     db.commit()
-    if changed:
-        msg = status_message(o.id, o.customer_name, o.phone, o.status)
-        background.add_task(telegram_notify, msg)
-        background.add_task(email_notify, f"Заказ #{o.id}: {o.status}", msg)
+    return _order(o)
+
+
+@router.post("/orders/{order_id}/take", dependencies=[SALES])
+def take_order(order_id: int, db: Session = Depends(get_db), user: dict = Depends(require_admin)) -> dict:
+    """The manager clicked the customer's phone: a new order becomes confirmed
+    under their name. Idempotent — later clicks change nothing."""
+    o = db.get(Order, order_id)
+    if not o:
+        raise HTTPException(404, "Order not found")
+    if o.status == "new":
+        o.status = "confirmed"
+    if o.status != "cancelled":
+        _take_order(o, user["username"])
+    db.commit()
     return _order(o)
 
 

@@ -54,6 +54,8 @@ class LeadOut(BaseModel):
     service_id: int | None = None
     service_title: str = ""
     status: str
+    taken_by: str = ""
+    taken_at: datetime | None = None
     created_at: datetime
 
 

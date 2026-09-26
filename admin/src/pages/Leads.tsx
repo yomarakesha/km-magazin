@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { api, type LeadStatus } from "../api";
-import { Badge, Card, Empty, Loaded, PageHead, Select, Tabs, confirmAction, dateTime, useAction, useLoad } from "../ui";
+import { api, type Lead, type LeadStatus } from "../api";
+import { Badge, Card, Empty, Loaded, PageHead, Select, Tabs, ageLabel, confirmAction, dateTime, hoursSince, useAction, useLoad } from "../ui";
 
 const STATUS: Record<LeadStatus, { label: string; tone: "soft-blue" | "soft-amber" | "soft-green" }> = {
   new: { label: "Новая", tone: "soft-blue" },
@@ -8,12 +8,24 @@ const STATUS: Record<LeadStatus, { label: string; tone: "soft-blue" | "soft-ambe
   done: { label: "Закрыта", tone: "soft-green" },
 };
 
+/** New for over a day, or in progress for over two days: someone should look at it */
+function staleLabel(l: Lead): string | null {
+  if (l.status === "new" && hoursSince(l.created_at) > 24) return `Ждёт звонка ${ageLabel(l.created_at)}`;
+  if (l.status === "read" && l.taken_at && hoursSince(l.taken_at) > 48) return `В работе ${ageLabel(l.taken_at)}`;
+  return null;
+}
+
 export default function Leads() {
   const state = useLoad(api.leads);
   const [filter, setFilter] = useState<"" | LeadStatus>("");
   const { busy, run } = useAction();
   const act = async (fn: () => Promise<unknown>, msg: string) => {
     if (await run(fn, msg)) state.reload();
+  };
+  // Calling or writing to a new lead takes it into work (also after it was set back to "new");
+  // the link itself still opens
+  const take = (l: Lead) => {
+    if (l.status === "new") api.takeLead(l.id).then(state.reload, () => {});
   };
 
   return (
@@ -37,13 +49,25 @@ export default function Leads() {
                     <div style={{ flex: 1 }} className="stack">
                       <div className="row" style={{ gap: 8 }}>
                         <b>{l.name}</b>
-                        {l.phone && <a href={`tel:${l.phone}`}>{l.phone}</a>}
-                        {l.email && <a href={`mailto:${l.email}`}>{l.email}</a>}
+                        {l.phone && (
+                          <a href={`tel:${l.phone}`} onClick={() => take(l)}>
+                            {l.phone}
+                          </a>
+                        )}
+                        {l.email && (
+                          <a href={`mailto:${l.email}`} onClick={() => take(l)}>
+                            {l.email}
+                          </a>
+                        )}
                         <Badge tone={STATUS[l.status].tone}>{STATUS[l.status].label}</Badge>
                         {l.service_title && <Badge tone="soft-blue">{l.service_title}</Badge>}
+                        {staleLabel(l) && <Badge tone="soft-red">{staleLabel(l)}</Badge>}
                       </div>
                       {l.message && <p style={{ whiteSpace: "pre-wrap" }}>{l.message}</p>}
-                      <p className="muted small">{dateTime(l.created_at)}</p>
+                      <p className="muted small">
+                        {dateTime(l.created_at)}
+                        {l.taken_by && ` · менеджер ${l.taken_by}, ${dateTime(l.taken_at)}`}
+                      </p>
                     </div>
                     <Select
                       className="input-sm"

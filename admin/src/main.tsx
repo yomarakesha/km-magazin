@@ -14,7 +14,6 @@ import Categories from "./pages/Categories";
 import CategoryEdit from "./pages/CategoryEdit";
 import Brands from "./pages/Brands";
 import Reviews from "./pages/Reviews";
-import Promos from "./pages/Promos";
 import Leads from "./pages/Leads";
 import SettingsPage from "./pages/Settings";
 import Pos from "./pages/Pos";
@@ -44,7 +43,6 @@ function Gate() {
         <Route path="pos" element={<Pos />} />
         <Route path="sales" element={<Sales />} />
         <Route path="leads" element={<Leads />} />
-        <Route path="promos" element={<Promos />} />
         <Route path="products" element={<Products />} />
         <Route path="products/new" element={<ProductEdit />} />
         <Route path="products/:id" element={<ProductEdit />} />

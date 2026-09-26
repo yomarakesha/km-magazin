@@ -62,17 +62,10 @@ REVALIDATE_SECRET = os.getenv("REVALIDATE_SECRET", "")
 # "manual" = no gateway; admin marks orders paid by hand.
 PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "manual")
 
+# Promo codes: off until the shop runs promotions (the admin page is hidden too).
+# While off, checkout ignores codes and /promo/check answers "not valid".
+PROMOS_ENABLED = os.getenv("PROMOS_ENABLED", "").lower() in ("1", "true", "yes")
+
 # Sentry error tracking (disabled unless a DSN is set)
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
 
-# Telegram order notifications (disabled unless both are set)
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-
-# Email notifications (disabled unless SMTP_HOST and SMTP_TO are set)
-SMTP_HOST = os.getenv("SMTP_HOST", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "")
-SMTP_TO = os.getenv("SMTP_TO", "")  # where order notifications go

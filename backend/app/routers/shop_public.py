@@ -6,11 +6,11 @@ switch language client-side, mirroring how the landing handles i18n.
 """
 import hmac
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import and_, func, or_, select, union_all, update
 from sqlalchemy.orm import Session
 
-from .. import delivery
+from .. import config, delivery
 from ..config import PUBLIC_URL
 from ..db import get_db
 from ..models import (
@@ -32,7 +32,6 @@ from ..models import (
     ShopSettings,
 )
 from ..logging import log
-from ..notify import order_message, telegram_notify
 from ..payments import get_provider
 from ..ratelimit import limiter
 from ..schemas import CartValidateIn, OrderIn, PromoCheckIn, ReviewIn
@@ -620,7 +619,11 @@ def services(db: Session = Depends(get_db)) -> dict:
         .where(ShopService.enabled == True)  # noqa: E712
         .order_by(ShopService.sort_order, ShopService.id)
     ).all()
-    return {"services": [_service_card(s) for s in rows], "settings": settings_dict(db)}
+    return {
+        "mediaBase": f"{PUBLIC_URL}/media",
+        "services": [_service_card(s) for s in rows],
+        "settings": settings_dict(db),
+    }
 
 
 @router.get("/services/{slug}")
@@ -634,6 +637,7 @@ def service_detail(slug: str, db: Session = Depends(get_db)) -> dict:
         .order_by(ShopService.sort_order, ShopService.id)
     ).all()
     return {
+        "mediaBase": f"{PUBLIC_URL}/media",
         **_service_card(s),
         "body": _imap(s.translations, "body"),
         "feats": {t.lang: (t.feats or []) for t in s.translations},
@@ -662,6 +666,12 @@ def _banners(db: Session) -> list[dict]:
 @router.get("/banners")
 def banners(db: Session = Depends(get_db)) -> dict:
     return {"mediaBase": f"{PUBLIC_URL}/media", "banners": _banners(db)}
+
+
+@router.get("/settings")
+def shop_settings(db: Session = Depends(get_db)) -> dict:
+    """Shop contacts on their own, for the header/footer and the contacts page."""
+    return settings_dict(db)
 
 
 @router.get("/pages")
@@ -869,6 +879,8 @@ def promo_discount(db: Session, code: str, subtotal: int) -> tuple[PromoCode | N
 
 @router.post("/promo/check", dependencies=[Depends(limiter("promo", 10))])
 def promo_check(payload: PromoCheckIn, db: Session = Depends(get_db)) -> dict:
+    if not config.PROMOS_ENABLED:
+        raise HTTPException(404, "Promo code is not valid")
     promo, discount = promo_discount(db, payload.code, payload.subtotal)
     if not promo:
         # Distinguish an otherwise-valid code that just needs a bigger cart from
@@ -987,7 +999,7 @@ def delivery_zones(db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/orders", status_code=201, dependencies=[Depends(limiter("orders", 5))])
-def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+def create_order(payload: OrderIn, db: Session = Depends(get_db)) -> dict:
     """Create an order. The total is recomputed server-side from DB prices;
     item title/price are snapshotted so the order is stable over time.
     Unavailable items produce a structured 409 listing every problem line,
@@ -1062,7 +1074,8 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
             if p.stock_qty is not None:  # tracked → ledger row (same transaction)
                 sold_tracked.append((p.id, it.qty))
             total += p.price * it.qty
-    promo, discount = promo_discount(db, payload.promo_code, total)
+    # promo codes are switched off (config.PROMOS_ENABLED): a sent code is ignored
+    promo, discount = promo_discount(db, payload.promo_code, total) if config.PROMOS_ENABLED else (None, 0)
     if promo:
         # Atomic guarded claim of one use — mirrors the stock decrement so a
         # capped promo can never exceed max_uses under concurrent checkouts.
@@ -1096,15 +1109,6 @@ def create_order(payload: OrderIn, background: BackgroundTasks, db: Session = De
         "order created",
         extra={"event": "order_created", "order_id": order.id, "total": total,
                "items": len(order.items), "promo": promo.code if promo else ""},
-    )
-    lines = [f"{it.title_snapshot} × {it.qty} = {it.price_snapshot * it.qty} TMT" for it in order.items]
-    if promo:
-        lines.append(f"Промокод {promo.code}: −{discount} TMT")
-    if order.delivery_zone:
-        lines.append(f"Доставка ({order.delivery_zone}): {order.delivery} TMT")
-    background.add_task(
-        telegram_notify,
-        order_message(order.id, order.customer_name, order.phone, total, lines),
     )
     return {
         "ok": True, "id": order.id, "total": total,

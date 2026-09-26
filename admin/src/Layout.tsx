@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api, type Role } from "./api";
 import { ROLE_LABEL, useAuth } from "./auth";
@@ -7,7 +7,7 @@ interface NavItem {
   to: string;
   label: string;
   roles: Role[]; // [] = everyone signed in
-  badge?: "orders" | "reviews";
+  badge?: "orders" | "reviews" | "leads";
 }
 export const NAV: { label: string; items: NavItem[] }[] = [
   { label: "", items: [{ to: "/", label: "Обзор", roles: [] }] },
@@ -17,8 +17,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
       { to: "/orders", label: "Заказы", roles: ["sales", "warehouse"], badge: "orders" },
       { to: "/pos", label: "Касса", roles: ["sales"] },
       { to: "/sales", label: "Продажи кассы", roles: ["sales"] },
-      { to: "/leads", label: "Заявки", roles: ["sales"] },
-      { to: "/promos", label: "Промокоды", roles: ["sales"] },
+      { to: "/leads", label: "Заявки", roles: ["sales"], badge: "leads" },
     ],
   },
   {
@@ -62,14 +61,21 @@ const OWNER_ONLY = ["/users", "/delivery"];
 
 export default function Layout() {
   const { me, logout, can } = useAuth();
-  const [counts, setCounts] = useState<{ orders: number; reviews: number }>({ orders: 0, reviews: 0 });
+  const [counts, setCounts] = useState({ orders: 0, reviews: 0, leads: 0 });
+  const { pathname } = useLocation();
 
+  // Badges are how staff notice new orders and requests: refresh on every
+  // page change and once a minute while the admin stays open.
   useEffect(() => {
-    api
-      .stats()
-      .then((s) => setCounts({ orders: s.orders_new, reviews: s.reviews_pending }))
-      .catch(() => {});
-  }, []);
+    const load = () =>
+      api
+        .stats()
+        .then((s) => setCounts({ orders: s.orders_new, reviews: s.reviews_pending, leads: s.leads_new }))
+        .catch(() => {});
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => clearInterval(timer);
+  }, [pathname]);
 
   const visible = (it: NavItem) =>
     OWNER_ONLY.includes(it.to) ? me?.role === "owner" : it.roles.length === 0 || can(...it.roles);

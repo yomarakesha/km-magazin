@@ -19,10 +19,18 @@ const nf = new Intl.NumberFormat("ru-RU");
 export const money = (n: number | null | undefined, cur = "TMT") =>
   n === null || n === undefined ? "—" : `${nf.format(n)} ${cur}`;
 export const num = (n: number | null | undefined) => (n === null || n === undefined ? "—" : nf.format(n));
+// backend returns naive UTC timestamps without a zone suffix
+export const parseDate = (s: string) => new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+export const hoursSince = (s: string) => (Date.now() - parseDate(s).getTime()) / 3_600_000;
+/** How long ago, coarse: "5 ч", "3 дн" */
+export const ageLabel = (s: string) => {
+  const h = hoursSince(s);
+  return h < 24 ? `${Math.max(1, Math.floor(h))} ч` : `${Math.floor(h / 24)} дн`;
+};
+
 export function dateTime(s: string | null | undefined): string {
   if (!s) return "—";
-  // backend returns naive UTC timestamps without a zone suffix
-  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+  const d = parseDate(s);
   return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 export const dateOnly = (s: string | null | undefined) => (s ? dateTime(s).split(",")[0] : "—");

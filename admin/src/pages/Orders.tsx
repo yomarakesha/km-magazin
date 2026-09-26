@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { api, type Order, type OrderStatus, type PaymentStatus } from "../api";
 import { useAuth } from "../auth";
-import { Badge, Button, Card, Empty, ErrorBox, Loaded, Modal, PageHead, Select, Tabs, confirmAction, dateTime, money, useAction, useLoad } from "../ui";
+import { Badge, Button, Card, Empty, ErrorBox, Loaded, Modal, PageHead, Select, Tabs, ageLabel, confirmAction, dateTime, hoursSince, money, useAction, useLoad } from "../ui";
 
 export const ORDER_STATUS: Record<OrderStatus, { label: string; tone: "soft-blue" | "soft-amber" | "soft-green" | "soft-red" }> = {
   new: { label: "Новый", tone: "soft-blue" },
@@ -11,6 +11,9 @@ export const ORDER_STATUS: Record<OrderStatus, { label: string; tone: "soft-blue
 };
 const PAYMENT: Record<PaymentStatus, string> = { unpaid: "Не оплачен", pending: "Ожидает", paid: "Оплачен", refunded: "Возврат" };
 const METHOD: Record<string, string> = { cash: "Наличные", terminal: "Карта" };
+
+/** A new order nobody has called about for a day holds stock: flag it */
+const waitingTooLong = (o: Order) => o.status === "new" && hoursSince(o.created_at) > 24;
 
 export default function Orders() {
   const [status, setStatus] = useState<"" | OrderStatus>("");
@@ -62,6 +65,11 @@ export default function Orders() {
                         <td className="right price">{money(o.total)}</td>
                         <td>
                           <Badge tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Badge>
+                          {waitingTooLong(o) && (
+                            <div style={{ marginTop: 4 }}>
+                              <Badge tone="soft-red">Ждёт {ageLabel(o.created_at)}</Badge>
+                            </div>
+                          )}
                         </td>
                         <td className="dim small">{PAYMENT[o.payment_status]}</td>
                         <td className="dim small nowrap">{dateTime(o.created_at)}</td>
@@ -103,11 +111,23 @@ function OrderModal({ order, onClose, onChanged, onDeleted }: { order: Order; on
       <div className="grid2">
         <div className="stack">
           <Info k="Покупатель" v={order.customer_name} />
-          <Info k="Телефон" v={<a href={`tel:${order.phone}`}>{order.phone}</a>} />
+          <Info
+            k="Телефон"
+            v={
+              <a
+                href={`tel:${order.phone}`}
+                // Calling the customer takes the order: new → confirmed, under this manager
+                onClick={() => canEdit && !order.taken_by && order.status !== "cancelled" && api.takeOrder(order.id).then(onChanged, () => {})}
+              >
+                {order.phone}
+              </a>
+            }
+          />
           {order.address && <Info k="Адрес" v={order.address} />}
           {order.comment && <Info k="Комментарий" v={order.comment} />}
           <Info k="Способ оплаты" v={METHOD[order.payment_method] ?? order.payment_method} />
           <Info k="Создан" v={dateTime(order.created_at)} />
+          {order.taken_by && <Info k="Менеджер" v={`${order.taken_by}, ${dateTime(order.taken_at)}`} />}
         </div>
         <div className="stack">
           <label className="field">
@@ -117,12 +137,14 @@ function OrderModal({ order, onClose, onChanged, onDeleted }: { order: Order; on
               disabled={!canEdit || busy}
               onChange={(e) => run(() => api.setOrderStatus(order.id, e.target.value as OrderStatus), "Статус обновлён").then((o) => o && onChanged(o))}
             >
-              {Object.entries(ORDER_STATUS).map(([v, s]) => (
+              {/* only the changes the backend allows from here */}
+              {[order.status, ...order.next_statuses].map((v) => (
                 <option key={v} value={v}>
-                  {s.label}
+                  {ORDER_STATUS[v].label}
                 </option>
               ))}
             </Select>
+            {order.next_statuses.includes("delivered") && <span className="muted small">При выдаче заказ отмечается оплаченным.</span>}
           </label>
           <label className="field">
             <span className="lbl">Оплата</span>

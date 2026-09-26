@@ -8,7 +8,8 @@
 #   2. Создаёт Python venv и ставит зависимости (если нет)
 #   3. Заполняет БД демо-данными (если нет km.db)
 #   4. Собирает админ-панель (если нет сборки или исходники изменились)
-#   5. Запускает backend :8000 (админка на /admin)
+#   5. Открывает по окну на сервис: backend :8000 (админка на /admin)
+#      и витрину km-store :5173. Каждый останавливается Ctrl+C в своём окне.
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -152,77 +153,75 @@ else
     echo "[4/5] npm не найден — админ-панель не собрана (нужен Node.js 20+). API работает."
 fi
 
-# ── 5. Запуск сервера ────────────────────────────────────────────────────────
-# Занятый порт — частая причина «ложного OK»: проверка ниже достучалась бы до
-# чужого процесса. Проверяем заранее.
-if ! "$PY" -c "import socket; s = socket.socket(); s.bind(('127.0.0.1', 8000))" 2>/dev/null; then
-    echo "ОШИБКА: порт 8000 уже занят (возможно, backend уже запущен)."
-    echo "Остановите тот процесс и запустите скрипт снова."
-    exit 1
-fi
-
-echo "[5/5] Запускаем backend..."
-echo ""
-
-# Запуск в фоне с выводом в консоль. exec — чтобы $! был PID самого uvicorn,
-# а не промежуточной оболочки: иначе kill не доходит до сервера и он остаётся
-# висеть на порту 8000.
-# Автоперезагрузка при правке кода — только по запросу (KM_RELOAD=1): с ней
-# наблюдатель uvicorn живёт, даже когда сам сервер упал, и сбой старта видно
-# лишь через 60 секунд ожидания.
-RELOAD=()
-[ "${KM_RELOAD:-0}" = "1" ] && RELOAD=(--reload)
-(cd "$BACKEND" && exec "$PY" -m uvicorn app.main:app "${RELOAD[@]}" --port 8000) &
-BACKEND_PID=$!
-
-# Гасим сервер при Ctrl+C или завершении скрипта
-cleanup() {
-    local code="${1:-0}"
-    trap - INT TERM EXIT
-    echo ''
-    echo 'Остановка сервера...'
-    kill "$BACKEND_PID" 2>/dev/null
-    exit "$code"
+# ── 5. Запуск ────────────────────────────────────────────────────────────────
+# С графическим сеансом — каждый сервис в своём окне (свой Ctrl+C). Без него
+# (SSH, сервер без экрана) окна открыть нельзя: backend запускается прямо здесь.
+has_gui() {
+    [ "$(uname)" = "Darwin" ] && [ -z "${SSH_CONNECTION:-}" ] && return 0
+    [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]
 }
-trap cleanup INT TERM EXIT
 
-# ── Smoke: дожидаемся живого ответа, а не просто запущенного процесса ─────────
-# Порт может слушаться раньше, чем приложение готово отвечать, поэтому опрашиваем.
-wait_for() {
-    local url="$1" name="$2" tries=60
+# Возвращает 1, если окно открыть не удалось
+open_window() {
+    local title="$1" script="$2"
+    # Окно терминала не наследует окружение этого скрипта — передаём KM_RELOAD явно
+    local cmd=(env KM_RELOAD="${KM_RELOAD:-0}" bash "$script")
+    if [ "$(uname)" = "Darwin" ]; then
+        osascript -e "tell application \"Terminal\" to do script \"KM_RELOAD=${KM_RELOAD:-0} bash '$script'\"" >/dev/null || return 1
+    elif command -v gnome-terminal &>/dev/null; then
+        gnome-terminal --title="$title" -- "${cmd[@]}" 2>/dev/null || return 1
+    elif command -v konsole &>/dev/null; then
+        (konsole -p tabtitle="$title" -e "${cmd[@]}" &>/dev/null &)
+    elif command -v x-terminal-emulator &>/dev/null; then
+        (x-terminal-emulator -T "$title" -e "${cmd[@]}" &>/dev/null &)
+    elif command -v xterm &>/dev/null; then
+        (xterm -T "$title" -e "${cmd[@]}" &>/dev/null &)
+    else
+        return 1
+    fi
+    echo "      Открыто окно: $title"
+}
+
+# Ждём живого ответа backend: запущенное окно ещё не значит работающий сервер
+wait_backend() {
+    command -v curl &>/dev/null || { echo "  curl не найден — пропускаем проверку"; return 0; }
+    local tries=60
     while [ "$tries" -gt 0 ]; do
-        if curl -fsS -o /dev/null --max-time 2 "$url" 2>/dev/null; then
-            echo "  OK   $name отвечает"
-            return 0
-        fi
-        kill -0 "$BACKEND_PID" 2>/dev/null || { echo "  СБОЙ: backend упал при старте"; return 1; }
+        curl -fsS -o /dev/null --max-time 2 http://localhost:8000/docs 2>/dev/null && { echo "  OK   backend отвечает"; return 0; }
         tries=$((tries - 1))
         sleep 1
     done
-    echo "  СБОЙ: $name не ответил за 60 сек ($url)"
+    echo "  СБОЙ: backend не ответил за 60 сек — смотрите ошибку в его окне."
     return 1
 }
 
-echo ""
-echo "Проверяем, что backend поднялся..."
-if command -v curl &>/dev/null; then
-    if ! wait_for "http://localhost:8000/docs" "backend"; then
-        echo ""
-        echo "Запуск не удался — смотрите ошибки выше."
-        cleanup 1
-    fi
-else
-    echo "  curl не найден — пропускаем проверку"
+# Занятый порт дал бы «ложный OK»: проверка ниже достучалась бы до чужого процесса
+if (echo >/dev/tcp/127.0.0.1/8000) 2>/dev/null; then
+    echo "ОШИБКА: порт 8000 уже занят (возможно, backend уже запущен)."
+    echo "Закройте окно, где он запущен, или остановите процесс и запустите скрипт снова."
+    exit 1
 fi
 
-echo ""
-echo "========================================"
-echo "  Админ:  http://localhost:8000/admin"
-echo "  API:    http://localhost:8000/docs"
-echo "========================================"
-echo ""
-echo "Нажмите Ctrl+C чтобы остановить сервер."
-echo ""
+if has_gui && open_window "KM backend :8000" "$ROOT/scripts/run-backend.sh"; then
+    echo "[5/5] Сервисы запускаются в отдельных окнах."
+    open_window "KM store :5173" "$ROOT/scripts/run-store.sh" \
+        || echo "      Окно витрины не открылось — запустите вручную: bash scripts/run-store.sh"
+    echo ""
+    echo "Проверяем, что backend поднялся..."
+    wait_backend || exit 1
 
-# Сервер сам завершился (упал) — выходим с его кодом, а не «успехом».
-wait "$BACKEND_PID" && cleanup 0 || cleanup $?
+    echo ""
+    echo "========================================"
+    echo "  Витрина: http://localhost:5173"
+    echo "  Админ:   http://localhost:8000/admin"
+    echo "  API:     http://localhost:8000/docs"
+    echo "========================================"
+    echo ""
+    echo "Остановить сервис — Ctrl+C в его окне."
+    echo "Перезапустить один сервис: bash scripts/run-backend.sh или bash scripts/run-store.sh"
+else
+    echo "[5/5] Графического окна нет (SSH или сервер) — запускаем backend в этом терминале."
+    echo "      Витрину при необходимости запустите в другом терминале: bash scripts/run-store.sh"
+    echo ""
+    KM_NO_HOLD=1 exec bash "$ROOT/scripts/run-backend.sh"
+fi

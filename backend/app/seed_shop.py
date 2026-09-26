@@ -512,6 +512,7 @@ PAGES = [
     {"slug": "about",
      "title": _names("Наш магазин", "Biziň dükanymyz", "About us"),
      "lead": {"ru": "Kanagatly Mahabat — магазин компьютерной техники, систем безопасности и сетевого оборудования в Ашхабаде.",
+              "tk": "Kanagatly Mahabat — Aşgabatdaky kompýuter tehnikasy, howpsuzlyk ulgamlary we tor enjamlary dükany.",
               "en": "Kanagatly Mahabat is a computer, security and networking store in Ashgabat."},
      "blocks": {
          "ru": [
@@ -520,6 +521,11 @@ PAGES = [
              _block("Не только продажа", "Собираем компьютеры, монтируем сети и системы безопасности, проводим профилактику и ремонт."),
              _block("Как купить", "Добавьте товары в корзину и отправьте заявку — менеджер перезвонит и подтвердит детали. "
                                   "Или просто позвоните нам."),
+         ],
+         "tk": [
+             _block("Näme satýarys", "Kompýuter bölekleri we taýýar ýygnamalar, wideokameralar, datçikler, Face Control terminallary, kommutatorlar we routerler. Saýtdaky ähli harytlar dükanymyzda bar — olary göz bilen görüp bilersiňiz."),
+             _block("Diňe satuw däl", "Kompýuter ýygnaýarys, tor we howpsuzlyk ulgamlaryny gurnaýarys, profilaktika we abatlaýyş geçirýäris."),
+             _block("Nädip satyn almaly", "Harytlary sebede goşuň we ýüz tutma iberiň — menejer jaň edip, jikme-jiklikleri tassyklar. Ýa-da bize jaň ediň."),
          ],
          "en": [
              _block("What we sell", "PC components and ready-made builds, cameras, sensors, Face Control terminals, switches "
@@ -530,6 +536,7 @@ PAGES = [
     {"slug": "faq",
      "title": _names("Частые вопросы", "Köp soralýan soraglar", "FAQ"),
      "lead": {"ru": "Ответы на вопросы, которые нам задают чаще всего.",
+              "tk": "Bize iň köp berilýän soraglaryň jogaplary.",
               "en": "Answers to the questions we hear most often."},
      "blocks": {
          "ru": [
@@ -547,6 +554,15 @@ PAGES = [
              _block("Какая гарантия на товары?",
                     "Гарантия производителя — от 12 до 36 месяцев, на готовые сборки — 24 месяца."),
          ],
+         "tk": [
+             _block("Sargyt etmek üçin hasaba durmaly mi?", "Ýok. Harytlary sebede goşuň we adyňyz hem telefonyňyz bilen ýüz tutma iberiň — menejer jaň eder."),
+             _block("Sargydy nädip tölemeli?", "Dükanda ýa-da kurýere alanyňyzda nagt ýa-da kart bilen."),
+             _block("Saýtdaky ähli harytlar barmy?", "Ýagdaýy haryt sahypasynda görkezilen. Haryt ýok bolsa — jaň ediň, gelmeli möhletini aýdarys."),
+             _block("Harydy göz bilen görüp bolýarmy?", "Hawa, dükana geliň: Aşgabat ş., Moskowskaýa köç., 142-nji jaý, 1-nji gat."),
+             _block("Kompýuteri meniň böleklerimden ýygnap bilersiňizmi?", "Hawa. Gabat gelşini barlap, ýygnarys we synag ederis."),
+             _block("Kameralary we duýduryş ulgamyny gurnaýarsyňyzmy?", "Hawa, taslamadan sazlamaga çenli. Giňişleýin — «Gurnamak» sahypasynda."),
+             _block("Harytlara nähili kepillik bar?", "12-den 36 aýa çenli — möhleti harydyň häsiýetnamasynda görkezilen."),
+         ],
          "en": [
              _block("Do I need an account to order?", "No. Add items to the cart and send your name and phone — we'll call back."),
              _block("How do I pay?", "Cash or card on delivery. No online payment is required."),
@@ -559,6 +575,7 @@ PAGES = [
     {"slug": "guarantee",
      "title": _names("Гарантия и возврат", "Kepillik we yzyna gaýtarmak", "Warranty and returns"),
      "lead": {"ru": "На все товары действует гарантия производителя. Срок указан в характеристиках каждого товара.",
+              "tk": "Ähli harytlara öndürijiniň kepilligi bar. Möhleti her harydyň häsiýetnamasynda görkezilen.",
               "en": "All goods carry the manufacturer's warranty; the term is listed in each product's specs."},
      "blocks": {
          "ru": [
@@ -568,6 +585,12 @@ PAGES = [
                                           "2. Проведём диагностику — обычно до 3 рабочих дней.\n"
                                           "3. Отремонтируем, заменим или вернём деньги."),
              _block("Не гарантийный случай", "Механические повреждения, следы вскрытия, попадание влаги и нарушение условий эксплуатации."),
+         ],
+         "tk": [
+             _block("Kepillik", "Haryda görä 12-den 36 aýa çenli. Taýýar ýygnamalara — 24 aý."),
+             _block("Yzyna gaýtarmak", "Hili kadaly haryt gaplamasy we daşky görnüşi saklanan bolsa, 14 günüň dowamynda gaýtarylyp bilner."),
+             _block("Kepillik ýagdaýy", "1. Harydy we satyn alyş resminamasyny dükana getiriň.\n2. Diagnostika geçireris — adatça 3 iş gününe çenli.\n3. Abatlarys, çalyşarys ýa-da pul gaýtararys."),
+             _block("Kepillik däl ýagdaý", "Mehaniki zeper, açylan yzlary, çyglylyk we ulanyş şertleriniň bozulmagy."),
          ],
          "en": [
              _block("Warranty", "12 to 36 months depending on the item. Ready-made builds — 24 months."),
@@ -580,6 +603,7 @@ PAGES = [
     {"slug": "delivery",
      "title": _names("Условия доставки", "Eltip bermek şertleri", "Delivery"),
      "lead": {"ru": "Доставляем по Ашхабаду и всему Туркменистану. Условия согласует менеджер при подтверждении заявки.",
+              "tk": "Aşgabat we tutuş Türkmenistan boýunça eltip berýäris. Şertleri menejer ýüz tutmany tassyklanda ylalaşar.",
               "en": "We deliver across Ashgabat and all of Turkmenistan; a manager confirms the terms."},
      "blocks": {
          "ru": [
@@ -587,6 +611,12 @@ PAGES = [
              _block("По регионам", "Отправляем в велаяты через транспортные компании. Срок — от 2 до 5 дней."),
              _block("Самовывоз", "Бесплатно из магазина: г. Ашхабад, ул. Московская, дом 142, 1-ый этаж."),
              _block("Оплата", "Наличными или картой при получении. Оплата на сайте не требуется."),
+         ],
+         "tk": [
+             _block("Aşgabat boýunça", "Ýüz tutulan gün ýa-da ertesi gün. Bahasy etrapdan we sargydyň göwrüminden bagly."),
+             _block("Welaýatlar boýunça", "Welaýatlara ulag kompaniýalary arkaly iberýäris. Möhleti — 2-den 5 güne çenli."),
+             _block("Özüň alyp gitmek", "Dükandan mugt: Aşgabat ş., Moskowskaýa köç., 142-nji jaý, 1-nji gat."),
+             _block("Töleg", "Alanyňyzda nagt ýa-da kart bilen. Saýtda töleg talap edilmeýär."),
          ],
          "en": [
              _block("Ashgabat", "Same or next day. The price depends on the district and order size."),
@@ -597,6 +627,7 @@ PAGES = [
     {"slug": "install",
      "title": _names("Установка", "Gurnamak", "Installation"),
      "lead": {"ru": "Устанавливаем и настраиваем всё, что продаём, — в офисах, магазинах, складах и домах.",
+              "tk": "Satýan zatlarymyzyň hemmesini ofislerde, dükanlarda, ammarlarda we öýlerde gurnaýarys we sazlaýarys.",
               "en": "We install and set up everything we sell — in offices, shops, warehouses and homes."},
      "blocks": {
          "ru": [
@@ -604,6 +635,12 @@ PAGES = [
              _block("Пожарная и охранная сигнализация", "Датчики Рубеж и Болид, приборы, подключение к пульту."),
              _block("Контроль доступа и Face Control", "Терминалы распознавания лиц, учёт рабочего времени, замки."),
              _block("Компьютерные сети", "Кабельные линии, шкафы, Wi‑Fi, настройка оборудования."),
+         ],
+         "tk": [
+             _block("Wideogözegçilik", "Taslama, kameralary we registratorlary gurnamak, smartfondan görmegi sazlamak."),
+             _block("Ýangyn we gorag duýduryşy", "Rubež we Bolid datçikleri, enjamlar, pulta birikdirmek."),
+             _block("Girişe gözegçilik we Face Control", "Ýüz tanaýan terminallar, iş wagtyny hasaba almak, gulplar."),
+             _block("Kompýuter torlary", "Kabel ulgamlary, şkaflar, Wi‑Fi, enjamlary sazlamak."),
          ],
          "en": [
              _block("CCTV", "Design, camera and recorder installation, phone viewing setup."),

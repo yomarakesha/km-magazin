@@ -81,6 +81,8 @@ export const api = {
     req<Order>(`/api/admin/shop/orders/${id}`, json("PATCH", { status })),
   setOrderPayment: (id: number, payment_status: PaymentStatus) =>
     req<Order>(`/api/admin/shop/orders/${id}/payment`, json("PATCH", { payment_status })),
+  /** Manager clicked the customer's phone: new → confirmed, under their name */
+  takeOrder: (id: number) => req<Order>(`/api/admin/shop/orders/${id}/take`, json("POST")),
   deleteOrder: (id: number) => req(`/api/admin/shop/orders/${id}`, json("DELETE")),
 
   // categories
@@ -182,6 +184,8 @@ export const api = {
   // leads
   leads: () => req<Lead[]>("/api/admin/leads"),
   setLeadStatus: (id: number, status: LeadStatus) => req<Lead>(`/api/admin/leads/${id}`, json("PATCH", { status })),
+  /** Manager clicked the phone or email: new → in progress, under their name */
+  takeLead: (id: number) => req<Lead>(`/api/admin/leads/${id}/take`, json("POST")),
   deleteLead: (id: number) => req(`/api/admin/leads/${id}`, json("DELETE")),
 
   // POS
@@ -238,6 +242,7 @@ export interface Stats {
   orders_week: number;
   revenue_week: number | null;
   reviews_pending: number;
+  leads_new: number;
   top_products: { id: number; title: string; sold: number }[];
   low_stock: { id: number; title: string; stock_qty: number }[];
 }
@@ -252,6 +257,10 @@ export interface Order {
   payment_method: string;
   comment: string;
   status: OrderStatus;
+  /** Statuses the backend allows from the current one */
+  next_statuses: OrderStatus[];
+  taken_by: string;
+  taken_at: string | null;
   payment_status: PaymentStatus;
   total: number;
   promo_code: string;
@@ -456,6 +465,8 @@ export interface Lead {
   service_id: number | null;
   service_title: string;
   status: LeadStatus;
+  taken_by: string;
+  taken_at: string | null;
   created_at: string;
 }
 

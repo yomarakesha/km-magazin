@@ -16,9 +16,8 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TMP}/test.db"
 os.environ["MEDIA_DIR"] = f"{_TMP}/media"  # uploads never touch backend/media
 os.environ["ADMIN_PASSWORD"] = "test-password"
 os.environ["SECRET_KEY"] = "test-secret-key-0123456789abcdef-0123456789abcdef"
+os.environ["PROMOS_ENABLED"] = "1"         # promo tests exercise the feature; one test turns it off
 os.environ["REVALIDATE_SECRET"] = ""      # no frontend cache pings from tests
-os.environ["TELEGRAM_BOT_TOKEN"] = ""     # no telegram notifications
-os.environ["SMTP_HOST"] = ""              # no email notifications
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # backend/ on path
 

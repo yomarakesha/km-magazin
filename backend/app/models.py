@@ -425,6 +425,9 @@ class Order(Base):
     payment_method: Mapped[str] = mapped_column(String(16), default="cash")  # cash|terminal
     comment: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(16), default="new")  # new|confirmed|delivered|cancelled
+    # manager who took the order (called the customer or confirmed it), and when
+    taken_by: Mapped[str] = mapped_column(String(64), default="")
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     total: Mapped[int] = mapped_column(Integer, default=0)
     promo_code: Mapped[str] = mapped_column(String(32), default="")
     discount: Mapped[int] = mapped_column(Integer, default=0)
@@ -625,6 +628,9 @@ class Lead(Base):
         ForeignKey("shop_services.id", ondelete="SET NULL"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(8), default="new")  # new|read|done
+    # manager who took the lead into work (called or changed its status), and when
+    taken_by: Mapped[str] = mapped_column(String(64), default="")
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 

@@ -69,3 +69,15 @@ def test_inactive_promo_ignored(client, make_product, make_promo):
     r = client.post("/api/shop/orders", json=order_payload(p["id"], promo_code=promo["code"]))
     assert r.status_code == 201
     assert r.json()["discount"] == 0
+
+
+def test_promos_disabled_are_ignored(client, make_product, make_promo, monkeypatch):
+    import app.config as config
+
+    monkeypatch.setattr(config, "PROMOS_ENABLED", False)
+    promo = make_promo(kind="percent", value=10)
+    assert client.post("/api/shop/promo/check", json={"code": promo["code"], "subtotal": 1000}).status_code == 404
+    p = make_product(price=1000)
+    body = client.post("/api/shop/orders", json=order_payload(p["id"], promo_code=promo["code"])).json()
+    assert body["total"] == 1000 + body["delivery"]
+    assert body["discount"] == 0

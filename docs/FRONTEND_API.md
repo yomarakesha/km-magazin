@@ -191,7 +191,7 @@ Screen map:
 
 | Screen | Endpoint(s) |
 |--------|-------------|
-| Header / footer / contacts | `settings` from `/home` (also in `/catalog`, `/services`, `/pages/{slug}`), `/pages` for footer links |
+| Header / footer / contacts | `GET /api/shop/settings` (also in `/home`, `/catalog`, `/services`, `/pages/{slug}`), `/pages` for footer links |
 | Home | `GET /api/shop/home` (+ `/products?build=1` for the builds row) |
 | Catalog menu / all categories | `GET /api/shop/catalog` |
 | Section page (tiles of subcategories) | `GET /api/shop/categories/{slug}` |
@@ -533,13 +533,14 @@ Brand page → `GET /api/shop/products?brand=<slug>`. Brands have no logo image 
 **`GET /api/shop/services`**
 
 ```ts
-{ services: ServiceCard[]; settings: Settings }
+{ mediaBase: string; services: ServiceCard[]; settings: Settings }
 ```
 
 **`GET /api/shop/services/{slug}`** — service page
 
 ```ts
 ServiceCard & {
+  mediaBase: string;
   body: I18n;                        // description
   feats: Record<Lang, string[]>;     // "Что входит" bullet list
   others: ServiceCard[];             // "Другие услуги"
@@ -833,10 +834,10 @@ SameSite=Lax); send requests with `credentials: "include"`.
 | Delivery zones | `GET/POST /api/admin/shop/delivery-zones`, `PUT/DELETE .../{id}`, `POST .../reorder` | owner (read: any) |
 | Shop settings (contacts) | `GET/PUT /api/admin/shop/settings` | content (read: any) |
 | Promo codes | `GET/POST /api/admin/shop/promos`, `PUT/DELETE .../promos/{id}` | sales |
-| Orders | `GET /api/admin/shop/orders`, `PATCH .../orders/{id}` (status), `PATCH .../orders/{id}/payment`, `DELETE .../orders/{id}` (owner), `GET /api/admin/shop/stats` | sales (view: + warehouse) |
+| Orders | `GET /api/admin/shop/orders`, `PATCH .../orders/{id}` (status; only moves listed in the order's `next_statuses`, else 409; `delivered` also marks an unpaid order paid), `POST .../orders/{id}/take` (new → confirmed, records `taken_by`/`taken_at`), `PATCH .../orders/{id}/payment`, `DELETE .../orders/{id}` (owner), `GET /api/admin/shop/stats` (incl. `leads_new`) | sales (view: + warehouse) |
 | Banners | `GET/POST /api/admin/site/banners`, `PUT/DELETE .../banners/{id}`, `POST .../banners/{id}/image`, `POST .../banners/reorder` | content |
 | Info pages | `GET/POST /api/admin/site/pages`, `GET/PUT/DELETE .../pages/{id}` | content |
-| Leads | `GET /api/admin/leads`, `PATCH/DELETE /api/admin/leads/{id}` (status `new`/`read`/`done`) | sales |
+| Leads | `GET /api/admin/leads`, `PATCH/DELETE /api/admin/leads/{id}` (status `new`/`read`/`done`), `POST /api/admin/leads/{id}/take` (new → read, records `taken_by`/`taken_at`) | sales |
 | Warehouse | `GET /api/admin/warehouse/stock`, `GET/POST .../movements`, `GET/POST .../suppliers`, `PATCH/DELETE .../suppliers/{id}`, `GET/POST .../purchases`, `GET .../purchases/{id}` | warehouse (read: + sales) |
 | POS (cash register) | `GET /api/admin/pos/lookup`, `GET/POST /api/admin/pos/sales`, `GET .../sales/{id}`, `POST .../sales/{id}/settle`, `POST .../sales/{id}/void` (owner) | sales |
 | Reports | `GET /api/admin/reports/sales`, `/services` (sales), `/stock` (warehouse) | as noted |

@@ -116,6 +116,12 @@ def test_service_page_and_lead_link(client, db):
     leads = client.get("/api/admin/leads").json()
     assert any(lead["service_title"] == "Сборка ПК" for lead in leads)
 
+    # the "Заявки" nav badge counts new leads and drops once one is taken
+    new_before = client.get("/api/admin/shop/stats").json()["leads_new"]
+    assert new_before >= 1
+    client.patch(f"/api/admin/leads/{leads[0]['id']}", json={"status": "read"})
+    assert client.get("/api/admin/shop/stats").json()["leads_new"] == new_before - 1
+
 
 def test_admin_updates_service_texts(client, db):
     c = _catalog(db)
@@ -292,3 +298,8 @@ def test_category_and_service_pictures(client, db):
 
     assert client.delete(f"/api/admin/shop/categories/{c['cpu'].id}/image").json()["image"] is None
     assert client.delete(f"/api/admin/shop/services/{c['svc'].id}/image").json()["image"] is None
+
+
+def test_settings_endpoint_returns_contacts(client):
+    body = client.get("/api/shop/settings").json()
+    assert set(body) >= {"phone", "whatsapp", "email", "address", "hours"}
