@@ -130,6 +130,8 @@ def _card(p: Product) -> dict:
         "id": p.id,
         "slug": p.slug,
         "category_id": p.category_id,
+        # cart lines show the category under the title ("Процессоры")
+        "category": {"slug": p.category.slug, "name": _imap(p.category.translations, "name")},
         "brand": _brand_ref(p.brand),
         "is_new": p.is_new,
         "is_build": bool(p.components),

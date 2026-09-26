@@ -1,6 +1,6 @@
 import uuid
 
-from app.models import Product, ProductTranslation, ShopBrand, ShopCategory, ShopSettings
+from app.models import Product, ProductTranslation, ShopBrand, ShopCategory, ShopCategoryTranslation, ShopSettings
 
 
 def _u(prefix: str) -> str:
@@ -58,6 +58,15 @@ def test_products_card_carries_brand_and_new_flag(client, db):
     card = body["products"][0]
     assert card["is_new"] is True
     assert card["brand"]["slug"] == s["b2"]
+
+
+def test_products_card_carries_category(client, db):
+    s = _setup(db)
+    child = db.query(ShopCategory).filter_by(slug=s["child"]).one()
+    child.translations.append(ShopCategoryTranslation(lang="ru", name="Процессоры"))
+    db.commit()
+    card = _list(client, q=s["tag"], new=1)["products"][0]
+    assert card["category"] == {"slug": s["child"], "name": {"ru": "Процессоры"}}
 
 
 def test_category_filter_includes_subcategories(client, db):

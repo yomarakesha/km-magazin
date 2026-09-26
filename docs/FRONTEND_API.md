@@ -119,6 +119,7 @@ interface ProductCard {
   id: number;
   slug: string;
   category_id: number;
+  category: { slug: string; name: I18n };  // shown under the title in cart lines
   brand: BrandRef | null;
   is_new: boolean;            // "Новинка" badge
   is_build: boolean;          // ready-made PC ("Наша сборка")
@@ -360,6 +361,68 @@ GET /api/shop/products?category=cpu&socket=AM5&sort=price_asc&limit=12
 ```
 
 Keep filter state in the URL query string — it maps 1:1 to this endpoint.
+
+#### Dynamic filters ("По характеристике")
+
+Filters differ per category (Процессоры: Поколение, Сокет, Кол-во ядер, TDP,
+Модель GPU; Видеокарты: Чип, Видеопамять …). Nothing is hard-coded on the
+frontend — the chips come from the API.
+
+**Where they come from.** In the admin, each category has a list of
+characteristics (Категории → category → «Характеристики для фильтров»): `key`, label in 3
+languages, type `select` or `number`, unit, and a `filterable` flag. Each
+product then gets a value per characteristic. New characteristic in admin →
+new filter chip on the site, no frontend release.
+
+**Flow on a category listing page:**
+
+1. Request `GET /api/shop/products?category=<slug>` (add current filters from the URL).
+2. Render filter chips:
+   - «Бренд» from `facets.brands`
+   - one chip per item of `facets.attributes`, label `label[lang]`, in the order returned
+   - «Цена» from `facets.price.min` / `max`
+3. Chip dropdown = checkbox list of `options` (`value` + `unit`, optionally `(count)`).
+4. «Применить фильтр» → put the ticked values into the URL as `<key>=v1,v2`
+   and refetch. «Отмена» → drop that key.
+5. Brand checkboxes → `brand=slug1,slug2`. Price → `price_min` / `price_max`.
+
+```ts
+// URL: /catalog/cpu?socket=AM5&generation=Ryzen%207000&brand=amd&sort=price_asc
+const qs = new URLSearchParams(location.search);
+qs.set("category", "cpu");
+const data = await fetch(`${API}/api/shop/products?${qs}`).then(r => r.json());
+
+data.facets.attributes.forEach(f => {
+  const selected = (qs.get(f.key) ?? "").split(",").filter(Boolean);
+  renderChip({
+    label: t(f.label, lang),
+    options: f.options.map(o => ({
+      value: o.value,
+      text: f.unit ? `${o.value} ${f.unit}` : o.value,
+      count: o.count,
+      checked: selected.includes(o.value),
+    })),
+    onApply: (vals: string[]) => {
+      vals.length ? qs.set(f.key, vals.join(",")) : qs.delete(f.key);
+      qs.delete("offset");                   // back to page 1
+      navigate(`?${qs}`);
+    },
+  });
+});
+```
+
+Rules:
+- Characteristic facets appear **only when `category` is set**, and only for that
+  exact category's characteristics. Top-level sections (`computers`, `security`,
+  `network`) have none — show just Бренд / Цена / В наличии there.
+- Values of one key are OR (`socket=AM5,LGA1700`); different keys are AND.
+- Each facet is counted ignoring its own selection, so the list does not shrink
+  while the user ticks boxes in it. Options with 0 matches are not returned.
+- `number` characteristics come back as a value list too (`cores`: 4, 6, 8…),
+  sorted numerically — render as checkboxes like in Figma. A range slider is
+  possible with `<key>_min` / `<key>_max`.
+- The same query params work on `/api/shop/categories/{slug}`, but prefer
+  `/products` (includes subcategories and brand/price facets).
 
 ---
 
