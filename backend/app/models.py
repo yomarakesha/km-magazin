@@ -163,6 +163,10 @@ class CategoryAttribute(Base):
     unit: Mapped[str | None] = mapped_column(String(16), nullable=True)  # e.g. "GB"
     filterable: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # select type only: per-language labels of the stored values, so a Turkmen
+    # visitor sees "Ýok" for "Нет". [{value, label: {ru, tk, en}}]; `value`
+    # stays the filter key and is what ProductAttribute.value holds.
+    options: Mapped[list] = mapped_column(JSON, default=list)
 
     category: Mapped["ShopCategory"] = relationship(back_populates="attributes")
     translations: Mapped[list["CategoryAttributeTranslation"]] = relationship(
@@ -202,6 +206,7 @@ class Product(Base):
         ForeignKey("shop_brands.id", ondelete="SET NULL"), nullable=True, index=True
     )
     is_new: Mapped[bool] = mapped_column(Boolean, default=False)  # "Новое" badge / new-arrivals list
+    warranty_months: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = not stated
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # feeds sitemap <lastmod>; NULL for rows predating the column
@@ -393,6 +398,9 @@ class ShopSettings(Base):
     hours_ru: Mapped[str] = mapped_column(String(128), default="")
     hours_tk: Mapped[str] = mapped_column(String(128), default="")
     hours_en: Mapped[str] = mapped_column(String(128), default="")
+    # store pin on the contacts-page map; None = not set
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     # legacy flat fee, superseded by DeliveryZone; migrated into a zone on startup
     delivery_fee: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -670,6 +678,7 @@ class Page(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    image: Mapped[str | None] = mapped_column(String(128), nullable=True)  # wide photo, media/pages
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 

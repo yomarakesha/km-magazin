@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { LANGS, api, type Attribute, type AttributeIn, type Category, type CategoryIn, type Lang, type ShopService } from "../api";
+import { LANGS, api, type Attribute, type AttributeIn, type AttributeOption, type Category, type CategoryIn, type Lang, type ShopService } from "../api";
 import {
   Badge,
   Button,
@@ -228,16 +228,23 @@ function AttributeModal({ catId, attr, onClose, onDone }: { catId: number; attr:
     unit: attr?.unit ?? "",
     filterable: attr?.filterable ?? true,
     translations: LANGS.map((l) => ({ lang: l, label: attr?.translations.find((t) => t.lang === l)?.label ?? "" })),
+    options: attr?.options ?? [],
   }));
   const save = async () => {
-    const r = await run(() => (attr ? api.updateAttribute(attr.id, f) : api.createAttribute(catId, f)), "Сохранено");
+    // blank rows are dropped; a value listed twice keeps its first row
+    const seen = new Set<string>();
+    const options = f.options
+      .map((o) => ({ value: o.value.trim(), label: o.label }))
+      .filter((o) => o.value && !seen.has(o.value) && seen.add(o.value));
+    const body = { ...f, options: f.type === "select" ? options : [] };
+    const r = await run(() => (attr ? api.updateAttribute(attr.id, body) : api.createAttribute(catId, body)), "Сохранено");
     if (r) onDone();
   };
   const remove = async () => {
     if (attr && confirmAction("Удалить характеристику? Значения у товаров тоже удалятся.") && (await run(() => api.deleteAttribute(attr.id), "Удалено"))) onDone();
   };
   return (
-    <Modal title={attr ? "Характеристика" : "Новая характеристика"} onClose={onClose}>
+    <Modal title={attr ? "Характеристика" : "Новая характеристика"} onClose={onClose} wide>
       <div className="grid3">
         {f.translations.map((t) => (
           <Field key={t.lang} label={`Название ${t.lang.toUpperCase()}`}>
@@ -265,6 +272,9 @@ function AttributeModal({ catId, attr, onClose, onDone }: { catId: number; attr:
       <Check checked={f.filterable} onChange={(v) => setF({ ...f, filterable: v })}>
         Показывать в фильтрах каталога
       </Check>
+      {f.type === "select" && (
+        <OptionsEditor catId={catId} attrId={attr?.id ?? null} value={f.options} onChange={(options) => setF({ ...f, options })} />
+      )}
       <ErrorBox error={error} />
       <div className="form-actions">
         {attr && (
@@ -277,6 +287,92 @@ function AttributeModal({ catId, attr, onClose, onDone }: { catId: number; attr:
         </Button>
       </div>
     </Modal>
+  );
+}
+
+/** Translations of a list characteristic's values ("Нет" → "Ýok" / "No").
+ * The value is what products store and what the filter URL carries. */
+function OptionsEditor({
+  catId,
+  attrId,
+  value,
+  onChange,
+}: {
+  catId: number;
+  attrId: number | null;
+  value: AttributeOption[];
+  onChange: (v: AttributeOption[]) => void;
+}) {
+  const { busy, error, run } = useAction();
+  const upd = (i: number, patch: Partial<AttributeOption>) => onChange(value.map((o, j) => (j === i ? { ...o, ...patch } : o)));
+  const setLabel = (i: number, lang: Lang, text: string) => upd(i, { label: { ...value[i].label, [lang]: text } });
+
+  // add every value products of this category already use but the list lacks
+  async function pullFromProducts() {
+    if (attrId === null) return;
+    const products = await run(() => api.products(catId));
+    if (!products) return;
+    const have = new Set(value.map((o) => o.value.trim()));
+    const used = new Set<string>();
+    for (const p of products) for (const a of p.attributes) if (a.attribute_id === attrId && a.value.trim()) used.add(a.value.trim());
+    const added = [...used].filter((v) => !have.has(v)).sort((a, b) => a.localeCompare(b, "ru"));
+    onChange([...value, ...added.map((v) => ({ value: v, label: {} }))]);
+  }
+
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <div className="row between">
+        <span className="lbl small">Значения и переводы</span>
+        <span className="nowrap">
+          {attrId !== null && (
+            <Button variant="ghost" size="sm" disabled={busy} onClick={pullFromProducts}>
+              Подтянуть из товаров
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => onChange([...value, { value: "", label: {} }])}>
+            + Значение
+          </Button>
+        </span>
+      </div>
+      <ErrorBox error={error} />
+      {value.length === 0 ? (
+        <p className="muted small">
+          Без списка значения показываются на сайте как введены в товарах. Добавьте перевод, чтобы, например, «Нет» на туркменском было «Ýok».
+        </p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Значение в товарах</th>
+              <th>RU</th>
+              <th>TK</th>
+              <th>EN</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {value.map((o, i) => (
+              <tr key={i}>
+                <td>
+                  <Input className="input-sm" value={o.value} placeholder="Нет" onChange={(e) => upd(i, { value: e.target.value })} />
+                </td>
+                {LANGS.map((l) => (
+                  <td key={l}>
+                    <Input className="input-sm" value={o.label[l] ?? ""} placeholder={l === "ru" ? o.value : o.label.ru || o.value} onChange={(e) => setLabel(i, l, e.target.value)} />
+                  </td>
+                ))}
+                <td>
+                  <button className="icon-btn" onClick={() => onChange(value.filter((_, j) => j !== i))} aria-label="Удалить значение">
+                    ×
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="muted small">Пустой перевод — на сайте берётся русский, а без него — само значение.</p>
+    </div>
   );
 }
 

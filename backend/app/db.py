@@ -6,6 +6,15 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import DATABASE_URL
 
+
+def fold_text(value: str | None) -> str | None:
+    """Case- and ё-insensitive form of a string for search matching:
+    "Ёмкость" and "емкость" fold to the same text."""
+    if value is None:
+        return None
+    return value.lower().replace("ё", "е")
+
+
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -18,6 +27,9 @@ if DATABASE_URL.startswith("sqlite"):
         # Wait for a writer lock instead of failing immediately — concurrent
         # order creation serializes cleanly instead of raising "database is locked".
         dbapi_conn.execute("PRAGMA busy_timeout=5000")
+        # SQLite's LIKE/lower() only fold ASCII; search needs Cyrillic and
+        # Turkmen letters folded too (see fold_text).
+        dbapi_conn.create_function("km_fold", 1, fold_text, deterministic=True)
 
 
 class Base(DeclarativeBase):
@@ -76,6 +88,8 @@ def _migrate() -> None:
                 conn.execute(text(
                     "ALTER TABLE shop_products ADD COLUMN is_new BOOLEAN NOT NULL DEFAULT 0"
                 ))
+            if "warranty_months" not in cols:
+                conn.execute(text("ALTER TABLE shop_products ADD COLUMN warranty_months INTEGER"))
         # DB-level uniqueness is the backstop for the app-level check, which has
         # a TOCTOU race (two PUTs both pass the SELECT before either INSERTs).
         # Partial index so the many products without a barcode (NULL) don't clash.
@@ -165,6 +179,21 @@ def _migrate() -> None:
                 conn.execute(text(
                     "ALTER TABLE shop_settings ADD COLUMN delivery_fee INTEGER NOT NULL DEFAULT 0"
                 ))
+            for col in ("lat", "lng"):
+                if col not in cols:
+                    conn.execute(text(f"ALTER TABLE shop_settings ADD COLUMN {col} FLOAT"))
+    if "shop_category_attributes" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_category_attributes")}
+        if "options" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE shop_category_attributes ADD COLUMN options JSON NOT NULL DEFAULT '[]'"
+                ))
+    if "shop_pages" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("shop_pages")}
+        if "image" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE shop_pages ADD COLUMN image VARCHAR(128)"))
     if "shop_services" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("shop_services")}
         with engine.begin() as conn:

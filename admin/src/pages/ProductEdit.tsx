@@ -47,6 +47,7 @@ function toForm(p: Product | null, cats: Category[]): ProductIn {
       category_id: cats[0]?.id ?? 0,
       brand_id: null,
       is_new: false,
+      warranty_months: null,
       price: 0,
       old_price: null,
       in_stock: true,
@@ -64,6 +65,7 @@ function toForm(p: Product | null, cats: Category[]): ProductIn {
     category_id: p.category_id,
     brand_id: p.brand_id,
     is_new: p.is_new,
+    warranty_months: p.warranty_months,
     price: p.price,
     old_price: p.old_price,
     in_stock: p.in_stock,
@@ -207,14 +209,24 @@ function Editor({ product, cats, brands, onSaved }: { product: Product | null; c
               <div className="grid2">
                 {category.attributes.map((a) => {
                   const label = a.translations.find((t) => t.lang === "ru")?.label || a.key;
+                  // known values of a list characteristic, so the same value is typed the same way
+                  const known = a.type === "select" && a.options.length > 0;
                   return (
                     <Field key={a.id} label={`${label}${a.unit ? `, ${a.unit}` : ""}`}>
                       <Input
                         value={attrValue(a.id)?.value ?? ""}
                         disabled={!canText}
+                        list={known ? `attr-values-${a.id}` : undefined}
                         inputMode={a.type === "number" ? "decimal" : undefined}
                         onChange={(e) => setAttr(a.id, e.target.value, a.type === "number")}
                       />
+                      {known && (
+                        <datalist id={`attr-values-${a.id}`}>
+                          {a.options.map((o) => (
+                            <option key={o.value} value={o.value} />
+                          ))}
+                        </datalist>
+                      )}
                     </Field>
                   );
                 })}
@@ -272,6 +284,9 @@ function Editor({ product, cats, brands, onSaved }: { product: Product | null; c
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field label="Гарантия, мес." hint="Пусто — на сайте «—»">
+              <NumInput value={f.warranty_months} min={0} max={240} disabled={!canText} onChange={(v) => set("warranty_months", v)} />
             </Field>
             <Field label="Адрес на сайте (slug)" hint="Латиница, цифры и дефис">
               <Input value={f.slug} disabled={!canText} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} />

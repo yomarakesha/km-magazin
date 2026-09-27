@@ -19,6 +19,7 @@ router = APIRouter(
 CONTENT = Depends(require_role("content"))
 
 BANNERS_SUBDIR = "banners"
+PAGES_SUBDIR = "pages"
 
 
 # --------------------------------------------------------------------------
@@ -115,6 +116,7 @@ def page_dict(p: Page) -> dict:
     return {
         "id": p.id,
         "slug": p.slug,
+        "image": f"{PAGES_SUBDIR}/{p.image}" if p.image else None,
         "enabled": p.enabled,
         "sort_order": p.sort_order,
         "translations": [
@@ -181,11 +183,40 @@ def update_page(page_id: int, payload: PageIn, db: Session = Depends(get_db)) ->
     return page_dict(p)
 
 
+@router.post("/pages/{page_id}/image", dependencies=[CONTENT])
+def upload_page_image(page_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)) -> dict:
+    """Wide photo under the page intro (e.g. the store photo on "Наш магазин")."""
+    p = db.get(Page, page_id)
+    if not p:
+        raise HTTPException(404, "Page not found")
+    (MEDIA_DIR / PAGES_SUBDIR).mkdir(parents=True, exist_ok=True)
+    old = p.image
+    p.image = _save(file, PAGES_SUBDIR)
+    db.commit()
+    if old and old != p.image:
+        (MEDIA_DIR / PAGES_SUBDIR / old).unlink(missing_ok=True)
+    return page_dict(p)
+
+
+@router.delete("/pages/{page_id}/image", dependencies=[CONTENT])
+def delete_page_image(page_id: int, db: Session = Depends(get_db)) -> dict:
+    p = db.get(Page, page_id)
+    if not p:
+        raise HTTPException(404, "Page not found")
+    if p.image:
+        (MEDIA_DIR / PAGES_SUBDIR / p.image).unlink(missing_ok=True)
+        p.image = None
+        db.commit()
+    return page_dict(p)
+
+
 @router.delete("/pages/{page_id}", dependencies=[CONTENT])
 def delete_page(page_id: int, db: Session = Depends(get_db)) -> dict:
     p = db.get(Page, page_id)
     if not p:
         raise HTTPException(404, "Page not found")
+    if p.image:
+        (MEDIA_DIR / PAGES_SUBDIR / p.image).unlink(missing_ok=True)
     db.delete(p)
     db.commit()
     return {"ok": True}

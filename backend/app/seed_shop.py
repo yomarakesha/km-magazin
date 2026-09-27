@@ -4,7 +4,10 @@ Idempotent — wipes existing shop catalog (categories/products/attributes/
 services/brands), keeps orders. Photos for a few products reference files
 committed in media/products (seed-*.png, taken from the Figma mockups); the rest
 show the storefront placeholder. Banners, info pages and contacts are seeded
-only when absent, so admin edits survive a catalog re-seed.
+only when absent, so admin edits survive a catalog re-seed; fields added later
+(map pin, page photo) are filled in only where still empty.
+
+Translations, descriptions, specs, SKUs and warranty terms live in seed_texts.
 
 Run from backend/:  python -m app.seed_shop
 """
@@ -31,6 +34,13 @@ from .models import (
     ShopServiceTranslation,
     ShopSettings,
 )
+from .seed_texts import (
+    PRODUCT_TEXTS,
+    SERVICE_TEXTS_TK,
+    SKU_PREFIX,
+    VALUE_LABELS,
+    WARRANTY_BY_CATEGORY,
+)
 
 LANGS = ("ru", "tk", "en")
 
@@ -47,8 +57,8 @@ def _names(ru: str, tk: str, en: str) -> dict:
 # Сетевые оборудования), each with the subcategory tiles of its section page.
 # Category: slug, names, optional parent, attribute defs ("По характеристике"
 # filters), products. Product: slug, price, optional old_price/stock_qty/is_new/
-# brand/images, title and short (a plain string is used for every language),
-# attrs, and optional body/specs (ru only; tk/en fall back to empty).
+# brand/images, title (same in every language), Russian short, attrs. Other
+# languages, descriptions and specs come from seed_texts.PRODUCT_TEXTS.
 DATA = [
     # ---------------------------------------------------------------- computers
     {"slug": "computers", "names": _names("Компьютеры", "Kompýuterler", "Computers"),
@@ -262,15 +272,6 @@ DATA = [
          {"slug": "hikvision-face-control-hk-043", "brand": "Hikvision", "price": 1200, "old_price": 1990,
           "images": ["seed-face-control-hk043.png"],
           "title": "HIKVISION Face Control HK-043", "short": "Экран 4.3\", Wi‑Fi, IP65",
-          "body": "Терминал распознавания лиц для учёта рабочего времени и контроля доступа. "
-                  "Быстрое распознавание, работа с картами.",
-          "specs": [
-              {"label": "База лиц", "value": "3 000"},
-              {"label": "Экран", "value": "4.3\""},
-              {"label": "Подключение", "value": "Wi‑Fi, TCP/IP"},
-              {"label": "Защита", "value": "IP65"},
-              {"label": "Гарантия", "value": "24 мес."},
-          ],
           "attrs": {"faces": "3000"}},
          {"slug": "dahua-asi7213x-t1", "brand": "Dahua", "price": 1500,
           "title": "Dahua ASI7213X-T1", "short": "Экран 7\", карты, температура",
@@ -400,8 +401,6 @@ DATA = [
               ("service", "pc-build"),
           ],
           "title": "KM Gamer · Ryzen 7 7800X3D", "short": "Ryzen 7 7800X3D, 32 ГБ DDR5, SSD 2 ТБ",
-          "body": "Готовый компьютер, собранный и протестированный в нашем магазине. "
-                  "Установим систему и драйверы, выдадим с гарантией.",
           "attrs": {"cpu": "AMD Ryzen 7 7800X3D"}},
          {"slug": "km-office-core-i5", "price": 9900,
           "components": [
@@ -416,7 +415,8 @@ DATA = [
 
 
 # Services (Figma "Услуги" / "Сервис" screens), keyed by category slug.
-# price_from → shown as "от N TMT"; body/feats fill the service page (ru/en).
+# price_from → shown as "от N TMT"; body/feats fill the service page (ru/en
+# here, tk in seed_texts.SERVICE_TEXTS_TK).
 SERVICES = {
     "computers": [
         {"slug": "pc-build", "price": 250, "price_from": True, "icon": "wrench",
@@ -490,12 +490,17 @@ SERVICE_ORDER = ["pc-build", "net-setup", "cam-install", "pc-maintenance", "pc-r
 
 
 # Home hero slides (Figma "Home" screen)
+# The storefront draws the title, subtitle and feature row itself, so the
+# picture is a cut-out product shot on white (680×340), with no text in it.
+HERO_IMAGE = "hero-pc.png"
+LEGACY_HERO_IMAGE = "hero-computer-store.png"  # had the headline baked in
+
 BANNERS = [
-    {"image": "hero-computer-store.png", "link": "/catalog/computers",
+    {"image": HERO_IMAGE, "link": "/catalog/computers",
      "title": _names("Техника для твоих целей", "Maksatlaryňyz üçin tehnika", "Tech for your goals"),
      "subtitle": _names("Компьютеры · Комплектующие · Периферия", "Kompýuterler · Bölekler · Periferiýa",
                         "Computers · Components · Peripherals")},
-    {"image": "hero-computer-store.png", "link": "/catalog/builds",
+    {"image": HERO_IMAGE, "link": "/catalog/builds",
      "title": _names("Готовые сборки", "Taýýar ýygnamalar", "Ready-made PCs"),
      "subtitle": _names("Собираем, тестируем и настраиваем перед выдачей", "Ýygnaýarys, barlaýarys we sazlaýarys",
                         "Assembled, tested and set up before hand-over")},
@@ -509,7 +514,7 @@ def _block(title: str, body: str) -> dict:
 # Info pages (Figma: About, FAQ, Guarantee, Delivery, Install). ru + en texts;
 # tk carries the title only until a translation is provided.
 PAGES = [
-    {"slug": "about",
+    {"slug": "about", "image": "about-store.jpg",  # media/pages, wide photo under the intro
      "title": _names("Наш магазин", "Biziň dükanymyz", "About us"),
      "lead": {"ru": "Kanagatly Mahabat — магазин компьютерной техники, систем безопасности и сетевого оборудования в Ашхабаде.",
               "tk": "Kanagatly Mahabat — Aşgabatdaky kompýuter tehnikasy, howpsuzlyk ulgamlary we tor enjamlary dükany.",
@@ -670,6 +675,9 @@ SETTINGS = {
     "hours_ru": "Пн–Сб: 9:00–19:00, Вс — выходной",
     "hours_tk": "Db–Şb: 9:00–19:00, Ýb — dynç güni",
     "hours_en": "Mon–Sat: 9:00–19:00, Sun — closed",
+    # store pin on the contacts-page map
+    "lat": 37.899804,
+    "lng": 58.34857,
 }
 
 # Checkout delivery options (texts from the "Условия доставки" page).
@@ -705,6 +713,26 @@ REVIEWS = {
 
 def _per_lang(v) -> dict:
     return v if isinstance(v, dict) else {lang: v for lang in LANGS}
+
+
+def _value_options(key: str, used: set[str]) -> list[dict]:
+    """Translations of the values this category's products actually use."""
+    labels = VALUE_LABELS.get(key, {})
+    return [{"value": v, "label": labels[v]} for v in sorted(used) if v in labels]
+
+
+def _fill_site_gaps(db) -> None:
+    """Site content is seeded only when absent; fields added after a DB was
+    first seeded are filled in here, never overwriting an admin's value."""
+    for banner in db.query(Banner).filter(Banner.image == LEGACY_HERO_IMAGE).all():
+        banner.image = HERO_IMAGE
+    for pg in PAGES:
+        page = db.query(Page).filter(Page.slug == pg["slug"]).one_or_none()
+        if page is not None and not page.image and pg.get("image"):
+            page.image = pg["image"]
+    s = db.get(ShopSettings, 1)
+    if s is not None and s.lat is None and s.lng is None:
+        s.lat, s.lng = SETTINGS["lat"], SETTINGS["lng"]
 
 
 def _wipe(db) -> None:
@@ -743,9 +771,11 @@ def seed_shop() -> None:
 
             attr_by_key: dict[str, CategoryAttribute] = {}
             for a_order, a in enumerate(c["attributes"]):
+                used = {p["attrs"][a["key"]] for p in c["products"] if a["key"] in p["attrs"]}
                 attr = CategoryAttribute(
                     key=a["key"], type=a["type"], unit=a["unit"] or None,
                     filterable=True, sort_order=a_order,
+                    options=_value_options(a["key"], used) if a["type"] == "select" else [],
                 )
                 for lang in LANGS:
                     attr.translations.append(CategoryAttributeTranslation(lang=lang, label=a["labels"][lang]))
@@ -757,15 +787,19 @@ def seed_shop() -> None:
                     slug=p["slug"], price=p["price"], old_price=p.get("old_price"),
                     currency="TMT", in_stock=p.get("in_stock", True), stock_qty=p.get("stock_qty"),
                     is_new=p.get("is_new", False), sort_order=p_order, enabled=True,
+                    sku=f"KM-{SKU_PREFIX[c['slug']]}-{p_order + 1:03d}",
+                    warranty_months=p.get("warranty_months", WARRANTY_BY_CATEGORY.get(c["slug"])),
                 )
                 if p.get("brand"):
                     prod.brand = brand_by_name[p["brand"]]
-                titles, shorts = _per_lang(p["title"]), _per_lang(p["short"])
+                texts = PRODUCT_TEXTS.get(p["slug"], {})
+                titles = _per_lang(p["title"])
+                shorts = {"ru": p["short"], **texts.get("short", {})}
+                bodies, specs = texts.get("body", {}), texts.get("specs", {})
                 for lang in LANGS:
-                    ru = lang == "ru"
                     prod.translations.append(ProductTranslation(
-                        lang=lang, title=titles[lang], short=shorts[lang],
-                        body=p.get("body", "") if ru else "", specs=p.get("specs", []) if ru else [],
+                        lang=lang, title=titles[lang], short=shorts.get(lang, p["short"]),
+                        body=bodies.get(lang, ""), specs=specs.get(lang, []),
                     ))
                 for key, value in p["attrs"].items():
                     attr = attr_by_key[key]
@@ -786,10 +820,12 @@ def seed_shop() -> None:
                     slug=s["slug"], price=s["price"], currency="TMT", price_from=s.get("price_from", False),
                     icon=s["icon"], enabled=True, sort_order=SERVICE_ORDER.index(s["slug"]),
                 )
+                body = {**s.get("body", {}), "tk": SERVICE_TEXTS_TK[s["slug"]]["body"]}
+                feats = {**s.get("feats", {}), "tk": SERVICE_TEXTS_TK[s["slug"]]["feats"]}
                 for lang in LANGS:
                     svc.translations.append(ShopServiceTranslation(
                         lang=lang, title=s["titles"][lang], short=s["short"][lang],
-                        body=s.get("body", {}).get(lang, ""), feats=s.get("feats", {}).get(lang, []),
+                        body=body.get(lang, ""), feats=feats.get(lang, []),
                     ))
                 cat.services.append(svc)
 
@@ -845,7 +881,7 @@ def seed_shop() -> None:
                 db.add(zone)
         if db.query(Page).count() == 0:
             for pg_order, pg in enumerate(PAGES):
-                page = Page(slug=pg["slug"], sort_order=pg_order, enabled=True)
+                page = Page(slug=pg["slug"], image=pg.get("image"), sort_order=pg_order, enabled=True)
                 for lang in LANGS:
                     page.translations.append(PageTranslation(
                         lang=lang, title=pg["title"][lang], lead=pg["lead"].get(lang, ""),
@@ -857,6 +893,8 @@ def seed_shop() -> None:
         # the catalog doesn't clobber contacts an admin has already edited
         if db.get(ShopSettings, 1) is None:
             db.add(ShopSettings(id=1, **SETTINGS))
+        db.flush()
+        _fill_site_gaps(db)
 
         db.commit()
         print(f"Seeded {len(DATA)} categories, {n_prod} products, {len(BRANDS)} brands.")

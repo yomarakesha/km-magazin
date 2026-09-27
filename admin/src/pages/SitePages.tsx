@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { LANGS, api, type Lang, type SitePage, type SitePageIn, type SitePageTr } from "../api";
-import { Badge, Button, Card, Check, Empty, ErrorBox, Field, Input, LangTabs, Loaded, PageHead, Textarea, confirmAction, useAction, useLoad } from "../ui";
+import { Badge, Button, Card, Check, Empty, ErrorBox, Field, Input, LangTabs, Loaded, PageHead, PictureField, Textarea, confirmAction, useAction, useLoad } from "../ui";
 
 const ruTitle = (p: SitePage) => p.translations.find((t) => t.lang === "ru")?.title || p.slug;
 
@@ -68,6 +68,8 @@ function Editor({ page, onSaved }: { page: SitePage | null; onSaved: () => void 
     enabled: page?.enabled ?? true,
     translations: LANGS.map((l) => page?.translations.find((t) => t.lang === l) ?? emptyTr(l)),
   }));
+  // uploads save at once, apart from the text form
+  const [image, setImage] = useState(page?.image ?? null);
   const tr = f.translations.find((t) => t.lang === lang)!;
   const setTr = (patch: Partial<SitePageTr>) =>
     setF({ ...f, translations: f.translations.map((t) => (t.lang === lang ? { ...t, ...patch } : t)) });
@@ -150,14 +152,29 @@ function Editor({ page, onSaved }: { page: SitePage | null; onSaved: () => void 
             ))}
           </Card>
         </div>
-        <Card title="Публикация">
-          <Field label="Адрес" hint="Латиница и дефис: about, faq, delivery…">
-            <Input value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-") })} />
-          </Field>
-          <Check checked={f.enabled} onChange={(v) => setF({ ...f, enabled: v })}>
-            Показывать на сайте
-          </Check>
-        </Card>
+        <div className="stack">
+          <Card title="Публикация">
+            <Field label="Адрес" hint="Латиница и дефис: about, faq, delivery…">
+              <Input value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-") })} />
+            </Field>
+            <Check checked={f.enabled} onChange={(v) => setF({ ...f, enabled: v })}>
+              Показывать на сайте
+            </Check>
+          </Card>
+          <Card title="Фото">
+            {page ? (
+              <PictureField
+                image={image}
+                aspect="16 / 9"
+                hint="Широкое фото под вступлением (например, магазин на странице «Наш магазин»). Необязательно."
+                onUpload={(file) => api.uploadPageImage(page.id, file).then((p) => setImage(p.image))}
+                onRemove={() => api.deletePageImage(page.id).then((p) => setImage(p.image))}
+              />
+            ) : (
+              <p className="muted small">Фото можно добавить после создания страницы.</p>
+            )}
+          </Card>
+        </div>
       </div>
     </>
   );

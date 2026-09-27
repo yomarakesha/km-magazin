@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Lang = Literal["ru", "tk", "en"]
 
@@ -126,12 +126,45 @@ class AttributeTranslationIn(BaseModel):
     label: str = ""
 
 
+class AttributeOptionIn(BaseModel):
+    """Per-language label of one select value; `value` is the filter key."""
+
+    value: str = Field(min_length=1, max_length=128)
+    label: dict[Lang, str] = Field(default_factory=dict)
+
+    @field_validator("value")
+    @classmethod
+    def _strip_value(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("value must not be blank")
+        return v
+
+    @field_validator("label")
+    @classmethod
+    def _clean_label(cls, v: dict) -> dict:
+        return {lang: text.strip()[:128] for lang, text in v.items() if text.strip()}
+
+
+def _unique_options(opts: list[AttributeOptionIn] | None) -> list[AttributeOptionIn] | None:
+    if opts is not None:
+        seen: set[str] = set()
+        for o in opts:
+            if o.value in seen:
+                raise ValueError(f"duplicate option value: {o.value}")
+            seen.add(o.value)
+    return opts
+
+
 class CategoryAttributeIn(BaseModel):
     key: str = Field(min_length=1, max_length=32)
     type: Literal["select", "number"] = "select"
     unit: str = ""
     filterable: bool = True
     translations: list[AttributeTranslationIn] = Field(default_factory=list)
+    options: list[AttributeOptionIn] = Field(default_factory=list, max_length=500)
+
+    _check_options = field_validator("options")(_unique_options)
 
 
 class CategoryAttributeUpdateIn(BaseModel):
@@ -140,6 +173,9 @@ class CategoryAttributeUpdateIn(BaseModel):
     unit: str | None = None
     filterable: bool | None = None
     translations: list[AttributeTranslationIn] | None = None
+    options: list[AttributeOptionIn] | None = Field(default=None, max_length=500)
+
+    _check_options = field_validator("options")(_unique_options)
 
 
 # ---- Shop: products ----
@@ -183,6 +219,7 @@ class ProductIn(BaseModel):
     barcode: str | None = Field(default=None, max_length=64)
     brand_id: int | None = None
     is_new: bool = False
+    warranty_months: int | None = Field(default=None, ge=0, le=240)
     enabled: bool = True
     translations: list[ProductTranslationIn] = Field(default_factory=list)
     attributes: list[ProductAttributeIn] = Field(default_factory=list)
@@ -205,6 +242,8 @@ class ProductUpdateIn(BaseModel):
     # present-with-null unlinks the brand; missing key = no change
     brand_id: int | None = None
     is_new: bool | None = None
+    # present-with-null clears the warranty; missing key = no change
+    warranty_months: int | None = Field(default=None, ge=0, le=240)
     enabled: bool | None = None
     translations: list[ProductTranslationIn] | None = None
     attributes: list[ProductAttributeIn] | None = None
@@ -278,6 +317,15 @@ class ShopSettingsIn(BaseModel):
     hours_ru: str = Field(default="", max_length=128)
     hours_tk: str = Field(default="", max_length=128)
     hours_en: str = Field(default="", max_length=128)
+    # map pin; both set or both empty
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def _both_coords(self):
+        if (self.lat is None) != (self.lng is None):
+            raise ValueError("set both lat and lng, or neither")
+        return self
 
 
 # ---- Shop: orders ----

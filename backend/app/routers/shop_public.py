@@ -8,11 +8,11 @@ import hmac
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import and_, func, or_, select, union_all, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, lazyload
 
 from .. import config, delivery
-from ..config import PUBLIC_URL
-from ..db import get_db
+from ..config import DATABASE_URL, PUBLIC_URL
+from ..db import fold_text, get_db
 from ..models import (
     Banner,
     CategoryAttribute,
@@ -42,6 +42,13 @@ router = APIRouter(prefix="/api/shop", tags=["shop"])
 PRODUCTS_SUBDIR = "products"
 CATEGORIES_SUBDIR = "categories"
 SERVICES_SUBDIR = "services"
+PAGES_SUBDIR = "pages"
+LANGS = ("ru", "tk", "en")
+
+# Listing pages fire one request per filter change (and one per tick in
+# "По характеристике" mode for live counts); several shoppers behind one NAT
+# share the bucket, so this is well above a single user's pace.
+PRODUCTS_RATE = 180
 
 
 DEFAULT_PAGE = 12
@@ -71,8 +78,41 @@ def _num(val, cast):
 
 
 def _like_escape(s: str) -> str:
-    """Neutralise LIKE wildcards so user text matches literally under ilike()."""
+    """Neutralise LIKE wildcards so user text matches literally under LIKE."""
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _fold(col):
+    """SQL counterpart of db.fold_text: lowercase (Cyrillic/Turkmen too) and
+    ё → е. SQLite gets the Python function registered on connect."""
+    if DATABASE_URL.startswith("sqlite"):
+        return func.km_fold(col)
+    return func.replace(func.lower(col), "ё", "е")
+
+
+MAX_QUERY_WORDS = 8
+
+
+def _search_conditions(q: str) -> list:
+    """One condition per word of `q`; a product matches when EVERY word is
+    found in its title, short text (any language), brand name or SKU —
+    ignoring case and treating ё as е. "ryzen 7800" finds "AMD Ryzen 7 7800X3D"."""
+    conds = []
+    for word in fold_text(q).split()[:MAX_QUERY_WORDS]:
+        like = f"%{_like_escape(word)}%"
+        in_text = select(ProductTranslation.product_id).where(
+            or_(
+                _fold(ProductTranslation.title).like(like, escape="\\"),
+                _fold(ProductTranslation.short).like(like, escape="\\"),
+            )
+        )
+        in_brand = select(ShopBrand.id).where(_fold(ShopBrand.name).like(like, escape="\\"))
+        conds.append(or_(
+            Product.id.in_(in_text),
+            Product.brand_id.in_(in_brand),
+            _fold(Product.sku).like(like, escape="\\"),
+        ))
+    return conds
 
 
 def _sold_subquery():
@@ -108,6 +148,21 @@ def _apply_sort(stmt, sort: str | None):
 def _imap(translations, field: str) -> dict:
     """Collapse a translations list into a {lang: value} map."""
     return {t.lang: (getattr(t, field) or "") for t in translations}
+
+
+def _value_labels(a: CategoryAttribute) -> dict[str, dict]:
+    """value → {ru, tk, en} for a select characteristic's configured options."""
+    if a.type != "select":
+        return {}
+    return {o["value"]: o.get("label") or {} for o in (a.options or []) if o.get("value")}
+
+
+def _value_label(labels: dict[str, dict], value: str) -> dict:
+    """Display text of a characteristic value in every language: the admin's
+    translation, else the Russian one, else the stored value itself."""
+    own = labels.get(value) or {}
+    fallback = own.get("ru") or value
+    return {lang: own.get(lang) or fallback for lang in LANGS}
 
 
 def _first_image(p: Product) -> str | None:
@@ -206,15 +261,40 @@ def settings_dict(db: Session) -> dict:
             "tk": s.hours_tk if s else "",
             "en": s.hours_en if s else "",
         },
+        # map pin on the contacts page; null until set in the admin
+        "lat": s.lat if s else None,
+        "lng": s.lng if s else None,
     }
+
+
+def _enabled_categories(db: Session) -> list[dict]:
+    """Every enabled category (flat, by sort_order) with its direct enabled
+    product count, without loading the products themselves."""
+    counts = dict(
+        db.execute(
+            select(Product.category_id, func.count())
+            .where(Product.enabled == True)  # noqa: E712
+            .group_by(Product.category_id)
+        ).all()
+    )
+    cats = db.scalars(
+        select(ShopCategory)
+        .options(lazyload(ShopCategory.products), lazyload(ShopCategory.services))
+        .where(ShopCategory.enabled == True)  # noqa: E712
+        .order_by(ShopCategory.sort_order, ShopCategory.id)
+    ).all()
+    return [_category_view(c, int(counts.get(c.id, 0))) for c in cats]
+
+
+@router.get("/categories")
+def categories(db: Session = Depends(get_db)) -> dict:
+    """Category tree alone (flat list with parent_id), for menus and filters."""
+    return {"mediaBase": f"{PUBLIC_URL}/media", "categories": _enabled_categories(db)}
 
 
 @router.get("/catalog")
 def catalog(request: Request, db: Session = Depends(get_db)) -> dict:
-    cats = db.scalars(
-        select(ShopCategory).where(ShopCategory.enabled == True).order_by(ShopCategory.sort_order)  # noqa: E712
-    ).all()
-    categories = [_category_view(c) for c in cats]
+    categories = _enabled_categories(db)
     limit, offset = _page_params(request.query_params)
     total = db.scalar(select(func.count()).select_from(Product).where(Product.enabled == True))  # noqa: E712
     featured = db.scalars(
@@ -264,14 +344,17 @@ def _attr_condition(a: CategoryAttribute, params):
     return None
 
 
-def _category_view(c: ShopCategory) -> dict:
+def _category_view(c: ShopCategory, product_count: int | None = None) -> dict:
+    if product_count is None:
+        product_count = sum(1 for p in c.products if p.enabled)
     return {
         "id": c.id,
         "parent_id": c.parent_id,
         "slug": c.slug,
+        "sort_order": c.sort_order,
         "name": _imap(c.translations, "name"),
         "image": f"{CATEGORIES_SUBDIR}/{c.image}" if c.image else None,
-        "product_count": sum(1 for p in c.products if p.enabled),
+        "product_count": product_count,
     }
 
 
@@ -361,8 +444,10 @@ def _build_facets(cat: ShopCategory, filtered_ids: list[int], db: Session) -> li
                         .group_by(ProductAttribute.value)
                     ).all()
                 )
+            labels = _value_labels(a)
             item["options"] = [
-                {"value": v, "count": int(counts.get(v, 0))} for v in sorted(values)
+                {"value": v, "label": _value_label(labels, v), "count": int(counts.get(v, 0))}
+                for v in sorted(values)
             ]
         else:  # number
             mn = mx = None
@@ -380,19 +465,11 @@ def _build_facets(cat: ShopCategory, filtered_ids: list[int], db: Session) -> li
 
 @router.get("/search", dependencies=[Depends(limiter("search", 30))])
 def search(request: Request, db: Session = Depends(get_db)) -> dict:
-    """Full-text-ish search over product title/short/sku across all categories."""
+    """Word search over product title/short/brand/SKU across all categories
+    (same matching as /products?q=)."""
     params = request.query_params
     q = (params.get("q") or "").strip()
-    stmt = select(Product).where(Product.enabled == True)  # noqa: E712
-    if q:
-        like = f"%{_like_escape(q)}%"
-        text_match = select(ProductTranslation.product_id).where(
-            or_(
-                ProductTranslation.title.ilike(like, escape="\\"),
-                ProductTranslation.short.ilike(like, escape="\\"),
-            )
-        )
-        stmt = stmt.where(or_(Product.id.in_(text_match), Product.sku.ilike(like, escape="\\")))
+    stmt = select(Product).where(Product.enabled == True, *_search_conditions(q))  # noqa: E712
     prods = db.scalars(_apply_sort(stmt, params.get("sort"))).all()
     limit, offset = _page_params(params)
     return {
@@ -424,12 +501,12 @@ def brands(db: Session = Depends(get_db)) -> dict:
     }
 
 
-def _descendant_ids(db: Session, root_id: int) -> list[int]:
-    """root_id plus every category below it (any depth, cycle-safe)."""
+def _descendant_ids(db: Session, *root_ids: int) -> list[int]:
+    """The roots plus every category below them (any depth, cycle-safe)."""
     children: dict[int | None, list[int]] = {}
     for cid, pid in db.execute(select(ShopCategory.id, ShopCategory.parent_id)).all():
         children.setdefault(pid, []).append(cid)
-    out, seen = [root_id], {root_id}
+    out, seen = list(dict.fromkeys(root_ids)), set(root_ids)
     for cid in out:
         for kid in children.get(cid, []):
             if kid not in seen:
@@ -444,30 +521,42 @@ _IN_STOCK_SQL = and_(
 )
 
 
-@router.get("/products", dependencies=[Depends(limiter("products", 60))])
+def _tree_positions(db: Session) -> dict[int, int]:
+    """category id → position in the admin's tree order (depth-first, siblings
+    by sort_order), so flat lists can be shown the way the admin arranged them."""
+    children: dict[int | None, list[tuple[int, int]]] = {}
+    for cid, pid, order in db.execute(
+        select(ShopCategory.id, ShopCategory.parent_id, ShopCategory.sort_order)
+    ).all():
+        children.setdefault(pid, []).append((order or 0, cid))
+    pos: dict[int, int] = {}
+    stack = [cid for _, cid in sorted(children.get(None, []), reverse=True)]
+    while stack:
+        cid = stack.pop()
+        if cid in pos:
+            continue
+        pos[cid] = len(pos)
+        stack.extend(k for _, k in sorted(children.get(cid, []), reverse=True))
+    return pos
+
+
+@router.get("/products", dependencies=[Depends(limiter("products", PRODUCTS_RATE))])
 def products(request: Request, db: Session = Depends(get_db)) -> dict:
     """Cross-category product listing behind the catalog, discount, new-arrivals
     and search pages.
 
-    Query: q, category (slug, includes subcategories), brand (comma-separated
-    slugs), price_min, price_max, in_stock=1, discount=1, new=1, build=1
-    (ready-made PCs), sort (popular|price_asc|price_desc|new), limit, offset.
+    Query: q (every word must match title/short/brand/SKU), category
+    (comma-separated slugs, OR, each with its subcategories), brand
+    (comma-separated slugs), price_min, price_max, in_stock=1, discount=1,
+    new=1, build=1 (ready-made PCs), sort (popular|price_asc|price_desc|new),
+    limit, offset. With exactly one category, its characteristics filter too.
 
     Facets (categories, brands, price range) are computed with every filter
     applied except their own, so picking one brand still lists the others.
     """
     params = request.query_params
-    base = [Product.enabled == True]  # noqa: E712
     q = (params.get("q") or "").strip()
-    if q:
-        like = f"%{_like_escape(q)}%"
-        text_match = select(ProductTranslation.product_id).where(
-            or_(
-                ProductTranslation.title.ilike(like, escape="\\"),
-                ProductTranslation.short.ilike(like, escape="\\"),
-            )
-        )
-        base.append(or_(Product.id.in_(text_match), Product.sku.ilike(like, escape="\\")))
+    base = [Product.enabled == True, *_search_conditions(q)]  # noqa: E712
     if params.get("in_stock"):
         base.append(_IN_STOCK_SQL)
     if params.get("discount"):
@@ -479,15 +568,19 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
 
     # facet-owned filters: key -> conditions
     own: dict[str, list] = {"category": [], "brand": [], "price": []}
-    cat_slug = params.get("category")
+    cat_slugs = list(dict.fromkeys(s for s in (params.get("category") or "").split(",") if s))
     attrs: list[CategoryAttribute] = []
-    if cat_slug:
-        cat = db.scalar(select(ShopCategory).where(ShopCategory.slug == cat_slug))
-        if not cat or not cat.enabled:
+    if cat_slugs:
+        picked = [
+            c for c in db.scalars(select(ShopCategory).where(ShopCategory.slug.in_(cat_slugs))).all()
+            if c.enabled
+        ]
+        if len(picked) != len(cat_slugs):
             raise HTTPException(404, "Category not found")
-        own["category"].append(Product.category_id.in_(_descendant_ids(db, cat.id)))
-        # "По характеристике": the category's own characteristics filter too
-        attrs = sorted((a for a in cat.attributes if a.filterable), key=lambda a: a.sort_order)
+        own["category"].append(Product.category_id.in_(_descendant_ids(db, *(c.id for c in picked))))
+        # "По характеристике": a single category's own characteristics filter too
+        if len(picked) == 1:
+            attrs = sorted((a for a in picked[0].attributes if a.filterable), key=lambda a: a.sort_order)
         for a in attrs:
             cond = _attr_condition(a, params)
             own[f"attr:{a.key}"] = [cond] if cond is not None else []
@@ -538,6 +631,7 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
             )
         ).all()
     }
+    tree_pos = _tree_positions(db)
     pmin, pmax = db.execute(
         select(func.min(Product.price), func.max(Product.price)).where(*where_except("price"))
     ).first()
@@ -558,7 +652,11 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
         ).all()
         if not rows:
             continue
-        options = sorted(({"value": v, "count": int(n)} for v, n in rows), key=_facet_order(a))
+        labels = _value_labels(a)
+        options = sorted(
+            ({"value": v, "label": _value_label(labels, v), "count": int(n)} for v, n in rows),
+            key=_facet_order(a),
+        )
         attribute_facets.append({
             "key": a.key, "label": _imap(a.translations, "label"), "type": a.type,
             "unit": a.unit or "", "options": options,
@@ -570,19 +668,18 @@ def products(request: Request, db: Session = Depends(get_db)) -> dict:
         "products": _attach_ratings([_card(p) for p in page], db),
         "total": int(total or 0),
         "facets": {
-            "categories": sorted(
-                (
-                    {
-                        "slug": cats[cid].slug,
-                        "parent_id": cats[cid].parent_id,
-                        "name": _imap(cats[cid].translations, "name"),
-                        "count": int(n),
-                    }
-                    for cid, n in cat_counts
-                    if cid in cats and cats[cid].enabled
-                ),
-                key=lambda c: c["slug"],
-            ),
+            # admin tree order: parents before children, siblings by sort_order
+            "categories": [
+                {
+                    "slug": cats[cid].slug,
+                    "parent_id": cats[cid].parent_id,
+                    "sort_order": cats[cid].sort_order,
+                    "name": _imap(cats[cid].translations, "name"),
+                    "count": int(n),
+                }
+                for cid, n in sorted(cat_counts, key=lambda r: tree_pos.get(r[0], len(tree_pos)))
+                if cid in cats and cats[cid].enabled
+            ],
             "brands": sorted(
                 (
                     {"slug": brand_rows[bid].slug, "name": brand_rows[bid].name, "count": int(n)}
@@ -688,6 +785,7 @@ def page(slug: str, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(404, "Page not found")
     return {
         "slug": p.slug,
+        "image": f"{PAGES_SUBDIR}/{p.image}" if p.image else None,
         "title": _imap(p.translations, "title"),
         "lead": _imap(p.translations, "lead"),
         "blocks": {t.lang: (t.blocks or []) for t in p.translations},
@@ -748,9 +846,10 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
         a = attr_meta.get(pa.attribute_id)
         if a is None:
             continue
-        attributes.append(
-            {"key": a.key, "label": _imap(a.translations, "label"), "value": pa.value, "unit": a.unit or ""}
-        )
+        attributes.append({
+            "key": a.key, "label": _imap(a.translations, "label"), "value": pa.value,
+            "value_label": _value_label(_value_labels(a), pa.value), "unit": a.unit or "",
+        })
     reviews = db.scalars(
         select(ProductReview)
         .where(ProductReview.product_id == p.id, ProductReview.status == "approved")
@@ -772,6 +871,7 @@ def product(slug: str, db: Session = Depends(get_db)) -> dict:
         "in_stock": _in_stock(p),
         "stock_qty": p.stock_qty,
         "sku": p.sku,
+        "warranty_months": p.warranty_months,
         "title": _imap(p.translations, "title"),
         "short": _imap(p.translations, "short"),
         "body": _imap(p.translations, "body"),

@@ -110,6 +110,7 @@ def _attr(a: CategoryAttribute) -> dict:
         "filterable": a.filterable,
         "sort_order": a.sort_order,
         "translations": [{"lang": t.lang, "label": t.label} for t in a.translations],
+        "options": a.options or [],
     }
 
 
@@ -160,6 +161,7 @@ def _product(p: Product) -> dict:
         "barcode": p.barcode,
         "brand_id": p.brand_id,
         "is_new": p.is_new,
+        "warranty_months": p.warranty_months,
         "enabled": p.enabled,
         "sort_order": p.sort_order,
         "image_count": len(p.images),
@@ -374,6 +376,13 @@ def reorder_categories(payload: ReorderIn, db: Session = Depends(get_db)) -> dic
 # --------------------------------------------------------------------------
 # Category attributes (filter facets)
 # --------------------------------------------------------------------------
+def _options(type_: str, options: list) -> list[dict]:
+    """Stored form of a select attribute's value labels; numbers have none."""
+    if type_ != "select":
+        return []
+    return [{"value": o.value, "label": dict(o.label)} for o in options]
+
+
 @router.get("/categories/{cat_id}/attributes")
 def list_attributes(cat_id: int, db: Session = Depends(get_db)) -> list[dict]:
     rows = db.scalars(
@@ -400,6 +409,7 @@ def create_attribute(cat_id: int, payload: CategoryAttributeIn, db: Session = De
         unit=payload.unit or None,
         filterable=payload.filterable,
         sort_order=(max_order + 1) if max_order is not None else 0,
+        options=_options(payload.type, payload.options),
     )
     for t in payload.translations:
         a.translations.append(CategoryAttributeTranslation(lang=t.lang, label=t.label))
@@ -431,6 +441,10 @@ def update_attribute(
                 a.translations.append(CategoryAttributeTranslation(lang=t.lang, label=t.label))
             else:
                 row.label = t.label
+    if payload.options is not None:
+        a.options = _options(a.type, payload.options)
+    elif a.type == "number":
+        a.options = []  # switched to number: value labels no longer apply
     db.commit()
     return _attr(a)
 
@@ -792,6 +806,7 @@ def _settings(s: ShopSettings) -> dict:
         "address_ru": s.address_ru, "address_tk": s.address_tk, "address_en": s.address_en,
         "email": s.email,
         "hours_ru": s.hours_ru, "hours_tk": s.hours_tk, "hours_en": s.hours_en,
+        "lat": s.lat, "lng": s.lng,
     }
 
 
@@ -812,6 +827,8 @@ def update_settings(payload: ShopSettingsIn, db: Session = Depends(get_db)) -> d
     s.hours_ru = payload.hours_ru
     s.hours_tk = payload.hours_tk
     s.hours_en = payload.hours_en
+    s.lat = payload.lat
+    s.lng = payload.lng
     db.commit()
     return _settings(s)
 
@@ -887,6 +904,7 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db), user: dict
         barcode=payload.barcode or None,
         brand_id=payload.brand_id,
         is_new=payload.is_new,
+        warranty_months=payload.warranty_months,
         enabled=payload.enabled,
         sort_order=(max_order + 1) if max_order is not None else 0,
     )
@@ -944,6 +962,7 @@ def update_product(
         payload.enabled is not None,
         "brand_id" in payload.model_fields_set,
         payload.is_new is not None,
+        "warranty_months" in payload.model_fields_set and payload.warranty_months != p.warranty_months,
         payload.translations is not None,
         payload.attributes is not None,
         payload.components is not None,
@@ -1000,6 +1019,8 @@ def update_product(
         p.brand_id = payload.brand_id
     if payload.is_new is not None:
         p.is_new = payload.is_new
+    if "warranty_months" in payload.model_fields_set:
+        p.warranty_months = payload.warranty_months
     if payload.translations is not None:
         existing = {t.lang: t for t in p.translations}
         for t in payload.translations:

@@ -169,6 +169,8 @@ export const api = {
   createPage: (body: SitePageIn) => req<SitePage>("/api/admin/site/pages", json("POST", body)),
   updatePage: (id: number, body: SitePageIn) => req<SitePage>(`/api/admin/site/pages/${id}`, json("PUT", body)),
   deletePage: (id: number) => req(`/api/admin/site/pages/${id}`, json("DELETE")),
+  uploadPageImage: (id: number, file: File) => req<SitePage>(`/api/admin/site/pages/${id}/image`, upload(file)),
+  deletePageImage: (id: number) => req<SitePage>(`/api/admin/site/pages/${id}/image`, json("DELETE")),
 
   // delivery zones
   zones: () => req<Zone[]>("/api/admin/shop/delivery-zones"),
@@ -271,6 +273,11 @@ export interface Order {
   items: { product_id: number | null; service_id: number | null; kind: "product" | "service"; title: string; price: number; qty: number }[];
 }
 
+/** A select value with its per-language display text; `value` is the filter key. */
+export interface AttributeOption {
+  value: string;
+  label: Partial<Record<Lang, string>>;
+}
 export interface Attribute {
   id: number;
   key: string;
@@ -279,6 +286,7 @@ export interface Attribute {
   filterable: boolean;
   sort_order: number;
   translations: { lang: Lang; label: string }[];
+  options: AttributeOption[];
 }
 export interface AttributeIn {
   key: string;
@@ -286,6 +294,7 @@ export interface AttributeIn {
   unit: string;
   filterable: boolean;
   translations: { lang: Lang; label: string }[];
+  options: AttributeOption[];
 }
 export interface Category {
   id: number;
@@ -364,6 +373,7 @@ export interface Product {
   category_id: number;
   brand_id: number | null;
   is_new: boolean;
+  warranty_months: number | null;
   price: number;
   old_price: number | null;
   currency: string;
@@ -383,6 +393,7 @@ export interface ProductIn {
   category_id: number;
   brand_id: number | null;
   is_new: boolean;
+  warranty_months: number | null;
   price: number;
   old_price: number | null;
   in_stock: boolean;
@@ -453,6 +464,8 @@ export interface Settings {
   hours_ru: string;
   hours_tk: string;
   hours_en: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 export type LeadStatus = "new" | "read" | "done";
@@ -645,6 +658,7 @@ export interface SitePageTr {
 export interface SitePage {
   id: number;
   slug: string;
+  image: string | null;
   enabled: boolean;
   sort_order: number;
   translations: SitePageTr[];
