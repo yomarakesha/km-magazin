@@ -12,8 +12,6 @@ DATA_DIR = BASE_DIR / "data"
 # MEDIA_DIR is overridable so tests can upload into a throwaway directory
 MEDIA_DIR = Path(os.getenv("MEDIA_DIR") or BASE_DIR / "media")
 DATA_DIR.mkdir(exist_ok=True)
-(MEDIA_DIR / "img").mkdir(parents=True, exist_ok=True)
-(MEDIA_DIR / "video").mkdir(parents=True, exist_ok=True)
 (MEDIA_DIR / "products").mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR / 'km.db'}")

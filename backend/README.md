@@ -13,5 +13,5 @@
   заказы, склад, касса, пользователи, заявки
 - `app/routers/shop_public.py` — публичный API витрины
 - `app/routers/admin_*.py` — админ API по доменам (shop, warehouse, pos, reports, users…)
-- `app/seed_demo.py` — демо-данные; `app/seed.py` — контент старого лендинга
+- `app/seed_demo.py` — демо-данные
 - `media/` — медиафайлы, отдаются по `/media/...`

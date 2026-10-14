@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # KM Site — полный запуск с нуля (Linux / macOS)
 # Использование: bash scripts/start.sh
-#                KM_RELOAD=1 bash scripts/start.sh   (автоперезагрузка при правке кода)
+#                KM_RELOAD=0 bash scripts/start.sh   (backend без автоперезагрузки)
 #
 # Что делает:
 #   1. Создаёт backend/.env с случайными ключами (если нет)
 #   2. Создаёт Python venv и ставит зависимости (если нет)
 #   3. Заполняет БД демо-данными (если нет km.db)
-#   4. Собирает админ-панель (если нет сборки или исходники изменились)
-#   5. Открывает по окну на сервис: backend :8000 (админка на /admin)
-#      и витрину km-store :5173. Каждый останавливается Ctrl+C в своём окне.
+#   4. Открывает по окну на сервис, все в dev-режиме: backend :8000 (--reload),
+#      админка admin :5174 и витрина km-store :5173 (Vite). Каждый
+#      останавливается Ctrl+C в своём окне.
 
 set -e
+# Dev-режим по умолчанию: backend перезапускается при правке кода
+export KM_RELOAD="${KM_RELOAD:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND="$ROOT/backend"
 VENV="$BACKEND/.venv"
@@ -30,14 +32,6 @@ sha() {
 }
 req_hash() { sha "$REQ" | cut -d' ' -f1; }
 
-# Hash of everything the admin build is made from: a pulled change to the
-# admin sources or dependencies triggers a rebuild instead of serving a stale dist.
-ADMIN="$ROOT/admin"
-ADMIN_STAMP="$ADMIN/dist/.build.sha"
-admin_hash() {
-    (cd "$ADMIN" && find src public index.html package.json package-lock.json vite.config.ts tsconfig.json \
-        -type f 2>/dev/null | LC_ALL=C sort | while read -r f; do sha "$f"; done) | sha | cut -d' ' -f1
-}
 
 echo ""
 echo "========================================"
@@ -47,7 +41,7 @@ echo ""
 
 # ── 1. backend/.env ───────────────────────────────────────────────────────────
 if [ ! -f "$ENV_FILE" ]; then
-    echo "[1/5] Создаём backend/.env..."
+    echo "[1/4] Создаём backend/.env..."
 
     # Открытый пароль по умолчанию — задай свой в backend/.env перед продакшном.
     ADMIN_PWD=admin
@@ -68,7 +62,7 @@ EOF
     echo "  ВНИМАНИЕ: пароль по умолчанию 'admin' — СМЕНИТЕ в backend/.env перед публикацией!"
     echo ""
 else
-    echo "[1/5] backend/.env уже есть — пропускаем"
+    echo "[1/4] backend/.env уже есть — пропускаем"
     ADMIN_PWD=$(grep '^ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
     [ -n "$ADMIN_PWD" ] && echo "  Текущий пароль admin: $ADMIN_PWD"
 fi
@@ -83,7 +77,7 @@ done
 
 # ── 2. Python venv + зависимости ─────────────────────────────────────────────
 if [ ! -f "$PY" ]; then
-    echo "[2/5] Создаём Python venv..."
+    echo "[2/4] Создаём Python venv..."
 
     # Ищем python3
     PY_CMD=""
@@ -109,51 +103,31 @@ if [ ! -f "$PY" ]; then
         exit 1
     fi
     req_hash > "$REQ_STAMP"
-    echo "[2/5] Python зависимости установлены."
+    echo "[2/4] Python зависимости установлены."
 elif [ ! -f "$REQ_STAMP" ] || [ "$(cat "$REQ_STAMP")" != "$(req_hash)" ]; then
-    echo "[2/5] requirements.txt изменился — доставляем зависимости..."
+    echo "[2/4] requirements.txt изменился — доставляем зависимости..."
     if ! "$PY" -m pip install -r "$REQ"; then
         echo "Ошибка установки Python-зависимостей. Venv оставлен как есть."
         echo "Проверьте сеть и перезапустите."
         exit 1
     fi
     req_hash > "$REQ_STAMP"
-    echo "[2/5] Python зависимости обновлены."
+    echo "[2/4] Python зависимости обновлены."
 else
-    echo "[2/5] Python venv актуален — пропускаем"
+    echo "[2/4] Python venv актуален — пропускаем"
 fi
 
 # ── 3. Seed демо-данных ───────────────────────────────────────────────────────
 if [ ! -f "$DB" ]; then
-    echo "[3/5] Заполняем БД демо-данными..."
+    echo "[3/4] Заполняем БД демо-данными..."
     mkdir -p "$BACKEND/data"
     cd "$BACKEND" && "$PY" -m app.seed_demo
-    echo "[3/5] БД создана с демо-данными."
+    echo "[3/4] БД создана с демо-данными."
 else
-    echo "[3/5] БД уже существует — пропускаем seed"
+    echo "[3/4] БД уже существует — пропускаем seed"
 fi
 
-# ── 4. Админ-панель (admin/) ─────────────────────────────────────────────────
-ADMIN_NOW=$(admin_hash)
-if [ -f "$ADMIN/dist/index.html" ] && [ -f "$ADMIN_STAMP" ] && [ "$(cat "$ADMIN_STAMP")" = "$ADMIN_NOW" ]; then
-    echo "[4/5] Админ-панель собрана и актуальна — пропускаем"
-elif command -v npm &>/dev/null; then
-    echo "[4/5] Собираем админ-панель..."
-    if (cd "$ADMIN" && npm install --no-audit --no-fund && npm run build); then
-        echo "$ADMIN_NOW" > "$ADMIN_STAMP"
-        echo "[4/5] Админ-панель собрана."
-    elif [ -f "$ADMIN/dist/index.html" ]; then
-        echo "      ВНИМАНИЕ: сборка не удалась — остаётся предыдущая версия админки."
-    else
-        echo "      ВНИМАНИЕ: сборка не удалась — API работает, /admin недоступна."
-    fi
-elif [ -f "$ADMIN/dist/index.html" ]; then
-    echo "[4/5] npm не найден — используем имеющуюся (возможно устаревшую) сборку админки."
-else
-    echo "[4/5] npm не найден — админ-панель не собрана (нужен Node.js 20+). API работает."
-fi
-
-# ── 5. Запуск ────────────────────────────────────────────────────────────────
+# ── 4. Запуск ────────────────────────────────────────────────────────────────
 # С графическим сеансом — каждый сервис в своём окне (свой Ctrl+C). Без него
 # (SSH, сервер без экрана) окна открыть нельзя: backend запускается прямо здесь.
 has_gui() {
@@ -196,14 +170,23 @@ wait_backend() {
 }
 
 # Занятый порт дал бы «ложный OK»: проверка ниже достучалась бы до чужого процесса
-if (echo >/dev/tcp/127.0.0.1/8000) 2>/dev/null; then
-    echo "ОШИБКА: порт 8000 уже занят (возможно, backend уже запущен)."
-    echo "Закройте окно, где он запущен, или остановите процесс и запустите скрипт снова."
+source "$ROOT/scripts/lib.sh"
+trap - INT
+busy=0
+for port in 8000 5174 5173; do
+    port_free "$port" || busy=1
+done
+if [ "$busy" = "1" ]; then
+    echo ""
+    echo "Похоже, сервисы уже запущены прошлым start.sh. Остановите их (Ctrl+C в их окнах)"
+    echo "или одной командой: fuser -k 8000/tcp 5174/tcp 5173/tcp — и запустите снова."
     exit 1
 fi
 
 if has_gui && open_window "KM backend :8000" "$ROOT/scripts/run-backend.sh"; then
-    echo "[5/5] Сервисы запускаются в отдельных окнах."
+    echo "[4/4] Сервисы запускаются в отдельных окнах."
+    open_window "KM admin :5174" "$ROOT/scripts/run-admin.sh" \
+        || echo "      Окно админки не открылось — запустите вручную: bash scripts/run-admin.sh"
     open_window "KM store :5173" "$ROOT/scripts/run-store.sh" \
         || echo "      Окно витрины не открылось — запустите вручную: bash scripts/run-store.sh"
     echo ""
@@ -213,15 +196,17 @@ if has_gui && open_window "KM backend :8000" "$ROOT/scripts/run-backend.sh"; the
     echo ""
     echo "========================================"
     echo "  Витрина: http://localhost:5173"
-    echo "  Админ:   http://localhost:8000/admin"
+    echo "  Админ:   http://localhost:5174/admin/"
     echo "  API:     http://localhost:8000/docs"
     echo "========================================"
     echo ""
     echo "Остановить сервис — Ctrl+C в его окне."
-    echo "Перезапустить один сервис: bash scripts/run-backend.sh или bash scripts/run-store.sh"
+    echo "Перезапустить один сервис: bash scripts/run-backend.sh, run-admin.sh или run-store.sh"
 else
-    echo "[5/5] Графического окна нет (SSH или сервер) — запускаем backend в этом терминале."
-    echo "      Витрину при необходимости запустите в другом терминале: bash scripts/run-store.sh"
+    echo "[4/4] Графического окна нет (SSH или сервер) — запускаем backend в этом терминале."
+    echo "      Админку и витрину запустите в других терминалах:"
+    echo "        bash scripts/run-admin.sh"
+    echo "        bash scripts/run-store.sh"
     echo ""
     KM_NO_HOLD=1 exec bash "$ROOT/scripts/run-backend.sh"
 fi

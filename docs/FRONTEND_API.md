@@ -790,9 +790,6 @@ frontend's choice (banner `link` values in seed use `/catalog/<slug>`).
 ### `GET /health`
 `{"ok": true}` — liveness check.
 
-### `GET /api/content`
-Legacy landing-page content (old single-page site). **Not needed** for the shop.
-
 ### `POST /api/shop/payments/webhook`
 Payment gateway callback slot — not called by the frontend. Returns 501 until an
 online payment provider is configured.
@@ -842,7 +839,6 @@ SameSite=Lax); send requests with `credentials: "include"`.
 | POS (cash register) | `GET /api/admin/pos/lookup`, `GET/POST /api/admin/pos/sales`, `GET .../sales/{id}`, `POST .../sales/{id}/settle`, `POST .../sales/{id}/void` (owner) | sales |
 | Reports | `GET /api/admin/reports/sales`, `/services` (sales), `/stock` (warehouse) | as noted |
 | Users | `GET/POST /api/admin/users`, `PATCH/DELETE /api/admin/users/{id}` | owner |
-| Legacy landing | `/api/admin/content`, `/api/admin/services`, `/api/admin/media/*` | content |
 
 Demo accounts after seed: `admin` (password from `backend/.env`), `sklad` / `sklad12345`,
 `operator` / `operator12345`, `kontent` / `kontent12345`.

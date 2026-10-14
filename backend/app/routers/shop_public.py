@@ -2,7 +2,7 @@
 dynamic attribute filters (facets), product detail and order creation.
 
 Texts are returned as per-language maps ({ru, tk, en}) so the SSR frontend can
-switch language client-side, mirroring how the landing handles i18n.
+switch language client-side.
 """
 import hmac
 

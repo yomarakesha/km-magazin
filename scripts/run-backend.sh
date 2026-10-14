@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backend :8000 (админка на /admin). Запускается в своём окне из start.sh,
+# Backend :8000. Запускается в своём окне из start.sh,
 # можно и отдельно: bash scripts/run-backend.sh. Ctrl+C — остановить.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/lib.sh"
@@ -20,5 +20,5 @@ if port_free 8000; then
     echo ""
     echo "Backend остановлен (код $code)."
 fi
-hold_window
+hold_window "$code"
 exit "$code"

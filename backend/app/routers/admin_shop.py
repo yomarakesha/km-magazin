@@ -54,7 +54,7 @@ from ..schemas import (
     ShopServiceUpdateIn,
     ShopSettingsIn,
 )
-from .admin_media import _save  # file save/sanitize helper
+from ..uploads import save_upload
 
 router = APIRouter(
     prefix="/api/admin/shop",
@@ -87,7 +87,7 @@ def _replace_picture(obj, upload: UploadFile, subdir: str) -> None:
     """Store an uploaded picture for a category/service and drop the old file."""
     (MEDIA_DIR / subdir).mkdir(parents=True, exist_ok=True)
     old = obj.image
-    obj.image = _save(upload, subdir)
+    obj.image = save_upload(upload, subdir)
     if old and old != obj.image:
         (MEDIA_DIR / subdir / old).unlink(missing_ok=True)
 
@@ -1084,7 +1084,7 @@ def upload_image(
 ) -> dict:
     if not db.get(Product, product_id):
         raise HTTPException(404, "Product not found")
-    filename = _save(file, PRODUCTS_SUBDIR)
+    filename = save_upload(file, PRODUCTS_SUBDIR)
     max_order = db.scalar(
         select(func.max(ProductImage.sort_order)).where(ProductImage.product_id == product_id)
     )

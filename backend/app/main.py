@@ -12,12 +12,9 @@ from .db import init_db
 from .logging import setup_logging
 from .revalidate import revalidate_frontend
 from .routers import (
-    admin_content,
     admin_leads,
-    admin_media,
     admin_pos,
     admin_reports,
-    admin_services,
     admin_shop,
     admin_site,
     admin_users,
@@ -87,9 +84,6 @@ app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
 app.include_router(public.router)
 app.include_router(auth.router)
-app.include_router(admin_content.router)
-app.include_router(admin_services.router)
-app.include_router(admin_media.router)
 app.include_router(admin_leads.router)
 app.include_router(admin_shop.router)
 app.include_router(admin_site.router)

@@ -27,7 +27,10 @@ run() {
     local code=$?
     echo ""
     echo "Витрина остановлена (код $code)."
+    return "$code"
 }
 
 run
-hold_window
+code=$?
+hold_window "$code"
+exit "$code"

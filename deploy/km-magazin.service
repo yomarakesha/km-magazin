@@ -1,0 +1,26 @@
+# systemd unit for the shop backend (FastAPI). Copy to
+# /etc/systemd/system/km-magazin.service
+[Unit]
+Description=KM magazin backend (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=kmshop
+Group=kmshop
+WorkingDirectory=/opt/km-magazin/backend
+# backend/.env is loaded by app/config.py. One worker: SQLite and the in-memory
+# rate limiter assume a single process. Localhost only: nginx is the entry point.
+ExecStart=/opt/km-magazin/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --timeout-graceful-shutdown 3
+Restart=always
+RestartSec=5
+
+# Hardening: writes only to the data dir
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/km-magazin /opt/km-magazin/backend/data
+
+[Install]
+WantedBy=multi-user.target

@@ -22,18 +22,19 @@ bash scripts/start.sh
 1. Создаёт `backend/.env` со случайным `SECRET_KEY` (пароль admin по умолчанию — `admin`, смените)
 2. Ставит Python-зависимости в venv (и доставляет их, если `requirements.txt` изменился)
 3. Заполняет БД демо-данными, если `backend/data/km.db` нет
-4. Собирает админ-панель, если сборки нет или изменились исходники `admin/` (нужен npm)
-5. Открывает по окну терминала на сервис: backend `:8000` и витрину `km-store` `:5173`, и ждёт, пока backend ответит.
+4. Открывает по окну терминала на сервис, все в dev-режиме: backend `:8000` (`--reload`),
+   админку `admin` `:5174` и витрину `km-store` `:5173` (Vite), и ждёт, пока backend ответит.
    Без графического сеанса (SSH, сервер) запускает backend прямо в текущем терминале.
 
-Повторный запуск пропускает готовые шаги. Каждый сервис останавливается `Ctrl+C` в своём окне.
-Перезапустить один сервис: `bash scripts/run-backend.sh` или `bash scripts/run-store.sh`.
-Автоперезагрузка при правке кода: `KM_RELOAD=1 bash scripts/start.sh`.
+Повторный запуск пропускает готовые шаги. Каждый сервис останавливается `Ctrl+C` в своём окне,
+окно после этого закрывается само (остаётся открытым, только если сервис упал).
+Перезапустить один сервис: `bash scripts/run-backend.sh`, `run-admin.sh` или `run-store.sh`.
+Backend без автоперезагрузки: `KM_RELOAD=0 bash scripts/start.sh`.
 
 **Требования:** Python 3.10+, Node.js 20+ (админка и витрина), pnpm (витрина)
 
 - Витрина: http://localhost:5173
-- Админ-панель: http://localhost:8000/admin
+- Админ-панель: http://localhost:5174/admin/ (сборка `admin/dist`, если есть, — также на http://localhost:8000/admin)
 - Документация API: http://localhost:8000/docs
 
 ---
@@ -149,6 +150,7 @@ backend/
 scripts/
 ├── start.sh          # подготовка и запуск: по окну на сервис
 ├── run-backend.sh    # backend :8000 (Ctrl+C — остановить)
+├── run-admin.sh      # админка admin :5174 (Ctrl+C — остановить)
 ├── run-store.sh      # витрина km-store :5173 (Ctrl+C — остановить)
 ├── lib.sh            # общие функции run-*.sh
 ├── create-admin.sh   # смена пароля admin (в .env и в БД)

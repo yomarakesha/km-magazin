@@ -9,7 +9,7 @@ from ..config import MEDIA_DIR
 from ..db import get_db
 from ..models import Banner, BannerTranslation, Page, PageTranslation
 from ..schemas import BannerIn, PageIn, ReorderIn
-from .admin_media import _save
+from ..uploads import save_upload
 
 router = APIRouter(
     prefix="/api/admin/site",
@@ -80,7 +80,7 @@ def upload_banner_image(banner_id: int, file: UploadFile = File(...), db: Sessio
         raise HTTPException(404, "Banner not found")
     (MEDIA_DIR / BANNERS_SUBDIR).mkdir(parents=True, exist_ok=True)
     old = b.image
-    b.image = _save(file, BANNERS_SUBDIR)
+    b.image = save_upload(file, BANNERS_SUBDIR)
     db.commit()
     if old and old != b.image:
         (MEDIA_DIR / BANNERS_SUBDIR / old).unlink(missing_ok=True)
@@ -191,7 +191,7 @@ def upload_page_image(page_id: int, file: UploadFile = File(...), db: Session = 
         raise HTTPException(404, "Page not found")
     (MEDIA_DIR / PAGES_SUBDIR).mkdir(parents=True, exist_ok=True)
     old = p.image
-    p.image = _save(file, PAGES_SUBDIR)
+    p.image = save_upload(file, PAGES_SUBDIR)
     db.commit()
     if old and old != p.image:
         (MEDIA_DIR / PAGES_SUBDIR / old).unlink(missing_ok=True)
